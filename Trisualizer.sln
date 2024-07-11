@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Trisualizer", "Trisualizer.vcxproj", "{9D33D040-821A-4DDF-9735-BD990782489B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9D33D040-821A-4DDF-9735-BD990782489B}.Debug|x64.ActiveCfg = Debug|x64
+		{9D33D040-821A-4DDF-9735-BD990782489B}.Debug|x64.Build.0 = Debug|x64
+		{9D33D040-821A-4DDF-9735-BD990782489B}.Debug|x86.ActiveCfg = Debug|Win32
+		{9D33D040-821A-4DDF-9735-BD990782489B}.Debug|x86.Build.0 = Debug|Win32
+		{9D33D040-821A-4DDF-9735-BD990782489B}.Release|x64.ActiveCfg = Release|x64
+		{9D33D040-821A-4DDF-9735-BD990782489B}.Release|x64.Build.0 = Release|x64
+		{9D33D040-821A-4DDF-9735-BD990782489B}.Release|x86.ActiveCfg = Release|Win32
+		{9D33D040-821A-4DDF-9735-BD990782489B}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {BA2D39F1-1929-4CD7-9BAA-D31961BCDB66}
+	EndGlobalSection
+EndGlobal
