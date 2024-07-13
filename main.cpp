@@ -6,6 +6,7 @@
 
 #pragma warning(disable: 26495)
 
+#define _USE_MATH_DEFINES
 #define IMGUI_DEFINE_MATH_OPERATORS
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define NOMINMAX
@@ -23,6 +24,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "glm/gtx/string_cast.hpp"
 #include <stb/stb_image_write.h>
 #include <tinyfiledialogs/tinyfiledialogs.h>
 #include <chromium/cubic_bezier.h>
@@ -33,6 +35,7 @@
 #include <vector>
 #include <iomanip>
 #include <ctime>
+#include <cmath>
 #include <string>
 #include <filesystem>
 #include <functional>
@@ -183,8 +186,14 @@ class Trisualizer {
     int grid_height = 100, grid_width = 100;
     std::vector<double> grid = std::vector(grid_height * grid_width, 0.0);
 
+    float theta = 60, phi = 45;
+    float camdist = 1;
+
+    vec2 mousePos = vec2(0.f);
+
     GLuint shaderProgram;
     GLuint VAO, VBO;
+    GLuint gridSSBO;
 public:
 	Trisualizer() {
         glfwInit();
@@ -208,6 +217,9 @@ public:
         glfwSetWindowUserPointer(window, this);
         glfwSwapInterval(1);
         glfwMakeContextCurrent(window);
+
+        glfwSetCursorPosCallback(window, on_mouseMove);
+        glfwSetScrollCallback(window, on_mouseScroll);
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -264,12 +276,24 @@ public:
         glDeleteShader(fragmentShader);
 
         glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
         glBindVertexArray(VAO);
+        glGenBuffers(1, &VBO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, grid.size(), grid.data(), GL_STATIC_DRAW);
-        glVertexAttribLPointer(0, 1, GL_DOUBLE, 0, nullptr);
-        glEnableVertexAttribArray(0);
+        glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_STATIC_DRAW);
+
+        for (int i = 0; i < 100; i++) {
+            for (int j = 0; j < 100; j++) {
+                float x = (i - 50) / 100.f;
+                float y = (j - 50) / 100.f;
+                grid[i * 100 + j] = sin(x * y);
+            }
+        }
+
+        glGenBuffers(1, &gridSSBO);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, gridSSBO);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, gridSSBO);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, grid.size() * sizeof(double), grid.data(), GL_DYNAMIC_DRAW);
+        glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
 
         glUseProgram(shaderProgram);
 
@@ -288,6 +312,25 @@ private:
         res[size] = '\0';
         return res;
     }
+
+    static inline void on_mouseScroll(GLFWwindow* window, double x, double y) {
+        Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
+        app->camdist += y;
+        if (app->camdist < 1.f) app->camdist = 1;
+    }
+
+    static inline void on_mouseMove(GLFWwindow* window, double x, double y) {
+        Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
+        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
+            float xoffset = x - app->mousePos.x;
+            float yoffset = y - app->mousePos.y;
+            app->theta += yoffset;
+            app->phi += xoffset;
+            if (app->theta > 179.0f) app->theta = 179.0f;
+            if (app->theta < 1.f) app->theta = 1.f;
+        }
+        app->mousePos = { x, y };
+    }
 public:
     void mainloop() {
         do {
@@ -296,7 +339,20 @@ public:
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
 
+            auto cameraPos = vec3(camdist * sin(glm::radians(theta)) * cos(glm::radians(phi)), camdist * cos(glm::radians(theta)), camdist * sin(glm::radians(theta)) * sin(glm::radians(phi)));
+            mat4 view = lookAt(cameraPos, vec3(0.f), {0.f, 1.f, 0.f});
+            mat4 proj = ortho(-1.1, 1.1, -1.1, 1.1, -10.0, 10.0);
+            glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "vpmat"), 1, GL_FALSE, value_ptr(proj * view));
+
             ImGui::Render();
+
+            glClearColor(0.f, 0.f, 0.f, 1.f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            glUseProgram(shaderProgram);
+            glBindVertexArray(VAO);
+            glDrawArrays(GL_POINTS, 0, grid.size());
+            
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
             glfwSwapBuffers(window);
 
