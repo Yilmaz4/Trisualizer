@@ -183,16 +183,17 @@ class Trisualizer {
     GLFWwindow* window = nullptr;
     ImFont* font_title = nullptr;
 
-    int grid_height = 100, grid_width = 100;
-    std::vector<double> grid = std::vector(grid_height * grid_width, 0.0);
+    int grid_res = 200;
+    std::vector<double> grid = std::vector(grid_res * grid_res, 0.0);
+    std::vector<unsigned int> indices;
 
-    float theta = 60, phi = 45;
+    float theta = 45, phi = 45;
     float camdist = 1;
 
     vec2 mousePos = vec2(0.f);
 
     GLuint shaderProgram;
-    GLuint VAO, VBO;
+    GLuint VAO, VBO, EBO;
     GLuint gridSSBO;
 public:
 	Trisualizer() {
@@ -274,6 +275,7 @@ public:
         glAttachShader(shaderProgram, fragmentShader);
         glLinkProgram(shaderProgram);
         glDeleteShader(fragmentShader);
+        glUseProgram(shaderProgram);
 
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
@@ -281,13 +283,32 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_STATIC_DRAW);
 
-        for (int i = 0; i < 100; i++) {
-            for (int j = 0; j < 100; j++) {
-                float x = (i - 50) / 100.f;
-                float y = (j - 50) / 100.f;
-                grid[i * 100 + j] = sin(x * y);
+        for (int i = 0; i < grid_res; i++) {
+            for (int j = 0; j < grid_res; j++) {
+                float x = (i - grid_res / 2.f) / grid_res;
+                float y = (j - grid_res / 2.f) / grid_res;
+                grid[i * grid_res + j] = exp(-(x * x + y * y) * 10) * cos(40 * sqrt(x * x + y * y)) / 8.f;
             }
         }
+        glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), grid_res);
+
+        for (unsigned int y = 0; y < grid_res - 1; ++y) {
+            for (unsigned int x = 0; x < grid_res; ++x) {
+                unsigned int idx0 = y * grid_res + x;
+                unsigned int idx1 = (y + 1) * grid_res + x;
+
+                indices.push_back(idx0);
+                indices.push_back(idx1);
+            }
+            if (y < grid_res - 2) {
+                indices.push_back((y + 1) * grid_res + (grid_res - 1));
+                indices.push_back((y + 1) * grid_res);
+            }
+        }
+
+        glGenBuffers(1, &EBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
 
         glGenBuffers(1, &gridSSBO);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, gridSSBO);
@@ -295,7 +316,7 @@ public:
         glBufferData(GL_SHADER_STORAGE_BUFFER, grid.size() * sizeof(double), grid.data(), GL_DYNAMIC_DRAW);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
 
-        glUseProgram(shaderProgram);
+        
 
         mainloop();
 	}
@@ -325,9 +346,9 @@ private:
             float xoffset = x - app->mousePos.x;
             float yoffset = y - app->mousePos.y;
             app->theta += yoffset;
-            app->phi += xoffset;
-            if (app->theta > 179.0f) app->theta = 179.0f;
-            if (app->theta < 1.f) app->theta = 1.f;
+            app->phi -= xoffset;
+            if (app->theta > 179.9f) app->theta = 179.9f;
+            if (app->theta < 0.1f) app->theta = 0.1f;
         }
         app->mousePos = { x, y };
     }
@@ -341,7 +362,7 @@ public:
 
             auto cameraPos = vec3(camdist * sin(glm::radians(theta)) * cos(glm::radians(phi)), camdist * cos(glm::radians(theta)), camdist * sin(glm::radians(theta)) * sin(glm::radians(phi)));
             mat4 view = lookAt(cameraPos, vec3(0.f), {0.f, 1.f, 0.f});
-            mat4 proj = ortho(-1.1, 1.1, -1.1, 1.1, -10.0, 10.0);
+            mat4 proj = ortho(-1.f, 1.f, -0.75f, 0.75f, -10.f, 10.f);
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "vpmat"), 1, GL_FALSE, value_ptr(proj * view));
 
             ImGui::Render();
@@ -351,7 +372,7 @@ public:
 
             glUseProgram(shaderProgram);
             glBindVertexArray(VAO);
-            glDrawArrays(GL_POINTS, 0, grid.size());
+            glDrawElements(GL_TRIANGLE_STRIP, indices.size(), GL_UNSIGNED_INT, 0);
             
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
             glfwSwapBuffers(window);
