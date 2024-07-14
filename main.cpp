@@ -291,9 +291,9 @@ public:
 
         for (int i = 0; i < grid_res; i++) {
             for (int j = 0; j < grid_res; j++) {
-                float x = (i - grid_res / 2.f) / grid_res;
-                float y = (j - grid_res / 2.f) / grid_res;
-                grid[i * grid_res + j] = exp(-(x * x + y * y) * 10.f) * cos(40.f * sqrt(x * x + y * y)) / 10.f;
+                float x = (j - grid_res / 2.f) / grid_res;
+                float y = (i - grid_res / 2.f) / grid_res;
+                grid[i * grid_res + j] = sin(100 * x * y) / 10.f;
             }
         }
         glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), grid_res);
@@ -322,7 +322,7 @@ public:
         glBufferData(GL_SHADER_STORAGE_BUFFER, grid.size() * sizeof(double), grid.data(), GL_DYNAMIC_DRAW);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
 
-        glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.1f);
+        glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
 
         mainloop();
 	}
@@ -368,9 +368,11 @@ public:
 
             auto cameraPos = vec3(camdist * sin(glm::radians(theta)) * cos(glm::radians(phi)), camdist * cos(glm::radians(theta)), camdist * sin(glm::radians(theta)) * sin(glm::radians(phi)));
             mat4 view = lookAt(cameraPos, vec3(0.f), {0.f, 1.f, 0.f});
-            mat4 proj = ortho(-1.f, 1.f, -0.75f, 0.75f, -10.f, 10.f);
+            int h, w;
+            glfwGetWindowSize(window, &w, &h);
+            mat4 proj = ortho(-1.f, 1.f, -h / (float)w, h / (float)w, -10.f, 10.f);
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "vpmat"), 1, GL_FALSE, value_ptr(proj * view));
-            glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), cos(glfwGetTime()), 1.f, sin(glfwGetTime()));
+            glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), cos(glfwGetTime()), 2.f, sin(glfwGetTime()));
 
             ImGui::Render();
 
