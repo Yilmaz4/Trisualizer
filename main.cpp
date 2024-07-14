@@ -45,8 +45,8 @@
 using namespace glm;
 
 void GLAPIENTRY glMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
-	if (type != GL_DEBUG_TYPE_ERROR) return;
-	fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n", "** GL ERROR **", type, severity, message);
+    if (type != GL_DEBUG_TYPE_ERROR) return;
+    fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n", "** GL ERROR **", type, severity, message);
 }
 
 static gfx::CubicBezier fast_out_slow_in(0.4, 0.0, 0.2, 1.0);
@@ -84,7 +84,7 @@ namespace ImGui {
     constexpr static auto lerp(float x0, float x1) {
         return [=](float t) {
             return (1 - t) * x0 + t * x1;
-        };
+            };
     }
 
     constexpr static float lerp(float x0, float x1, float t) {
@@ -193,10 +193,11 @@ class Trisualizer {
     vec2 mousePos = vec2(0.f);
 
     GLuint shaderProgram;
+    GLuint computeProgram;
     GLuint VAO, VBO, EBO;
     GLuint gridSSBO;
 public:
-	Trisualizer() {
+    Trisualizer() {
         glfwInit();
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -249,11 +250,28 @@ public:
         glDepthFunc(GL_LESS);
         glEnable(GL_MULTISAMPLE);
 
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        glDebugMessageCallback(glMessageCallback, nullptr);
+
         int success;
         char infoLog[512];
 
-        unsigned int vertexShader;
-        vertexShader = glCreateShader(GL_VERTEX_SHADER);
+        unsigned int computeShader = glCreateShader(GL_COMPUTE_SHADER);
+        char* computeSource = read_resource(IDR_CMPT);
+        glShaderSource(computeShader, 1, &computeSource, NULL);
+        glCompileShader(computeShader);
+        glGetShaderiv(computeShader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(computeShader, 512, NULL, infoLog);
+            std::cerr << infoLog << std::endl;
+            return;
+        }
+        computeProgram = glCreateProgram();
+        glAttachShader(computeProgram, computeShader);
+        glLinkProgram(computeProgram);
+        glDeleteShader(computeShader);
+
+        unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
         char* vertexSource = read_resource(IDR_VRTX);
         glShaderSource(vertexShader, 1, &vertexSource, NULL);
         glCompileShader(vertexShader);
@@ -264,8 +282,7 @@ public:
             return;
         }
 
-        unsigned int fragmentShader;
-        fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
         char* fragmentSource = read_resource(IDR_FRAG);
         glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
         glCompileShader(fragmentShader);
@@ -283,20 +300,18 @@ public:
         glDeleteShader(fragmentShader);
         glUseProgram(shaderProgram);
 
+        delete[] vertexSource, fragmentSource;
+
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
         glGenBuffers(1, &VBO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_STATIC_DRAW);
 
-        for (int i = 0; i < grid_res; i++) {
-            for (int j = 0; j < grid_res; j++) {
-                float x = (j - grid_res / 2.f) / grid_res;
-                float y = (i - grid_res / 2.f) / grid_res;
-                grid[i * grid_res + j] = sin(100 * x * y) / 10.f;
-            }
-        }
         glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), grid_res);
+        glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
+        glUniform1i(glGetUniformLocation(computeProgram, "grid_res"), grid_res);
+        glUniform1f(glGetUniformLocation(computeProgram, "zoom"), zoom);
 
         for (unsigned int y = 0; y < grid_res - 1; ++y) {
             for (unsigned int x = 0; x < grid_res; ++x) {
@@ -311,7 +326,6 @@ public:
                 indices.push_back((y + 1) * grid_res);
             }
         }
-
         glGenBuffers(1, &EBO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
@@ -321,11 +335,10 @@ public:
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, gridSSBO);
         glBufferData(GL_SHADER_STORAGE_BUFFER, grid.size() * sizeof(double), grid.data(), GL_DYNAMIC_DRAW);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
-
-        glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
+        glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
 
         mainloop();
-	}
+    }
 private:
     static inline char* read_resource(int name) {
         HMODULE handle = GetModuleHandleW(NULL);
@@ -343,6 +356,7 @@ private:
     static inline void on_mouseScroll(GLFWwindow* window, double x, double y) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
         app->zoom *= pow(0.9, y);
+        glUniform1f(glGetUniformLocation(app->computeProgram, "zoom"), app->zoom);
     }
 
     static inline void on_mouseMove(GLFWwindow* window, double x, double y) {
@@ -365,33 +379,26 @@ public:
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
 
-            auto cameraPos = vec3(sin(glm::radians(theta)) * cos(glm::radians(phi)), cos(glm::radians(theta)), sin(glm::radians(theta)) * sin(glm::radians(phi)));
-            mat4 view = lookAt(cameraPos, vec3(0.f), {0.f, 1.f, 0.f});
             int h, w;
             glfwGetWindowSize(window, &w, &h);
+            auto cameraPos = vec3(sin(glm::radians(theta)) * cos(glm::radians(phi)), cos(glm::radians(theta)), sin(glm::radians(theta)) * sin(glm::radians(phi)));
+            mat4 view = lookAt(cameraPos, vec3(0.f), { 0.f, 1.f, 0.f });
             mat4 proj = ortho(-1.f, 1.f, -h / (float)w, h / (float)w, -10.f, 10.f);
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "vpmat"), 1, GL_FALSE, value_ptr(proj * view));
             glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), cos(glfwGetTime()), 2.f, sin(glfwGetTime()));
-
-            for (int i = 0; i < grid_res; i++) {
-                for (int j = 0; j < grid_res; j++) {
-                    float x = zoom * (j - grid_res / 2.f) / grid_res;
-                    float y = zoom * (i - grid_res / 2.f) / grid_res;
-                    grid[i * grid_res + j] = ((x * x - y * y) / (x * x + y * y)) / zoom;
-                }
-            }
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, gridSSBO);
-            glBufferData(GL_SHADER_STORAGE_BUFFER, grid.size() * sizeof(double), grid.data(), GL_DYNAMIC_DRAW);
 
             ImGui::Render();
 
             glClearColor(0.f, 0.f, 0.f, 1.f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+            glUseProgram(computeProgram);
+            glDispatchCompute(grid_res, grid_res, 1);
+
             glUseProgram(shaderProgram);
             glBindVertexArray(VAO);
             glDrawElements(GL_TRIANGLE_STRIP, indices.size(), GL_UNSIGNED_INT, 0);
-            
+
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
             glfwSwapBuffers(window);
 
