@@ -183,7 +183,7 @@ class Trisualizer {
     GLFWwindow* window = nullptr;
     ImFont* font_title = nullptr;
 
-    int grid_res = 500;
+    int grid_res = 1000;
     std::vector<double> grid = std::vector(grid_res * grid_res, 0.0);
     std::vector<unsigned int> indices;
 
@@ -253,6 +253,11 @@ public:
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(glMessageCallback, nullptr);
 
+        glGenBuffers(1, &gridSSBO);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, gridSSBO);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, gridSSBO);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, grid.size() * sizeof(double), grid.data(), GL_DYNAMIC_DRAW);
+
         int success;
         char infoLog[512];
 
@@ -270,6 +275,11 @@ public:
         glAttachShader(computeProgram, computeShader);
         glLinkProgram(computeProgram);
         glDeleteShader(computeShader);
+        glUseProgram(computeProgram);
+
+        glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
+        glUniform1i(glGetUniformLocation(computeProgram, "grid_res"), grid_res);
+        glUniform1f(glGetUniformLocation(computeProgram, "zoom"), zoom);
 
         unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
         char* vertexSource = read_resource(IDR_VRTX);
@@ -300,6 +310,10 @@ public:
         glDeleteShader(fragmentShader);
         glUseProgram(shaderProgram);
 
+        glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
+        glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), grid_res);
+        glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
+
         delete[] vertexSource, fragmentSource;
 
         glGenVertexArrays(1, &VAO);
@@ -307,11 +321,6 @@ public:
         glGenBuffers(1, &VBO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_STATIC_DRAW);
-
-        glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), grid_res);
-        glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
-        glUniform1i(glGetUniformLocation(computeProgram, "grid_res"), grid_res);
-        glUniform1f(glGetUniformLocation(computeProgram, "zoom"), zoom);
 
         for (unsigned int y = 0; y < grid_res - 1; ++y) {
             for (unsigned int x = 0; x < grid_res; ++x) {
@@ -329,13 +338,6 @@ public:
         glGenBuffers(1, &EBO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-
-        glGenBuffers(1, &gridSSBO);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, gridSSBO);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, gridSSBO);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, grid.size() * sizeof(double), grid.data(), GL_DYNAMIC_DRAW);
-        glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
-        glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
 
         mainloop();
     }
@@ -356,7 +358,9 @@ private:
     static inline void on_mouseScroll(GLFWwindow* window, double x, double y) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
         app->zoom *= pow(0.9, y);
+        glUseProgram(app->computeProgram);
         glUniform1f(glGetUniformLocation(app->computeProgram, "zoom"), app->zoom);
+        glUseProgram(app->shaderProgram);
     }
 
     static inline void on_mouseMove(GLFWwindow* window, double x, double y) {
