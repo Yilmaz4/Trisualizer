@@ -183,7 +183,7 @@ class Trisualizer {
     GLFWwindow* window = nullptr;
     ImFont* font_title = nullptr;
 
-    int grid_res = 200;
+    int grid_res = 1000;
     std::vector<double> grid = std::vector(grid_res * grid_res, 0.0);
     std::vector<unsigned int> indices;
 
@@ -209,6 +209,8 @@ public:
         glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
         glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
         glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+
+        glfwWindowHint(GLFW_SAMPLES, 4);
 
         window = glfwCreateWindow(800, 600, "Trisualizer", NULL, NULL);
         if (window == nullptr) {
@@ -242,6 +244,10 @@ public:
             std::cerr << "Failed to create OpenGL window" << std::endl;
             return;
         }
+
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+        glEnable(GL_MULTISAMPLE);
 
         int success;
         char infoLog[512];
@@ -287,7 +293,7 @@ public:
             for (int j = 0; j < grid_res; j++) {
                 float x = (i - grid_res / 2.f) / grid_res;
                 float y = (j - grid_res / 2.f) / grid_res;
-                grid[i * grid_res + j] = exp(-(x * x + y * y) * 10) * cos(40 * sqrt(x * x + y * y)) / 8.f;
+                grid[i * grid_res + j] = exp(-(x * x + y * y) * 10.f) * cos(40.f * sqrt(x * x + y * y)) / 10.f;
             }
         }
         glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), grid_res);
@@ -316,7 +322,7 @@ public:
         glBufferData(GL_SHADER_STORAGE_BUFFER, grid.size() * sizeof(double), grid.data(), GL_DYNAMIC_DRAW);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
 
-        
+        glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.1f);
 
         mainloop();
 	}
@@ -345,8 +351,8 @@ private:
         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
             float xoffset = x - app->mousePos.x;
             float yoffset = y - app->mousePos.y;
-            app->theta += yoffset;
-            app->phi -= xoffset;
+            app->theta += yoffset * 0.5f;
+            app->phi -= xoffset * 0.5f;
             if (app->theta > 179.9f) app->theta = 179.9f;
             if (app->theta < 0.1f) app->theta = 0.1f;
         }
@@ -364,6 +370,7 @@ public:
             mat4 view = lookAt(cameraPos, vec3(0.f), {0.f, 1.f, 0.f});
             mat4 proj = ortho(-1.f, 1.f, -0.75f, 0.75f, -10.f, 10.f);
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "vpmat"), 1, GL_FALSE, value_ptr(proj * view));
+            glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), cos(glfwGetTime()), 1.f, sin(glfwGetTime()));
 
             ImGui::Render();
 
