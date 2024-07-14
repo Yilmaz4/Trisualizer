@@ -15,7 +15,7 @@ void main() {
 	const int halfres = grid_res / 2;
 	float x = (gl_VertexID % grid_res);
 	float y = (gl_VertexID / grid_res);
-	gridPos = vec2((x - halfres) / 100.f, (y - halfres) / 100.f);
+	gridPos = vec2((x - halfres) / (grid_res / 10.f), (y - halfres) / (grid_res / 10.f));
 	fragPos = vec3((x - halfres) / grid_res, grid[gl_VertexID], (y - halfres) / grid_res);
 	
 	vec3 v1, v2, v3, v4;

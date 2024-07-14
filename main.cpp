@@ -183,12 +183,12 @@ class Trisualizer {
     GLFWwindow* window = nullptr;
     ImFont* font_title = nullptr;
 
-    int grid_res = 1000;
+    int grid_res = 500;
     std::vector<double> grid = std::vector(grid_res * grid_res, 0.0);
     std::vector<unsigned int> indices;
 
     float theta = 45, phi = 45;
-    float camdist = 1;
+    float zoom = 1;
 
     vec2 mousePos = vec2(0.f);
 
@@ -342,8 +342,7 @@ private:
 
     static inline void on_mouseScroll(GLFWwindow* window, double x, double y) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
-        app->camdist += y;
-        if (app->camdist < 1.f) app->camdist = 1;
+        app->zoom *= pow(0.9, y);
     }
 
     static inline void on_mouseMove(GLFWwindow* window, double x, double y) {
@@ -366,13 +365,23 @@ public:
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
 
-            auto cameraPos = vec3(camdist * sin(glm::radians(theta)) * cos(glm::radians(phi)), camdist * cos(glm::radians(theta)), camdist * sin(glm::radians(theta)) * sin(glm::radians(phi)));
+            auto cameraPos = vec3(sin(glm::radians(theta)) * cos(glm::radians(phi)), cos(glm::radians(theta)), sin(glm::radians(theta)) * sin(glm::radians(phi)));
             mat4 view = lookAt(cameraPos, vec3(0.f), {0.f, 1.f, 0.f});
             int h, w;
             glfwGetWindowSize(window, &w, &h);
             mat4 proj = ortho(-1.f, 1.f, -h / (float)w, h / (float)w, -10.f, 10.f);
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "vpmat"), 1, GL_FALSE, value_ptr(proj * view));
             glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), cos(glfwGetTime()), 2.f, sin(glfwGetTime()));
+
+            for (int i = 0; i < grid_res; i++) {
+                for (int j = 0; j < grid_res; j++) {
+                    float x = zoom * (j - grid_res / 2.f) / grid_res;
+                    float y = zoom * (i - grid_res / 2.f) / grid_res;
+                    grid[i * grid_res + j] = ((x * x - y * y) / (x * x + y * y)) / zoom;
+                }
+            }
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, gridSSBO);
+            glBufferData(GL_SHADER_STORAGE_BUFFER, grid.size() * sizeof(double), grid.data(), GL_DYNAMIC_DRAW);
 
             ImGui::Render();
 
