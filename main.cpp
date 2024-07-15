@@ -183,7 +183,7 @@ class Trisualizer {
     GLFWwindow* window = nullptr;
     ImFont* font_title = nullptr;
 
-    int grid_res = 1000;
+    int grid_res = 40;
     std::vector<double> grid = std::vector(grid_res * grid_res, 0.0);
     std::vector<unsigned int> indices;
 
@@ -311,6 +311,7 @@ public:
         glUseProgram(shaderProgram);
 
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
+        glUniform1f(glGetUniformLocation(shaderProgram, "zoom"), zoom);
         glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), grid_res);
         glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
 
@@ -361,6 +362,7 @@ private:
         glUseProgram(app->computeProgram);
         glUniform1f(glGetUniformLocation(app->computeProgram, "zoom"), app->zoom);
         glUseProgram(app->shaderProgram);
+        glUniform1f(glGetUniformLocation(app->shaderProgram, "zoom"), app->zoom);
     }
 
     static inline void on_mouseMove(GLFWwindow* window, double x, double y) {
@@ -389,7 +391,7 @@ public:
             mat4 view = lookAt(cameraPos, vec3(0.f), { 0.f, 1.f, 0.f });
             mat4 proj = ortho(-1.f, 1.f, -h / (float)w, h / (float)w, -10.f, 10.f);
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "vpmat"), 1, GL_FALSE, value_ptr(proj * view));
-            glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), cos(glfwGetTime()), 2.f, sin(glfwGetTime()));
+            glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), 1.f, 2.f, 0.f);
 
             ImGui::Render();
 

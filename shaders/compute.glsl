@@ -11,5 +11,5 @@ uniform float zoom;
 void main() {
 	float x = zoom * (gl_GlobalInvocationID.x - grid_res / 2.f) / grid_res;
     float y = zoom * (gl_GlobalInvocationID.y - grid_res / 2.f) / grid_res;
-    grid[gl_GlobalInvocationID.y * grid_res + gl_GlobalInvocationID.x] = sin(x * y) / zoom;
+    grid[gl_GlobalInvocationID.y * grid_res + gl_GlobalInvocationID.x] = cos(x) * sin(y) / zoom;
 }
