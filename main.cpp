@@ -183,7 +183,7 @@ class Trisualizer {
     GLFWwindow* window = nullptr;
     ImFont* font_title = nullptr;
 
-    int grid_res = 40;
+    int grid_res = 500;
     std::vector<double> grid = std::vector(grid_res * grid_res, 0.0);
     std::vector<unsigned int> indices;
 
@@ -314,6 +314,7 @@ public:
         glUniform1f(glGetUniformLocation(shaderProgram, "zoom"), zoom);
         glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), grid_res);
         glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
+        glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), 3.f);
 
         delete[] vertexSource, fragmentSource;
 
@@ -399,6 +400,7 @@ public:
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             glUseProgram(computeProgram);
+            glUniform1f(glGetUniformLocation(computeProgram, "time"), glfwGetTime());
             glDispatchCompute(grid_res, grid_res, 1);
 
             glUseProgram(shaderProgram);
