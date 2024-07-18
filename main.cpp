@@ -287,6 +287,7 @@ public:
 private:
     static inline void on_mouseScroll(GLFWwindow* window, double x, double y) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
+        if (ImGui::GetIO().WantCaptureMouse) return;
         if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
             app->graph_size *= pow(0.9, -y);
             glUniform1f(glGetUniformLocation(app->shaderProgram, "graph_size"), app->graph_size);
@@ -299,6 +300,7 @@ private:
 
     static inline void on_mouseMove(GLFWwindow* window, double x, double y) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
+        if (ImGui::GetIO().WantCaptureMouse) return;
         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
             float xoffset = x - app->mousePos.x;
             float yoffset = y - app->mousePos.y;
