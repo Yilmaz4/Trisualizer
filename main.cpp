@@ -77,19 +77,18 @@ inline char* read_resource(int name) {
 }
 
 class Graph {
-    GLuint shaderProgram, computeProgram, SSBO, EBO;
+    GLuint computeProgram = NULL, SSBO, EBO;
 public:
     int idx;
+    bool enabled;
     int grid_res;
     std::vector<unsigned int> indices;
 
     std::string defn;
     vec3 color;
 
-    Graph(int idx, std::string definition, int res, vec3 color,
-        GLuint shaderProgram, GLuint SSBO, GLuint EBO)
-        : idx(idx), grid_res(res), defn(definition), color(color),
-        shaderProgram(shaderProgram), SSBO(SSBO), EBO(EBO) {
+    Graph(int idx, std::string definition, int res, vec3 color, GLuint SSBO, GLuint EBO)
+        : idx(idx), grid_res(res), color(color), SSBO(SSBO), EBO(EBO) {
         
         for (unsigned int y = 0; y < grid_res - 1; ++y) {
             for (unsigned int x = 0; x < grid_res; ++x) {
@@ -104,6 +103,11 @@ public:
                 indices.push_back((y + 1) * grid_res);
             }
         }
+        defn = definition;
+        upload_definition();
+    }
+
+    void upload_definition() {
         int success;
         char infoLog[512];
 
@@ -120,6 +124,7 @@ public:
             std::cerr << infoLog << std::endl;
             return;
         }
+        if (computeProgram != 0) glDeleteProgram(computeProgram);
         computeProgram = glCreateProgram();
         glAttachShader(computeProgram, computeShader);
         glLinkProgram(computeProgram);
@@ -138,8 +143,6 @@ public:
         glBufferData(GL_SHADER_STORAGE_BUFFER, pow(grid_res, 2) * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
     }
     void use_shader() const {
-        glUniform3f(glGetUniformLocation(shaderProgram, "color"), color.r, color.g, color.b);
-        glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), grid_res);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_DYNAMIC_DRAW);
     }
@@ -273,8 +276,8 @@ public:
         glGenBuffers(1, &EBO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 
-        graphs.push_back({ 0, "sin(x * y)", 100, vec3(0.f, 0.5f, 1.f), shaderProgram, gridSSBO, EBO });
-        graphs.push_back({ 1, "cos(x * y)", 100, vec3(1.f, 0.f, 0.f), shaderProgram, gridSSBO, EBO });
+        graphs.push_back({ 0, "sin(x * y)", 400, vec3(0.f, 0.5f, 1.f), gridSSBO, EBO });
+        graphs.push_back({ 1, "cos(x * y)", 400, vec3(1.f, 0.f, 0.f), gridSSBO, EBO });
 
         mainloop();
     }
@@ -395,13 +398,17 @@ public:
             ImGui::SetNextWindowClass(&window_class);
             ImGui::Begin("Symbolic View", nullptr, ImGuiWindowFlags_NoMove);
 
-            auto function = [&](int idx) {
-
-            };
+            for (int i = 0; i < graphs.size(); i++) {
+                ImGui::BeginChild(std::format("##child{}", i).c_str(), ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+                ImGui::Checkbox(std::format("##check{}", i).c_str(), &graphs[i].enabled);
+                ImGui::SameLine();
+                ImGui::ColorEdit3(std::format("##color{}", i).c_str(), value_ptr(graphs[i].color), ImGuiColorEditFlags_NoInputs);
+                ImGui::SameLine();
+                ImGui::InputText(std::format("##defn{}", i).c_str(), graphs[i].defn.data(), 512);
+                ImGui::EndChild();
+            }
 
             ImGui::End();
-
-            //ImGui::ShowDemoWindow();
 
             ImGui::PopFont();
 
@@ -422,11 +429,14 @@ public:
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             
             for (const Graph& g : graphs) {
+                if (!g.enabled) continue;
                 g.use_compute(zoom);
                 glDispatchCompute(g.grid_res, g.grid_res, 1);
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                 glUseProgram(shaderProgram);
                 g.use_shader();
+                glUniform3f(glGetUniformLocation(shaderProgram, "color"), g.color.r, g.color.g, g.color.b);
+                glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), g.grid_res);
                 glBindVertexArray(VAO);
                 glDrawElements(GL_TRIANGLE_STRIP, g.indices.size(), GL_UNSIGNED_INT, 0);
             }
