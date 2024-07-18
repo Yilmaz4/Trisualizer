@@ -3,7 +3,7 @@
 out vec4 fragColor;
 
 layout(std430, binding = 0) volatile buffer gridbuffer {
-	double grid[];
+	float grid[];
 };
 
 in vec3 normal;
@@ -16,12 +16,14 @@ uniform vec3 lightPos;
 uniform vec3 cameraPos;
 uniform float zoom;
 uniform float gridLineDensity;
+uniform vec3 color;
 
 void main() {
 	vec3 ambient = vec3(ambientStrength);
 	vec3 diffuse = vec3(max(dot(normal, normalize(fragPos - lightPos)), 0.f));
 	vec3 specular = 0.5f * vec3(pow(max(dot(normal, normalize(normalize(lightPos - fragPos) + normalize(cameraPos - fragPos))), 0.0), 8));
-	fragColor = vec4((ambient + diffuse + specular) * vec3(0.f, 0.5f, 1.f), 1.f);
+	
+	fragColor = vec4((ambient + diffuse + specular) * color, 1.f);
 
 	float gridLines = pow(2.f, floor(log2(zoom)) - gridLineDensity);
 

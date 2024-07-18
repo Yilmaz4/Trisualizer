@@ -27,7 +27,6 @@
 #include "glm/gtx/string_cast.hpp"
 #include <stb/stb_image_write.h>
 #include <tinyfiledialogs/tinyfiledialogs.h>
-#include <chromium/cubic_bezier.h>
 
 #include <iostream>
 #include <fstream>
@@ -49,123 +48,8 @@ void GLAPIENTRY glMessageCallback(GLenum source, GLenum type, GLuint id, GLenum 
     fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n", "** GL ERROR **", type, severity, message);
 }
 
-static gfx::CubicBezier fast_out_slow_in(0.4, 0.0, 0.2, 1.0);
-static float bezier(float t) {
-    return fast_out_slow_in.Solve(t);
-}
-
 namespace ImGui {
     ImFont* font;
-
-    // credit: https://github.com/zfedoran
-    bool BufferingBar(const char* label, float value, const ImVec2& size_arg, const ImU32& bg_col, const ImU32& fg_col) {
-        ImGuiWindow* window = GetCurrentWindow();
-        if (window->SkipItems)
-            return false;
-
-        ImGuiContext& g = *GImGui;
-        const ImGuiStyle& style = g.Style;
-        const ImGuiID id = window->GetID(label);
-
-        ImVec2 pos = window->DC.CursorPos;
-        ImVec2 size = size_arg;
-        size.x -= style.FramePadding.x * 2;
-
-        const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
-        ItemSize(bb, style.FramePadding.y);
-        if (!ItemAdd(bb, id))
-            return false;
-
-        window->DrawList->AddRectFilled(bb.Min, bb.Max, bg_col);
-        window->DrawList->AddRectFilled(bb.Min, ImVec2(bb.Min.x + value * size.x, bb.Max.y), fg_col);
-    }
-
-    // credit: https://github.com/hofstee
-    constexpr static auto lerp(float x0, float x1) {
-        return [=](float t) {
-            return (1 - t) * x0 + t * x1;
-            };
-    }
-
-    constexpr static float lerp(float x0, float x1, float t) {
-        return lerp(x0, x1)(t);
-    }
-
-    static auto interval(float T0, float T1, std::function<float(float)> tween = lerp(0.0, 1.0)) {
-        return [=](float t) {
-            return t < T0 ? 0.0f : t > T1 ? 1.0f : tween((t - T0) / (T1 - T0));
-            };
-    }
-
-    template <int T> float sawtooth(float t) {
-        return ImFmod(((float)T) * t, 1.0f);
-    }
-
-    bool Spinner(const char* label, float radius, int thickness, const ImU32& color) {
-        ImGuiWindow* window = GetCurrentWindow();
-        if (window->SkipItems) return false;
-
-        ImGuiContext& g = *GImGui;
-        const ImGuiStyle& style = g.Style;
-        const ImGuiID id = window->GetID(label);
-
-        ImVec2 pos = window->DC.CursorPos;
-        ImVec2 size((radius) * 2, (radius + style.FramePadding.y) * 2);
-
-        const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
-        ItemSize(bb, style.FramePadding.y);
-        if (!ItemAdd(bb, id)) return false;
-
-        const ImVec2 center = ImVec2(pos.x + radius, pos.y + radius + thickness + style.FramePadding.y);
-
-        const float start_angle = -IM_PI / 2.0f;         // Start at the top
-        const int num_detents = 5;                       // how many rotations we want before a repeat
-        const int skip_detents = 3;                      // how many steps we skip each rotation
-        const float period = 5.0f;                       // in seconds
-        const float t = ImFmod(g.Time, period) / period; // map period into [0, 1]
-
-        auto stroke_head_tween = [](float t) {
-            t = sawtooth<num_detents>(t);
-            return interval(0.0, 0.5, bezier)(t);
-            };
-
-        auto stroke_tail_tween = [](float t) {
-            t = sawtooth<num_detents>(t);
-            return interval(0.5, 1.0, bezier)(t);
-            };
-
-        auto step_tween = [=](float t) {
-            return floor(lerp(0.0, (float)num_detents, t));
-            };
-
-        auto rotation_tween = sawtooth<num_detents>;
-
-        const float head_value = stroke_head_tween(t);
-        const float tail_value = stroke_tail_tween(t);
-        const float step_value = step_tween(t);
-        const float rotation_value = rotation_tween(t);
-
-        const float min_arc = 30.0f / 360.0f * 2.0f * IM_PI;
-        const float max_arc = 270.0f / 360.0f * 2.0f * IM_PI;
-        const float step_offset = skip_detents * 2.0f * IM_PI / num_detents;
-        const float rotation_compensation = ImFmod(4.0 * IM_PI - step_offset - max_arc, 2 * IM_PI);
-
-        const float a_min = start_angle + tail_value * max_arc + rotation_value * rotation_compensation - step_value * step_offset;
-        const float a_max = a_min + (head_value - tail_value) * max_arc + min_arc;
-
-        window->DrawList->PathClear();
-
-        int num_segments = 24;
-        for (int i = 0; i < num_segments; i++) {
-            const float a = a_min + ((float)i / (float)num_segments) * (a_max - a_min);
-            window->DrawList->PathLineTo(ImVec2(center.x + ImCos(a) * radius,
-                center.y + ImSin(a) * radius));
-        }
-
-        window->DrawList->PathStroke(color, false, thickness);
-
-        return true;
-    }
 
     // from imgui demo app
     static void HelpMarker(const char* desc) {
@@ -179,24 +63,106 @@ namespace ImGui {
     }
 }
 
+inline char* read_resource(int name) {
+    HMODULE handle = GetModuleHandleW(NULL);
+    HRSRC rc = FindResourceW(handle, MAKEINTRESOURCE(name), MAKEINTRESOURCE(TEXTFILE));
+    if (rc == NULL) return nullptr;
+    HGLOBAL rcData = LoadResource(handle, rc);
+    if (rcData == NULL) return nullptr;
+    DWORD size = SizeofResource(handle, rc);
+    char* res = new char[size + 1];
+    memcpy(res, static_cast<const char*>(LockResource(rcData)), size);
+    res[size] = '\0';
+    return res;
+}
+
+class Graph {
+    GLuint shaderProgram, computeProgram, SSBO, EBO;
+public:
+    int idx;
+    int grid_res;
+    std::vector<unsigned int> indices;
+
+    std::string defn;
+    vec3 color;
+
+    Graph(int idx, std::string definition, int res, vec3 color,
+        GLuint shaderProgram, GLuint SSBO, GLuint EBO)
+        : idx(idx), grid_res(res), defn(definition), color(color),
+        shaderProgram(shaderProgram), SSBO(SSBO), EBO(EBO) {
+        
+        for (unsigned int y = 0; y < grid_res - 1; ++y) {
+            for (unsigned int x = 0; x < grid_res; ++x) {
+                unsigned int idx0 = y * grid_res + x;
+                unsigned int idx1 = (y + 1) * grid_res + x;
+
+                indices.push_back(idx0);
+                indices.push_back(idx1);
+            }
+            if (y < grid_res - 2) {
+                indices.push_back((y + 1) * grid_res + (grid_res - 1));
+                indices.push_back((y + 1) * grid_res);
+            }
+        }
+        int success;
+        char infoLog[512];
+
+        unsigned int computeShader = glCreateShader(GL_COMPUTE_SHADER);
+        char* computeSource = read_resource(IDR_CMPT);
+        size_t size = strlen(computeSource) + 512;
+        char* modifiedSource = new char[size];
+        sprintf_s(modifiedSource, size, computeSource, defn.c_str());
+        glShaderSource(computeShader, 1, &modifiedSource, NULL);
+        glCompileShader(computeShader);
+        glGetShaderiv(computeShader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(computeShader, 512, NULL, infoLog);
+            std::cerr << infoLog << std::endl;
+            return;
+        }
+        computeProgram = glCreateProgram();
+        glAttachShader(computeProgram, computeShader);
+        glLinkProgram(computeProgram);
+        glDeleteShader(computeShader);
+        glUseProgram(computeProgram);
+        delete[] computeSource, modifiedSource;
+
+        glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
+    }
+
+    void use_compute(float zoom) const {
+        glUseProgram(computeProgram);
+        glUniform1f(glGetUniformLocation(computeProgram, "zoom"), zoom);
+        glUniform1i(glGetUniformLocation(computeProgram, "grid_res"), grid_res);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, pow(grid_res, 2) * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+    }
+    void use_shader() const {
+        glUniform3f(glGetUniformLocation(shaderProgram, "color"), color.r, color.g, color.b);
+        glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), grid_res);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_DYNAMIC_DRAW);
+    }
+};
+
 class Trisualizer {
     GLFWwindow* window = nullptr;
     ImFont* font_title = nullptr;
-
-    int grid_res = 500;
-    std::vector<double> grid = std::vector(grid_res * grid_res, 0.0);
-    std::vector<unsigned int> indices;
+public:
+    std::vector<Graph> graphs;
 
     float theta = 45, phi = 45;
-    float zoom = 1;
+    float zoom = 8.f;
+    bool gridLines = true;
+    float gridLineDensity = 3.f;
+    bool autoRotate = true;
 
     vec2 mousePos = vec2(0.f);
 
     GLuint shaderProgram;
-    GLuint computeProgram;
     GLuint VAO, VBO, EBO;
     GLuint gridSSBO;
-public:
+
     Trisualizer() {
         glfwInit();
 
@@ -213,7 +179,7 @@ public:
 
         glfwWindowHint(GLFW_SAMPLES, 4);
 
-        window = glfwCreateWindow(800, 600, "Trisualizer", NULL, NULL);
+        window = glfwCreateWindow(900, 600, "Trisualizer", NULL, NULL);
         if (window == nullptr) {
             std::cerr << "Failed to create OpenGL window" << std::endl;
             return;
@@ -232,6 +198,7 @@ public:
         font_title = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\consola.ttf", 11.f);
         IM_ASSERT(font_title != NULL);
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.IniFilename = NULL;
         io.LogFilename = NULL;
 
@@ -253,33 +220,14 @@ public:
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(glMessageCallback, nullptr);
 
+        glViewport(300, 0, 600, 600);
+
         glGenBuffers(1, &gridSSBO);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, gridSSBO);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, gridSSBO);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, grid.size() * sizeof(double), grid.data(), GL_DYNAMIC_DRAW);
 
         int success;
         char infoLog[512];
-
-        unsigned int computeShader = glCreateShader(GL_COMPUTE_SHADER);
-        char* computeSource = read_resource(IDR_CMPT);
-        glShaderSource(computeShader, 1, &computeSource, NULL);
-        glCompileShader(computeShader);
-        glGetShaderiv(computeShader, GL_COMPILE_STATUS, &success);
-        if (!success) {
-            glGetShaderInfoLog(computeShader, 512, NULL, infoLog);
-            std::cerr << infoLog << std::endl;
-            return;
-        }
-        computeProgram = glCreateProgram();
-        glAttachShader(computeProgram, computeShader);
-        glLinkProgram(computeProgram);
-        glDeleteShader(computeShader);
-        glUseProgram(computeProgram);
-
-        glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
-        glUniform1i(glGetUniformLocation(computeProgram, "grid_res"), grid_res);
-        glUniform1f(glGetUniformLocation(computeProgram, "zoom"), zoom);
 
         unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
         char* vertexSource = read_resource(IDR_VRTX);
@@ -309,14 +257,12 @@ public:
         glLinkProgram(shaderProgram);
         glDeleteShader(fragmentShader);
         glUseProgram(shaderProgram);
+        delete[] vertexSource, fragmentSource;
 
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
         glUniform1f(glGetUniformLocation(shaderProgram, "zoom"), zoom);
-        glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), grid_res);
         glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
-        glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), 3.f);
-
-        delete[] vertexSource, fragmentSource;
+        glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLineDensity);
 
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
@@ -324,44 +270,19 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_STATIC_DRAW);
 
-        for (unsigned int y = 0; y < grid_res - 1; ++y) {
-            for (unsigned int x = 0; x < grid_res; ++x) {
-                unsigned int idx0 = y * grid_res + x;
-                unsigned int idx1 = (y + 1) * grid_res + x;
-
-                indices.push_back(idx0);
-                indices.push_back(idx1);
-            }
-            if (y < grid_res - 2) {
-                indices.push_back((y + 1) * grid_res + (grid_res - 1));
-                indices.push_back((y + 1) * grid_res);
-            }
-        }
         glGenBuffers(1, &EBO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+
+        graphs.push_back({ 0, "sin(x * y)", 100, vec3(0.f, 0.5f, 1.f), shaderProgram, gridSSBO, EBO });
+        graphs.push_back({ 1, "cos(x * y)", 100, vec3(1.f, 0.f, 0.f), shaderProgram, gridSSBO, EBO });
 
         mainloop();
     }
-private:
-    static inline char* read_resource(int name) {
-        HMODULE handle = GetModuleHandleW(NULL);
-        HRSRC rc = FindResourceW(handle, MAKEINTRESOURCE(name), MAKEINTRESOURCE(TEXTFILE));
-        if (rc == NULL) return nullptr;
-        HGLOBAL rcData = LoadResource(handle, rc);
-        if (rcData == NULL) return nullptr;
-        DWORD size = SizeofResource(handle, rc);
-        char* res = new char[size + 1];
-        memcpy(res, static_cast<const char*>(LockResource(rcData)), size);
-        res[size] = '\0';
-        return res;
-    }
 
+private:
     static inline void on_mouseScroll(GLFWwindow* window, double x, double y) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
         app->zoom *= pow(0.9, y);
-        glUseProgram(app->computeProgram);
-        glUniform1f(glGetUniformLocation(app->computeProgram, "zoom"), app->zoom);
         glUseProgram(app->shaderProgram);
         glUniform1f(glGetUniformLocation(app->shaderProgram, "zoom"), app->zoom);
     }
@@ -380,32 +301,135 @@ private:
     }
 public:
     void mainloop() {
+        double prevTime = glfwGetTime();
+        
         do {
             glfwPollEvents();
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
 
+            double currentTime = glfwGetTime();
+            double timeStep = currentTime - prevTime;
+            prevTime = currentTime;
+
+            ImGui::PushFont(font_title);
+
+            if (ImGui::BeginMainMenuBar()) {
+                if (ImGui::BeginMenu("File")) {
+                    if (ImGui::MenuItem("Open", "Ctrl+O")) {
+
+                    }
+                    if (ImGui::MenuItem("Save", "Ctrl+S")) {
+
+                    }
+                    ImGui::Separator();
+                    if (ImGui::MenuItem("Exit", "Alt+F4")) {
+                        ExitProcess(0);
+                    }
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu("Graph")) {
+                    if (ImGui::MenuItem("Grid lines", nullptr, &gridLines)) {
+                        glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLines ? gridLineDensity : 0.f);
+                    }
+                    ImGui::MenuItem("Auto-rotate", nullptr, &autoRotate);
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu("Help")) {
+                    if (ImGui::MenuItem("About")) {
+
+                    }
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMainMenuBar();
+            }
+
+            static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
+            ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+
+            ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImGui::SetNextWindowPos(viewport->Pos);
+            ImGui::SetNextWindowSize(viewport->Size);
+            ImGui::SetNextWindowViewport(viewport->ID);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+            window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+            window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+            if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
+                window_flags |= ImGuiWindowFlags_NoBackground;
+
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+            ImGui::Begin("DockSpace", nullptr, window_flags);
+            ImGui::PopStyleVar(3);
+
+            // DockSpace
+            ImGuiIO& io = ImGui::GetIO();
+            if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
+            {
+                ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
+                ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
+
+                static bool init = true;
+                if (init) {
+                    init = false;
+
+                    ImGui::DockBuilderRemoveNode(dockspace_id);
+                    ImGui::DockBuilderAddNode(dockspace_id, dockspace_flags | ImGuiDockNodeFlags_DockSpace);
+                    ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
+
+                    auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.3f, nullptr, &dockspace_id);
+                    //auto dock_id_down = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.25f, nullptr, &dockspace_id);
+
+                    //ImGui::DockBuilderDockWindow("Down", dock_id_down);
+                    ImGui::DockBuilderDockWindow("Symbolic View", dock_id_left);
+                    ImGui::DockBuilderFinish(dockspace_id);
+                }
+            }
+
+            ImGui::End();
+
+            ImGuiWindowClass window_class;
+            window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
+            ImGui::SetNextWindowClass(&window_class);
+            ImGui::Begin("Symbolic View", nullptr, ImGuiWindowFlags_NoMove);
+
+            auto function = [&](int idx) {
+
+            };
+
+            ImGui::End();
+
+            //ImGui::ShowDemoWindow();
+
+            ImGui::PopFont();
+
+            if (autoRotate)
+                phi += timeStep * 5.f;
+
             int h, w;
             glfwGetWindowSize(window, &w, &h);
             auto cameraPos = vec3(sin(glm::radians(theta)) * cos(glm::radians(phi)), cos(glm::radians(theta)), sin(glm::radians(theta)) * sin(glm::radians(phi)));
             mat4 view = lookAt(cameraPos, vec3(0.f), { 0.f, 1.f, 0.f });
-            mat4 proj = ortho(-1.f, 1.f, -h / (float)w, h / (float)w, -10.f, 10.f);
+            mat4 proj = ortho(-1.f, 1.f, -1.f, 1.f, -10.f, 10.f);
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "vpmat"), 1, GL_FALSE, value_ptr(proj * view));
             glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), 1.f, 2.f, 0.f);
 
             ImGui::Render();
 
-            glClearColor(0.f, 0.f, 0.f, 1.f);
+            glClearColor(0.05f, 0.05f, 0.05f, 1.f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            glUseProgram(computeProgram);
-            glUniform1f(glGetUniformLocation(computeProgram, "time"), glfwGetTime());
-            glDispatchCompute(grid_res, grid_res, 1);
-
-            glUseProgram(shaderProgram);
-            glBindVertexArray(VAO);
-            glDrawElements(GL_TRIANGLE_STRIP, indices.size(), GL_UNSIGNED_INT, 0);
+            
+            for (const Graph& g : graphs) {
+                g.use_compute(zoom);
+                glDispatchCompute(g.grid_res, g.grid_res, 1);
+                glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+                glUseProgram(shaderProgram);
+                g.use_shader();
+                glBindVertexArray(VAO);
+                glDrawElements(GL_TRIANGLE_STRIP, g.indices.size(), GL_UNSIGNED_INT, 0);
+            }
 
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
             glfwSwapBuffers(window);
