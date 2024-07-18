@@ -156,6 +156,7 @@ public:
 
     float theta = 45, phi = 45;
     float zoom = 8.f;
+    float graph_size = 1.3f;
     bool gridLines = true;
     float gridLineDensity = 3.f;
     bool autoRotate = true;
@@ -264,6 +265,7 @@ public:
 
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
         glUniform1f(glGetUniformLocation(shaderProgram, "zoom"), zoom);
+        glUniform1f(glGetUniformLocation(shaderProgram, "graph_size"), graph_size);
         glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
         glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLineDensity);
 
@@ -277,7 +279,7 @@ public:
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 
         graphs.push_back({ 0, "sin(x * y)", 400, vec3(0.f, 0.5f, 1.f), gridSSBO, EBO });
-        graphs.push_back({ 1, "cos(x * y)", 400, vec3(1.f, 0.f, 0.f), gridSSBO, EBO });
+        graphs.push_back({ 1, "cos(x * y)", 400, vec3(1.f, 0.5f, 0.f), gridSSBO, EBO });
 
         mainloop();
     }
@@ -285,9 +287,14 @@ public:
 private:
     static inline void on_mouseScroll(GLFWwindow* window, double x, double y) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
-        app->zoom *= pow(0.9, y);
-        glUseProgram(app->shaderProgram);
-        glUniform1f(glGetUniformLocation(app->shaderProgram, "zoom"), app->zoom);
+        if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+            app->graph_size *= pow(0.9, -y);
+            glUniform1f(glGetUniformLocation(app->shaderProgram, "graph_size"), app->graph_size);
+        }
+        else {
+            app->zoom *= pow(0.9, y);
+            glUniform1f(glGetUniformLocation(app->shaderProgram, "zoom"), app->zoom);
+        }
     }
 
     static inline void on_mouseMove(GLFWwindow* window, double x, double y) {
@@ -382,7 +389,7 @@ public:
                     ImGui::DockBuilderAddNode(dockspace_id, dockspace_flags | ImGuiDockNodeFlags_DockSpace);
                     ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
 
-                    auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.3f, nullptr, &dockspace_id);
+                    auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.33333f, nullptr, &dockspace_id);
                     //auto dock_id_down = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.25f, nullptr, &dockspace_id);
 
                     //ImGui::DockBuilderDockWindow("Down", dock_id_down);
