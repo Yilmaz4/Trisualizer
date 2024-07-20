@@ -89,7 +89,7 @@ public:
 
     Graph(int idx, std::string definition, int res, vec3 color, GLuint SSBO, GLuint EBO)
         : idx(idx), grid_res(res), color(color), SSBO(SSBO), EBO(EBO) {
-        
+
         for (unsigned int y = 0; y < grid_res - 1; ++y) {
             for (unsigned int x = 0; x < grid_res; ++x) {
                 unsigned int idx0 = y * grid_res + x;
@@ -159,13 +159,20 @@ public:
     float graph_size = 1.3f;
     bool gridLines = true;
     float gridLineDensity = 3.f;
-    bool autoRotate = true;
+    bool autoRotate = false;
+    int selected = 0;
 
     vec2 mousePos = vec2(0.f);
 
     GLuint shaderProgram;
     GLuint VAO, VBO, EBO;
-    GLuint gridSSBO;
+    GLuint FBO, gridSSBO;
+    GLuint depthMap, frameTex, posBuffer;
+
+    float quad[12] = {
+        -1.0f, -1.0f, -1.0f,  1.0f, 1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,  1.0f, 1.0f, -1.0f
+    };
 
     Trisualizer() {
         glfwInit();
@@ -226,10 +233,6 @@ public:
 
         glViewport(300, 0, 600, 600);
 
-        glGenBuffers(1, &gridSSBO);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, gridSSBO);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, gridSSBO);
-
         int success;
         char infoLog[512];
 
@@ -263,23 +266,57 @@ public:
         glUseProgram(shaderProgram);
         delete[] vertexSource, fragmentSource;
 
+        glGenBuffers(1, &gridSSBO);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, gridSSBO);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, gridSSBO);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
+
+        glGenBuffers(1, &posBuffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 3 * 600 * 600 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, posBuffer);
+        glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "posbuffer"), 1);
+
         glUniform1f(glGetUniformLocation(shaderProgram, "zoom"), zoom);
         glUniform1f(glGetUniformLocation(shaderProgram, "graph_size"), graph_size);
         glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
         glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLineDensity);
+        glUniform1i(glGetUniformLocation(shaderProgram, "selected"), selected);
 
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
         glGenBuffers(1, &VBO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quad), &quad, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), nullptr);
 
         glGenBuffers(1, &EBO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 
-        graphs.push_back({ 0, "sin(x * y)", 400, vec3(0.f, 0.5f, 1.f), gridSSBO, EBO });
-        graphs.push_back({ 1, "cos(x * y)", 400, vec3(1.f, 0.5f, 0.f), gridSSBO, EBO });
+        glGenFramebuffers(1, &FBO);
+        glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+
+        glGenTextures(1, &depthMap);
+        glBindTexture(GL_TEXTURE_2D, depthMap);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 900, 600, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+
+        glGenTextures(1, &frameTex);
+        glBindTexture(GL_TEXTURE_2D, frameTex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 900, 600, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameTex, 0);
+
+        graphs.push_back({ 0, "sin(x * y)", 250, vec3(0.f, 0.5f, 1.f), gridSSBO, EBO });
+        graphs.push_back({ 1, "cos(x * y)", 250, vec3(1.f, 0.5f, 0.f), gridSSBO, EBO });
 
         mainloop();
     }
@@ -314,7 +351,8 @@ private:
 public:
     void mainloop() {
         double prevTime = glfwGetTime();
-        
+        mat4 view, proj;
+
         do {
             glfwPollEvents();
             ImGui_ImplOpenGL3_NewFrame();
@@ -376,7 +414,6 @@ public:
             ImGui::Begin("DockSpace", nullptr, window_flags);
             ImGui::PopStyleVar(3);
 
-            // DockSpace
             ImGuiIO& io = ImGui::GetIO();
             if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
             {
@@ -413,11 +450,45 @@ public:
                 ImGui::SameLine();
                 ImGui::ColorEdit3(std::format("##color{}", i).c_str(), value_ptr(graphs[i].color), ImGuiColorEditFlags_NoInputs);
                 ImGui::SameLine();
-                ImGui::InputText(std::format("##defn{}", i).c_str(), graphs[i].defn.data(), 512);
+                if (ImGui::InputText(std::format("##defn{}", i).c_str(), graphs[i].defn.data(), 512, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                    graphs[i].upload_definition();
+                }
                 ImGui::EndChild();
             }
 
             ImGui::End();
+
+            double x, y;
+            glfwGetCursorPos(window, &x, &y);
+            if (!ImGui::GetIO().WantCaptureMouse && x - 300. > 0. && x - 300. < 600. && y > 0. && y < 600.) {
+                float data[1];
+                glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+                glBindTexture(GL_TEXTURE_2D, depthMap);
+                glReadPixels(x, 600 - y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, data);
+                glBindFramebuffer(GL_FRAMEBUFFER, NULL);
+
+                if (data[0] != 1.f) {
+                    static float data[3 * 600 * 600];
+                    ImGui::SetNextWindowPos(ImVec2(x + 10.f, y));
+                    ImGui::Begin("info", nullptr,
+                        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+                        ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
+                        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
+
+                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
+                    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+                    GLvoid* p = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+                    memcpy(data, p, 3 * 600 * 600 * sizeof(float));
+                    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+                    vec3 fragPos = vec3(data[static_cast<int>(3 * (600 * (600 - y) + (x - 300)) + 0)],
+                                        data[static_cast<int>(3 * (600 * (600 - y) + (x - 300)) + 1)],
+                                        data[static_cast<int>(3 * (600 * (600 - y) + (x - 300)) + 2)]);
+
+                    ImGui::Text("(%.9g, %.9g, %.9g)", fragPos.x, fragPos.y, fragPos.z);
+
+                    ImGui::End();
+                }
+            }
 
             ImGui::PopFont();
 
@@ -427,28 +498,39 @@ public:
             int h, w;
             glfwGetWindowSize(window, &w, &h);
             auto cameraPos = vec3(sin(glm::radians(theta)) * cos(glm::radians(phi)), cos(glm::radians(theta)), sin(glm::radians(theta)) * sin(glm::radians(phi)));
-            mat4 view = lookAt(cameraPos, vec3(0.f), { 0.f, 1.f, 0.f });
-            mat4 proj = ortho(-1.f, 1.f, -1.f, 1.f, -10.f, 10.f);
+            view = lookAt(cameraPos, vec3(0.f), { 0.f, 1.f, 0.f });
+            proj = ortho(-1.f, 1.f, -1.f, 1.f, -10.f, 10.f);
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "vpmat"), 1, GL_FALSE, value_ptr(proj * view));
             glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), 1.f, 2.f, 0.f);
 
             ImGui::Render();
 
             glClearColor(0.05f, 0.05f, 0.05f, 1.f);
+            glBindFramebuffer(GL_FRAMEBUFFER, NULL);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            
-            for (const Graph& g : graphs) {
+            glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            for (int i = 0; i < graphs.size(); i++) {
+                const Graph& g = graphs[i];
                 if (!g.enabled) continue;
                 g.use_compute(zoom);
                 glDispatchCompute(g.grid_res, g.grid_res, 1);
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                 glUseProgram(shaderProgram);
                 g.use_shader();
+                glUniform1i(glGetUniformLocation(shaderProgram, "index"), i);
                 glUniform3f(glGetUniformLocation(shaderProgram, "color"), g.color.r, g.color.g, g.color.b);
                 glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), g.grid_res);
                 glBindVertexArray(VAO);
+                glUniform1i(glGetUniformLocation(shaderProgram, "quad"), false);
                 glDrawElements(GL_TRIANGLE_STRIP, g.indices.size(), GL_UNSIGNED_INT, 0);
             }
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, frameTex);
+            glBindFramebuffer(GL_FRAMEBUFFER, NULL);
+            glUniform1i(glGetUniformLocation(shaderProgram, "quad"), true);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
 
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
             glfwSwapBuffers(window);

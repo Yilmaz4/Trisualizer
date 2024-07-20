@@ -4,10 +4,14 @@ layout(std430, binding = 0) volatile buffer gridbuffer {
 	float grid[];
 };
 
+in vec3 aPos;
+
 uniform mat4 vpmat;
 uniform int grid_res;
 uniform float zoom;
 uniform float graph_size;
+
+uniform bool quad;
 
 out vec3 normal;
 out vec3 fragPos;
@@ -15,6 +19,10 @@ out vec2 gridPos;
 out vec2 gridCoord;
 
 void main() {
+	if (quad) {
+		gl_Position = vec4(aPos, 1.f);
+		return;
+	}
 	const float halfres = grid_res / 2.f;
 	float x = (gl_VertexID % grid_res);
 	float y = floor(gl_VertexID / grid_res);
