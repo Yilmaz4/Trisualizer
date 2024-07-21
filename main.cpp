@@ -1,4 +1,4 @@
-#define VERSION "0.1"
+﻿#define VERSION "0.1"
 
 #ifndef _DEBUG
 #pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
@@ -315,7 +315,7 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameTex, 0);
 
-        graphs.push_back({ 0, "sin(x * y)", 250, vec3(0.f, 0.5f, 1.f), gridSSBO, EBO });
+        graphs.push_back({ 0, "sin(x * y)", 800, vec3(0.f, 0.5f, 1.f), gridSSBO, EBO });
         graphs.push_back({ 1, "cos(x * y)", 250, vec3(1.f, 0.5f, 0.f), gridSSBO, EBO });
 
         mainloop();
@@ -468,7 +468,6 @@ public:
                 glBindFramebuffer(GL_FRAMEBUFFER, NULL);
 
                 if (data[0] != 1.f) {
-                    static float data[3 * 600 * 600];
                     ImGui::SetNextWindowPos(ImVec2(x + 10.f, y));
                     ImGui::Begin("info", nullptr,
                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
@@ -477,14 +476,13 @@ public:
 
                     glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
                     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-                    GLvoid* p = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
-                    memcpy(data, p, 3 * 600 * 600 * sizeof(float));
+                    float* p = reinterpret_cast<float*>(glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
+                    vec3 fragPos = vec3(p[static_cast<int>(3 * (600 * (600 - y) + (x - 300)) + 0)],
+                                        p[static_cast<int>(3 * (600 * (600 - y) + (x - 300)) + 1)],
+                                        p[static_cast<int>(3 * (600 * (600 - y) + (x - 300)) + 2)]);
                     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-                    vec3 fragPos = vec3(data[static_cast<int>(3 * (600 * (600 - y) + (x - 300)) + 0)],
-                                        data[static_cast<int>(3 * (600 * (600 - y) + (x - 300)) + 1)],
-                                        data[static_cast<int>(3 * (600 * (600 - y) + (x - 300)) + 2)]);
 
-                    ImGui::Text("(%.9g, %.9g, %.9g)", fragPos.x, fragPos.y, fragPos.z);
+                    ImGui::Text(u8"X=%6.3f\nY=%6.3f\nZ=%6.3f", fragPos.x, fragPos.y, fragPos.z);
 
                     ImGui::End();
                 }
@@ -511,6 +509,7 @@ public:
             glBindFramebuffer(GL_FRAMEBUFFER, FBO);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+            static bool yes = false;
             for (int i = 0; i < graphs.size(); i++) {
                 const Graph& g = graphs[i];
                 if (!g.enabled) continue;
