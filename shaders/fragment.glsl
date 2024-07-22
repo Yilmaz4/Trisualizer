@@ -23,13 +23,15 @@ uniform vec3 color;
 uniform int index;
 uniform int selected;
 uniform float graph_size;
+uniform ivec2 regionSize;
+uniform ivec2 windowSize;
 
 uniform bool quad;
 layout(binding = 0) uniform sampler2D frameTex;
 
 void main() {
 	if (quad) {
-		fragColor = texture(frameTex, vec2(gl_FragCoord.x / 900.f, gl_FragCoord.y / 600.f));
+		fragColor = texture(frameTex, vec2(gl_FragCoord.x / windowSize.x, gl_FragCoord.y / windowSize.y));
 		return;
 	}
 	vec3 ambient = vec3(ambientStrength);
@@ -45,8 +47,8 @@ void main() {
 		fragColor *= 0.4;
 	}
 	if (selected == index) {
-		posbuf[3 * int(600.f * gl_FragCoord.y + gl_FragCoord.x) + 0] = gridCoord.x;
-		posbuf[3 * int(600.f * gl_FragCoord.y + gl_FragCoord.x) + 1] = gridCoord.y;
-		posbuf[3 * int(600.f * gl_FragCoord.y + gl_FragCoord.x) + 2] = fragPos.y * zoom / graph_size;
+		posbuf[3 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 0] = gridCoord.x;
+		posbuf[3 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 1] = gridCoord.y;
+		posbuf[3 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 2] = fragPos.y * zoom / graph_size;
 	}
 }

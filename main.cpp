@@ -76,6 +76,12 @@ inline char* read_resource(int name) {
     return res;
 }
 
+struct Slider {
+    float value;
+    float min, max;
+    char symbol;
+};
+
 class Graph {
     GLuint computeProgram = NULL, SSBO, EBO;
 public:
@@ -153,6 +159,7 @@ class Trisualizer {
     ImFont* font_title = nullptr;
 public:
     std::vector<Graph> graphs;
+    std::vector<Slider> sliders;
 
     float theta = 45, phi = 45;
     float zoom = 8.f;
@@ -163,6 +170,7 @@ public:
     int selected = 0;
 
     vec2 mousePos = vec2(0.f);
+    int sidebarWidth;
 
     GLuint shaderProgram;
     GLuint VAO, VBO, EBO;
@@ -201,6 +209,7 @@ public:
 
         glfwSetCursorPosCallback(window, on_mouseMove);
         glfwSetScrollCallback(window, on_mouseScroll);
+        glfwSetWindowSizeCallback(window, on_windowResize);
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -230,8 +239,6 @@ public:
 
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(glMessageCallback, nullptr);
-
-        glViewport(300, 0, 600, 600);
 
         int success;
         char infoLog[512];
@@ -282,6 +289,7 @@ public:
         glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
         glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLineDensity);
         glUniform1i(glGetUniformLocation(shaderProgram, "selected"), selected);
+        glUniform2i(glGetUniformLocation(shaderProgram, "windowSize"), 900, 600);
 
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
@@ -322,6 +330,16 @@ public:
     }
 
 private:
+    static inline void on_windowResize(GLFWwindow* window, int width, int height) {
+        Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
+        glBindTexture(GL_TEXTURE_2D, app->depthMap);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glBindTexture(GL_TEXTURE_2D, app->frameTex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 3 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glUniform2i(glGetUniformLocation(app->shaderProgram, "windowSize"), width, height);
+    }
     static inline void on_mouseScroll(GLFWwindow* window, double x, double y) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
         if (ImGui::GetIO().WantCaptureMouse) return;
@@ -358,6 +376,9 @@ public:
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
+
+            int wWidth, wHeight;
+            glfwGetWindowSize(window, &wWidth, &wHeight);
 
             double currentTime = glfwGetTime();
             double timeStep = currentTime - prevTime;
@@ -425,14 +446,16 @@ public:
                     init = false;
 
                     ImGui::DockBuilderRemoveNode(dockspace_id);
-                    ImGui::DockBuilderAddNode(dockspace_id, dockspace_flags | ImGuiDockNodeFlags_DockSpace);
+                    ImGui::DockBuilderAddNode(dockspace_id, dockspace_flags | ImGuiDockNodeFlags_DockSpace | ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoResize | ImGuiDockNodeFlags_NoResizeX);
                     ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
 
-                    auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.33333f, nullptr, &dockspace_id);
-                    //auto dock_id_down = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.25f, nullptr, &dockspace_id);
+                    auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.3f, nullptr, &dockspace_id);
+                    auto dock_id_middle = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 0.5f, nullptr, &dock_id_left);
+                    auto dock_id_down = ImGui::DockBuilderSplitNode(dock_id_middle, ImGuiDir_Down, 0.5f, nullptr, &dock_id_middle);
 
-                    //ImGui::DockBuilderDockWindow("Down", dock_id_down);
                     ImGui::DockBuilderDockWindow("Symbolic View", dock_id_left);
+                    ImGui::DockBuilderDockWindow("Tools", dock_id_middle);
+                    ImGui::DockBuilderDockWindow("Sliders", dock_id_down);
                     ImGui::DockBuilderFinish(dockspace_id);
                 }
             }
@@ -440,31 +463,44 @@ public:
             ImGui::End();
 
             ImGuiWindowClass window_class;
-            window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
+            window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoResize | ImGuiDockNodeFlags_NoResizeX;
             ImGui::SetNextWindowClass(&window_class);
             ImGui::Begin("Symbolic View", nullptr, ImGuiWindowFlags_NoMove);
 
+            sidebarWidth = ImGui::GetWindowSize().x;
             for (int i = 0; i < graphs.size(); i++) {
                 ImGui::BeginChild(std::format("##child{}", i).c_str(), ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
                 ImGui::Checkbox(std::format("##check{}", i).c_str(), &graphs[i].enabled);
                 ImGui::SameLine();
                 ImGui::ColorEdit3(std::format("##color{}", i).c_str(), value_ptr(graphs[i].color), ImGuiColorEditFlags_NoInputs);
                 ImGui::SameLine();
+                ImGui::PushItemWidth(sidebarWidth - 76);
                 if (ImGui::InputText(std::format("##defn{}", i).c_str(), graphs[i].defn.data(), 512, ImGuiInputTextFlags_EnterReturnsTrue)) {
                     graphs[i].upload_definition();
                 }
                 ImGui::EndChild();
             }
-
             ImGui::End();
+
+            ImGui::SetNextWindowClass(&window_class);
+            ImGui::Begin("Sliders", nullptr, ImGuiWindowFlags_NoMove);
+            ImGui::Text("slider");
+            ImGui::End();
+
+            ImGui::SetNextWindowClass(&window_class);
+            ImGui::Begin("Tools", nullptr, ImGuiWindowFlags_NoMove);
+            ImGui::Text("tools");
+            ImGui::End();
+
+            ImGui::ShowDemoWindow();
 
             double x, y;
             glfwGetCursorPos(window, &x, &y);
-            if (!ImGui::GetIO().WantCaptureMouse && x - 300. > 0. && x - 300. < 600. && y > 0. && y < 600.) {
+            if (!ImGui::GetIO().WantCaptureMouse && x - sidebarWidth > 0. && x - sidebarWidth < (wWidth - sidebarWidth) && y > 0. && y < wHeight) {
                 float data[1];
                 glBindFramebuffer(GL_FRAMEBUFFER, FBO);
                 glBindTexture(GL_TEXTURE_2D, depthMap);
-                glReadPixels(x, 600 - y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, data);
+                glReadPixels(x, wHeight - y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, data);
                 glBindFramebuffer(GL_FRAMEBUFFER, NULL);
 
                 if (data[0] != 1.f) {
@@ -477,9 +513,9 @@ public:
                     glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
                     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                     float* p = reinterpret_cast<float*>(glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
-                    vec3 fragPos = vec3(p[static_cast<int>(3 * (600 * (600 - y) + (x - 300)) + 0)],
-                                        p[static_cast<int>(3 * (600 * (600 - y) + (x - 300)) + 1)],
-                                        p[static_cast<int>(3 * (600 * (600 - y) + (x - 300)) + 2)]);
+                    vec3 fragPos = vec3(p[static_cast<int>(3 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 0)],
+                                        p[static_cast<int>(3 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 1)],
+                                        p[static_cast<int>(3 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 2)]);
                     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
                     ImGui::Text(u8"X=%6.3f\nY=%6.3f\nZ=%6.3f", fragPos.x, fragPos.y, fragPos.z);
@@ -497,9 +533,10 @@ public:
             glfwGetWindowSize(window, &w, &h);
             auto cameraPos = vec3(sin(glm::radians(theta)) * cos(glm::radians(phi)), cos(glm::radians(theta)), sin(glm::radians(theta)) * sin(glm::radians(phi)));
             view = lookAt(cameraPos, vec3(0.f), { 0.f, 1.f, 0.f });
-            proj = ortho(-1.f, 1.f, -1.f, 1.f, -10.f, 10.f);
+            proj = ortho(-1.f, 1.f, -(float)wHeight / (float)(wWidth - sidebarWidth), (float)wHeight / (float)(wWidth - sidebarWidth), -10.f, 10.f);
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "vpmat"), 1, GL_FALSE, value_ptr(proj * view));
             glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), 1.f, 2.f, 0.f);
+            glUniform2i(glGetUniformLocation(shaderProgram, "regionSize"), wWidth - sidebarWidth, wHeight);
 
             ImGui::Render();
 
@@ -508,6 +545,9 @@ public:
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glBindFramebuffer(GL_FRAMEBUFFER, FBO);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            
+            
+            glViewport(sidebarWidth, 0, wWidth - sidebarWidth, wHeight);
 
             static bool yes = false;
             for (int i = 0; i < graphs.size(); i++) {

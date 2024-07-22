@@ -9,6 +9,11 @@ layout(std430, binding = 0) volatile buffer gridbuffer {
 uniform int grid_res;
 uniform float zoom;
 
+uniform float a;
+uniform float b;
+uniform float c;
+uniform float d;
+
 void main() {
 	float x = zoom * ((gl_GlobalInvocationID.x - grid_res / 2.f) / grid_res);
     float y = zoom * ((gl_GlobalInvocationID.y - grid_res / 2.f) / grid_res);
