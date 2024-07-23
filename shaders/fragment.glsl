@@ -36,27 +36,46 @@ void main() {
 		fragColor = texture(frameTex, gl_FragCoord.xy / windowSize);
 		return;
 	}
-	vec3 normalVec = normal;
+	vec3 normalvec = normal;
 	if (!gl_FrontFacing) {
-		normalVec *= -1;
+		normalvec *= -1;
 	}
 	vec3 ambient = vec3(ambientStrength);
-	vec3 diffuse = vec3(max(dot(normalVec, normalize(fragPos - lightPos)), 0.f));
+	vec3 diffuse = vec3(max(dot(normalvec, normalize(fragPos - lightPos)), 0.f));
 
 	vec3 lightDir = -normalize(lightPos + fragPos);
 	vec3 viewDir = -normalize(cameraPos + fragPos);
-	vec3 specular = vec3(pow(max(dot(normalVec, normalize(lightDir + viewDir)), 0.0), 8)) * 0.8f;
+	vec3 specular = vec3(pow(max(dot(normalvec, normalize(lightDir + viewDir)), 0.0), 8)) * 0.8f;
 	
 	fragColor = vec4((ambient + diffuse + specular) * color.rgb, color.w);
 
-	float gridLines = pow(2.f, floor(log2(zoom)) - gridLineDensity);
+	float partialx = 1.f / tan(acos(dot(vec3(1,0,0), normalize(dot(normalvec, vec3(1,0,0)) * vec3(1,0,0) + dot(normalvec, vec3(0,1,0)) * vec3(0,1,0)))));
+	float partialy = 1.f / tan(acos(dot(vec3(0,0,1), normalize(dot(normalvec, vec3(0,0,1)) * vec3(0,0,1) + dot(normalvec, vec3(0,1,0)) * vec3(0,1,0)))));
+	vec2 gradient = vec2(partialx, partialy);
 
-	if (abs(gridCoord.x / gridLines - floor(gridCoord.x / gridLines)) < gridLineDensity / 100.f ||
-		abs(gridCoord.y / gridLines - floor(gridCoord.y / gridLines)) < gridLineDensity / 100.f) {
+	float Rx = gridLineDensity / 100.f;
+	float rx = partialx * Rx;
+	float hx = sqrt(Rx * Rx + rx * rx);
+	float hxp = hx - Rx;
+	float rxp = rx * hxp / hx;
+	float Rxp = sqrt(hxp * hxp - rxp * rxp);
+
+	float Ry = gridLineDensity / 100.f;
+	float ry = partialy * Ry;
+	float hy = sqrt(Ry * Ry + ry * ry);
+	float hyp = hy - Ry;
+	float ryp = ry * hyp / hy;
+	float Ryp = sqrt(hyp * hyp - ryp * ryp);
+
+	float gridLines = pow(2.f, floor(log2(zoom)) - gridLineDensity);
+	if (abs(gridCoord.x / gridLines - floor(gridCoord.x / gridLines)) < Rx - Rxp ||
+		abs(gridCoord.y / gridLines - floor(gridCoord.y / gridLines)) < Ry - Ryp) {
 		fragColor = vec4(fragColor.rgb * 0.4, fragColor.w);
 	}
+
 	posbuf[4 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 0] = gridCoord.x;
 	posbuf[4 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 1] = gridCoord.y;
 	posbuf[4 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 2] = fragPos.y * zoom / graph_size;
 	posbuf[4 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 3] = intBitsToFloat(index);
+
 }
