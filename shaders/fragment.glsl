@@ -73,9 +73,10 @@ void main() {
 		fragColor = vec4(fragColor.rgb * 0.4, fragColor.w);
 	}
 
-	posbuf[4 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 0] = gridCoord.x;
-	posbuf[4 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 1] = gridCoord.y;
-	posbuf[4 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 2] = fragPos.y * zoom / graph_size;
-	posbuf[4 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 3] = intBitsToFloat(index);
-
+	posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 0] = gridCoord.x;
+	posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 1] = gridCoord.y;
+	posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 2] = fragPos.y * zoom / graph_size;
+	posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 3] = intBitsToFloat(index);
+	posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 4] = partialx;
+	posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 5] = partialy;
 }

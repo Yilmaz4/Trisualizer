@@ -93,7 +93,7 @@ class Graph {
     GLuint computeProgram = NULL, SSBO, EBO;
 public:
     int idx;
-    bool enabled;
+    bool enabled = true;
     int type;
     int grid_res;
     std::vector<unsigned int> indices;
@@ -229,7 +229,13 @@ public:
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         io.Fonts->AddFontDefault();
-        font_title = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\consola.ttf", 11.f);
+        static const ImWchar ranges[] = {
+            0x0020, 0x00FF,
+            0x2202, 0x2202, // ∂ Partial derivative symbol
+            0x2207, 0x2207, // ∇ Gradient vector symbol
+            0,
+        };
+        font_title = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\consola.ttf", 11.f, nullptr, ranges);
         IM_ASSERT(font_title != NULL);
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -296,7 +302,7 @@ public:
 
         glGenBuffers(1, &posBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 4 * 600 * 600 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * 600 * 600 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, posBuffer);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "posbuffer"), 1);
 
@@ -355,7 +361,7 @@ private:
         glBindTexture(GL_TEXTURE_2D, app->frameTex);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 4 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glUniform2i(glGetUniformLocation(app->shaderProgram, "windowSize"), width, height);
     }
 
@@ -367,7 +373,7 @@ private:
                 int width, height;
                 glfwGetWindowSize(window, &width, &height);
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
-                glBufferData(GL_SHADER_STORAGE_BUFFER, 4 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+                glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
                 app->updateBufferSize = false;
             }
         }
@@ -558,16 +564,23 @@ public:
                     glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
                     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                     float* p = reinterpret_cast<float*>(glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
-                    vec4 fragPos = vec4(p[static_cast<int>(4 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 0)],
-                                        p[static_cast<int>(4 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 1)],
-                                        p[static_cast<int>(4 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 2)],
-                                        p[static_cast<int>(4 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 3)]);
+                    vec4 fragPos = vec4(p[static_cast<int>(6 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 0)],
+                                        p[static_cast<int>(6 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 1)],
+                                        p[static_cast<int>(6 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 2)],
+                                        p[static_cast<int>(6 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 3)]);
+                    vec2 gradvec = vec2(p[static_cast<int>(6 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 4)],
+                                        p[static_cast<int>(6 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 5)]);
                     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
                     vec4 c = graphs[*reinterpret_cast<int*>(&fragPos.w)].color * 1.3f;
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(c.r, c.g, c.b, 1.f));
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 9.f);
+                    ImGui::ColorEdit4("##infocolor", value_ptr(c), ImGuiColorEditFlags_NoInputs);
+                    ImGui::SameLine();
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 11.f);
                     ImGui::Text(u8"X=%6.3f\nY=%6.3f\nZ=%6.3f", fragPos.x, fragPos.y, fragPos.z);
-                    ImGui::PopStyleColor();
+                    ImGui::SameLine();
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5.f);
+                    ImGui::Text(u8"\u2202z/\u2202x=%6.3f\n\u2202z/\u2202y=%6.3f", gradvec.x, gradvec.y);
                     ImGui::End();
                 }
             }
