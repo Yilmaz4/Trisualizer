@@ -10,6 +10,7 @@ uniform mat4 vpmat;
 uniform int grid_res;
 uniform float zoom;
 uniform float graph_size;
+uniform vec2 centerPos;
 
 uniform bool quad;
 
@@ -28,7 +29,7 @@ void main() {
 	float y = floor(gl_VertexID / grid_res);
 	gridPos = vec2((x - halfres) / (grid_res / 10.f), (y - halfres) / (grid_res / 10.f));
 	fragPos = vec3((graph_size / grid_res) * (x - halfres), graph_size * grid[gl_VertexID], (graph_size / grid_res) * (y - halfres));
-	gridCoord = vec2(zoom * (x - halfres) / grid_res, zoom * (y - halfres) / grid_res);
+	gridCoord = vec2(zoom * (x - halfres) / grid_res, zoom * (y - halfres) / grid_res) + centerPos;
 	
 	vec3 v1, v2, v3, v4;
 	if (x == grid_res - 1.f) v1 = fragPos;

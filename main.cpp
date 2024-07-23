@@ -43,10 +43,12 @@
 
 using namespace glm;
 
+#ifdef _DEBUG
 void GLAPIENTRY glMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
     if (type != GL_DEBUG_TYPE_ERROR) return;
     fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n", "** GL ERROR **", type, severity, message);
 }
+#endif
 
 namespace ImGui {
     ImFont* font;
@@ -82,19 +84,25 @@ struct Slider {
     char symbol;
 };
 
+enum GraphType {
+    UserDefined,
+    TangentPlane,
+};
+
 class Graph {
     GLuint computeProgram = NULL, SSBO, EBO;
 public:
     int idx;
     bool enabled;
+    int type;
     int grid_res;
     std::vector<unsigned int> indices;
 
-    std::string defn;
-    vec3 color;
+    std::string defn = std::string(100, '\0');
+    vec4 color;
 
-    Graph(int idx, std::string definition, int res, vec3 color, GLuint SSBO, GLuint EBO)
-        : idx(idx), grid_res(res), color(color), SSBO(SSBO), EBO(EBO) {
+    Graph(int idx, int type, std::string definition, int res, vec4 color, GLuint SSBO, GLuint EBO)
+        : type(type), idx(idx), grid_res(res), color(color), SSBO(SSBO), EBO(EBO) {
 
         for (unsigned int y = 0; y < grid_res - 1; ++y) {
             for (unsigned int x = 0; x < grid_res; ++x) {
@@ -141,10 +149,11 @@ public:
         glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
     }
 
-    void use_compute(float zoom) const {
+    void use_compute(float zoom, vec2 centerPos) const {
         glUseProgram(computeProgram);
         glUniform1f(glGetUniformLocation(computeProgram, "zoom"), zoom);
         glUniform1i(glGetUniformLocation(computeProgram, "grid_res"), grid_res);
+        glUniform2fv(glGetUniformLocation(computeProgram, "centerPos"), 1, value_ptr(centerPos));
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO);
         glBufferData(GL_SHADER_STORAGE_BUFFER, pow(grid_res, 2) * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
     }
@@ -167,10 +176,14 @@ public:
     bool gridLines = true;
     float gridLineDensity = 3.f;
     bool autoRotate = false;
-    int selected = 0;
+    bool trace = true;
+    bool tangent_plane = false;
+    bool gradient_vector = false;
+    vec2 centerPos = vec2(0.f);
 
     vec2 mousePos = vec2(0.f);
-    int sidebarWidth;
+    int sidebarWidth = 300;
+    bool updateBufferSize = false;
 
     GLuint shaderProgram;
     GLuint VAO, VBO, EBO;
@@ -198,7 +211,7 @@ public:
 
         glfwWindowHint(GLFW_SAMPLES, 4);
 
-        window = glfwCreateWindow(900, 600, "Trisualizer", NULL, NULL);
+        window = glfwCreateWindow(1000, 600, "Trisualizer", NULL, NULL);
         if (window == nullptr) {
             std::cerr << "Failed to create OpenGL window" << std::endl;
             return;
@@ -210,6 +223,7 @@ public:
         glfwSetCursorPosCallback(window, on_mouseMove);
         glfwSetScrollCallback(window, on_mouseScroll);
         glfwSetWindowSizeCallback(window, on_windowResize);
+        glfwSetMouseButtonCallback(window, on_mouseButton);
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -236,10 +250,12 @@ public:
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
         glEnable(GL_MULTISAMPLE);
-
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_BLEND);
+#ifdef _DEBUG
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(glMessageCallback, nullptr);
-
+#endif
         int success;
         char infoLog[512];
 
@@ -280,7 +296,7 @@ public:
 
         glGenBuffers(1, &posBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 3 * 600 * 600 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 4 * 600 * 600 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, posBuffer);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "posbuffer"), 1);
 
@@ -288,8 +304,9 @@ public:
         glUniform1f(glGetUniformLocation(shaderProgram, "graph_size"), graph_size);
         glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
         glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLineDensity);
-        glUniform1i(glGetUniformLocation(shaderProgram, "selected"), selected);
-        glUniform2i(glGetUniformLocation(shaderProgram, "windowSize"), 900, 600);
+        glUniform2i(glGetUniformLocation(shaderProgram, "windowSize"), 1000, 600);
+        glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), 0.f, 6.f, 0.f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "centerPos"), 0.f, 0.f, 0.f);
 
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
@@ -307,7 +324,7 @@ public:
 
         glGenTextures(1, &depthMap);
         glBindTexture(GL_TEXTURE_2D, depthMap);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 900, 600, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 1000, 600, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -316,15 +333,16 @@ public:
 
         glGenTextures(1, &frameTex);
         glBindTexture(GL_TEXTURE_2D, frameTex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 900, 600, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 1000, 600, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameTex, 0);
 
-        graphs.push_back({ 0, "sin(x * y)", 800, vec3(0.f, 0.5f, 1.f), gridSSBO, EBO });
-        graphs.push_back({ 1, "cos(x * y)", 250, vec3(1.f, 0.5f, 0.f), gridSSBO, EBO });
+        graphs.push_back({ 0, UserDefined, "sin(x * y)", 500, vec4(0.f, 0.5f, 1.f, 1.f), gridSSBO, EBO });
+        graphs.push_back({ 1, UserDefined, "cos(x * y)", 500, vec4(1.f, 0.5f, 0.f, 1.f), gridSSBO, EBO });
+        graphs.push_back({ 2, UserDefined, "x", 500, vec4(1.f, 0.5f, 1.f, 1.f), gridSSBO, EBO });
 
         mainloop();
     }
@@ -337,9 +355,24 @@ private:
         glBindTexture(GL_TEXTURE_2D, app->frameTex);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 3 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 4 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glUniform2i(glGetUniformLocation(app->shaderProgram, "windowSize"), width, height);
     }
+
+    static inline void on_mouseButton(GLFWwindow* window, int button, int action, int mods) {
+        Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
+        switch (button) {
+        case GLFW_MOUSE_BUTTON_LEFT:
+            if (action == GLFW_RELEASE && app->updateBufferSize) {
+                int width, height;
+                glfwGetWindowSize(window, &width, &height);
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
+                glBufferData(GL_SHADER_STORAGE_BUFFER, 4 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+                app->updateBufferSize = false;
+            }
+        }
+    }
+
     static inline void on_mouseScroll(GLFWwindow* window, double x, double y) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
         if (ImGui::GetIO().WantCaptureMouse) return;
@@ -454,8 +487,8 @@ public:
                     auto dock_id_down = ImGui::DockBuilderSplitNode(dock_id_middle, ImGuiDir_Down, 0.5f, nullptr, &dock_id_middle);
 
                     ImGui::DockBuilderDockWindow("Symbolic View", dock_id_left);
-                    ImGui::DockBuilderDockWindow("Tools", dock_id_middle);
-                    ImGui::DockBuilderDockWindow("Sliders", dock_id_down);
+                    ImGui::DockBuilderDockWindow("Tools", dock_id_down);
+                    ImGui::DockBuilderDockWindow("Sliders", dock_id_middle);
                     ImGui::DockBuilderFinish(dockspace_id);
                 }
             }
@@ -463,16 +496,24 @@ public:
             ImGui::End();
 
             ImGuiWindowClass window_class;
-            window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoResize | ImGuiDockNodeFlags_NoResizeX;
+            window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
             ImGui::SetNextWindowClass(&window_class);
             ImGui::Begin("Symbolic View", nullptr, ImGuiWindowFlags_NoMove);
 
-            sidebarWidth = ImGui::GetWindowSize().x;
+            float swidth = ImGui::GetWindowSize().x;
+            if (sidebarWidth != swidth) {
+                updateBufferSize = true;
+                sidebarWidth = swidth;
+            }
+            if (ImGui::Button("+ New", ImVec2(50, 0))) {
+
+            }
             for (int i = 0; i < graphs.size(); i++) {
+                if (graphs[i].type != UserDefined) continue;
                 ImGui::BeginChild(std::format("##child{}", i).c_str(), ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
                 ImGui::Checkbox(std::format("##check{}", i).c_str(), &graphs[i].enabled);
                 ImGui::SameLine();
-                ImGui::ColorEdit3(std::format("##color{}", i).c_str(), value_ptr(graphs[i].color), ImGuiColorEditFlags_NoInputs);
+                ImGui::ColorEdit4(std::format("##color{}", i).c_str(), value_ptr(graphs[i].color), ImGuiColorEditFlags_NoInputs);
                 ImGui::SameLine();
                 ImGui::PushItemWidth(sidebarWidth - 76);
                 if (ImGui::InputText(std::format("##defn{}", i).c_str(), graphs[i].defn.data(), 512, ImGuiInputTextFlags_EnterReturnsTrue)) {
@@ -489,10 +530,14 @@ public:
 
             ImGui::SetNextWindowClass(&window_class);
             ImGui::Begin("Tools", nullptr, ImGuiWindowFlags_NoMove);
-            ImGui::Text("tools");
+            static vec2 gotoLocation;
+            ImGui::InputFloat2("##goto", value_ptr(gotoLocation));
+            ImGui::SameLine();
+            if (ImGui::Button("Jump", ImVec2(sidebarWidth - ImGui::GetCursorPosX() - 10, 0))) {
+                centerPos = gotoLocation;
+                glUniform2fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
+            }
             ImGui::End();
-
-            ImGui::ShowDemoWindow();
 
             double x, y;
             glfwGetCursorPos(window, &x, &y);
@@ -513,17 +558,19 @@ public:
                     glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
                     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                     float* p = reinterpret_cast<float*>(glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
-                    vec3 fragPos = vec3(p[static_cast<int>(3 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 0)],
-                                        p[static_cast<int>(3 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 1)],
-                                        p[static_cast<int>(3 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 2)]);
+                    vec4 fragPos = vec4(p[static_cast<int>(4 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 0)],
+                                        p[static_cast<int>(4 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 1)],
+                                        p[static_cast<int>(4 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 2)],
+                                        p[static_cast<int>(4 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 3)]);
                     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
+                    vec4 c = graphs[*reinterpret_cast<int*>(&fragPos.w)].color * 1.3f;
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(c.r, c.g, c.b, 1.f));
                     ImGui::Text(u8"X=%6.3f\nY=%6.3f\nZ=%6.3f", fragPos.x, fragPos.y, fragPos.z);
-
+                    ImGui::PopStyleColor();
                     ImGui::End();
                 }
             }
-
             ImGui::PopFont();
 
             if (autoRotate)
@@ -535,7 +582,7 @@ public:
             view = lookAt(cameraPos, vec3(0.f), { 0.f, 1.f, 0.f });
             proj = ortho(-1.f, 1.f, -(float)wHeight / (float)(wWidth - sidebarWidth), (float)wHeight / (float)(wWidth - sidebarWidth), -10.f, 10.f);
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "vpmat"), 1, GL_FALSE, value_ptr(proj * view));
-            glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), 1.f, 2.f, 0.f);
+            glUniform3fv(glGetUniformLocation(shaderProgram, "cameraPos"), 1, value_ptr(cameraPos));
             glUniform2i(glGetUniformLocation(shaderProgram, "regionSize"), wWidth - sidebarWidth, wHeight);
 
             ImGui::Render();
@@ -553,13 +600,13 @@ public:
             for (int i = 0; i < graphs.size(); i++) {
                 const Graph& g = graphs[i];
                 if (!g.enabled) continue;
-                g.use_compute(zoom);
+                g.use_compute(zoom, centerPos);
                 glDispatchCompute(g.grid_res, g.grid_res, 1);
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                 glUseProgram(shaderProgram);
                 g.use_shader();
                 glUniform1i(glGetUniformLocation(shaderProgram, "index"), i);
-                glUniform3f(glGetUniformLocation(shaderProgram, "color"), g.color.r, g.color.g, g.color.b);
+                glUniform4f(glGetUniformLocation(shaderProgram, "color"), g.color.r, g.color.g, g.color.b, g.color.w);
                 glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), g.grid_res);
                 glBindVertexArray(VAO);
                 glUniform1i(glGetUniformLocation(shaderProgram, "quad"), false);

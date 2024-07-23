@@ -8,14 +8,14 @@ layout(std430, binding = 0) volatile buffer gridbuffer {
 
 uniform int grid_res;
 uniform float zoom;
+uniform vec2 centerPos;
 
-uniform float a;
-uniform float b;
-uniform float c;
-uniform float d;
+uniform vec4 tangent_plane;
 
 void main() {
-	float x = zoom * ((gl_GlobalInvocationID.x - grid_res / 2.f) / grid_res);
-    float y = zoom * ((gl_GlobalInvocationID.y - grid_res / 2.f) / grid_res);
-    grid[gl_GlobalInvocationID.y * grid_res + gl_GlobalInvocationID.x] = (%s) / zoom;
+	float x = zoom * ((gl_GlobalInvocationID.x - grid_res / 2.f) / grid_res) + centerPos.x;
+    float y = zoom * ((gl_GlobalInvocationID.y - grid_res / 2.f) / grid_res) + centerPos.y;
+	float val = (%s) / zoom;
+	if (val > .5f || val < -.5f) val = 1.f / 0.f;
+    grid[gl_GlobalInvocationID.y * grid_res + gl_GlobalInvocationID.x] = val;
 }
