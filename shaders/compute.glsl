@@ -11,7 +11,7 @@ layout(std430, binding = 1) readonly buffer sliderbuffer {
 
 uniform int grid_res;
 uniform float zoom;
-uniform vec2 centerPos;
+uniform vec3 centerPos;
 
 uniform float plane_params[5];
 

@@ -56,8 +56,8 @@ float quad[12] = {
 };
 std::vector<vec4> colors = {
     vec4(0.000f, 0.500f, 1.000f, 1.f),
-    vec4(0.823f, 0.000f, 0.000f, 1.f),
     vec4(0.924f, 0.395f, 0.000f, 1.f),
+    vec4(0.823f, 0.000f, 0.000f, 1.f),
     vec4(0.058f, 0.570f, 0.000f, 1.f),
     vec4(0.496f, 0.000f, 0.652f, 1.f),
 };
@@ -112,11 +112,13 @@ public:
     int grid_res;
     std::vector<unsigned int> indices;
 
-    std::string defn = std::string(100, '\0');
+    std::string defn = std::string(256, '\0');
     vec4 color;
 
     Graph(int idx, int type, std::string definition, int res, vec4 color, bool enabled, GLuint SSBO, GLuint EBO)
-        : type(type), idx(idx), grid_res(res), color(color), enabled(enabled), SSBO(SSBO), EBO(EBO), defn(definition) {}
+        : type(type), idx(idx), grid_res(res), color(color), enabled(enabled), SSBO(SSBO), EBO(EBO) {
+        defn = definition;
+    }
 
     void setup(bool upload_defn = true) {
         for (unsigned int y = 0; y < grid_res - 1; ++y) {
@@ -164,11 +166,11 @@ public:
         valid = true;
     }
 
-    void use_compute(float zoom, vec2 centerPos) const {
+    void use_compute(float zoom, vec3 centerPos) const {
         glUseProgram(computeProgram);
         glUniform1f(glGetUniformLocation(computeProgram, "zoom"), zoom);
         glUniform1i(glGetUniformLocation(computeProgram, "grid_res"), grid_res);
-        glUniform2fv(glGetUniformLocation(computeProgram, "centerPos"), 1, value_ptr(centerPos));
+        glUniform3fv(glGetUniformLocation(computeProgram, "centerPos"), 1, value_ptr(centerPos));
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO);
         glBufferData(GL_SHADER_STORAGE_BUFFER, pow(grid_res, 2) * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
     }
@@ -194,11 +196,12 @@ public:
     bool trace = true;
     bool tangent_plane = false, apply_tangent_plane = false;
     bool gradient_vector = false;
-    vec2 centerPos = vec2(0.f);
-
+    vec3 centerPos = vec3(0.f);
     vec2 mousePos = vec2(0.f);
     int sidebarWidth = 300;
     bool updateBufferSize = false;
+    double lastMousePress = 0.0;
+    bool doubleClickPressed = false;
 
     GLuint shaderProgram;
     GLuint VAO, VBO, EBO;
@@ -354,7 +357,7 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameTex, 0);
 
-        graphs.push_back(Graph(0, TangentPlane, "plane_params[0]+plane_params[1]*(x-plane_params[2])+plane_params[3]*(y-plane_params[4])", 25, vec4(0.f), false, gridSSBO, EBO));
+        graphs.push_back(Graph(0, TangentPlane, "plane_params[0]+plane_params[1]*(x-plane_params[2])+plane_params[3]*(y-plane_params[4])", 100, vec4(0.f), false, gridSSBO, EBO));
         graphs[0].setup(true);
         graphs.push_back(Graph(1, UserDefined, "sin(x * y)", 500, colors[0], true, gridSSBO, EBO));
         graphs[1].setup(true);
@@ -378,15 +381,25 @@ private:
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
         switch (button) {
         case GLFW_MOUSE_BUTTON_LEFT:
-            if (action == GLFW_RELEASE && app->updateBufferSize) {
-                int width, height;
-                glfwGetWindowSize(window, &width, &height);
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
-                glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
-                app->updateBufferSize = false;
-            }
-            if (action == GLFW_PRESS && app->tangent_plane) {
-                app->apply_tangent_plane = true;
+            switch (action) {
+            case GLFW_RELEASE:
+                if (app->updateBufferSize) {
+                    int width, height;
+                    glfwGetWindowSize(window, &width, &height);
+                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
+                    glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+                    app->updateBufferSize = false;
+                }
+                break;
+            case GLFW_PRESS:
+                if (app->tangent_plane) {
+                    app->apply_tangent_plane = true;
+                }
+                if (glfwGetTime() - app->lastMousePress < 0.2) {
+                    app->doubleClickPressed = true;
+                }
+                app->lastMousePress = glfwGetTime();
+                break;
             }
         }
     }
@@ -414,6 +427,10 @@ private:
             app->phi -= xoffset * 0.5f;
             if (app->theta > 179.9f) app->theta = 179.9f;
             if (app->theta < 0.1f) app->theta = 0.1f;
+        }
+        else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS) {
+            float xoffset = x - app->mousePos.x;
+            float yoffset = y - app->mousePos.y;
         }
         app->mousePos = { x, y };
     }
@@ -548,7 +565,7 @@ public:
                 ImGui::ColorEdit4(std::format("##color{}", i).c_str(), value_ptr(graphs[i].color), ImGuiColorEditFlags_NoInputs);
                 ImGui::SameLine();
                 ImGui::PushItemWidth((vMax.x - vMin.x) - 65);
-                if (ImGui::InputText(std::format("##defn{}", i).c_str(), graphs[i].defn.data(), 512, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                if (ImGui::InputText(std::format("##defn{}", i).c_str(), graphs[i].defn.data(), 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
                     graphs[i].upload_definition();
                     if (graphs[i].valid) graphs[i].enabled = true;
                 }
@@ -573,12 +590,12 @@ public:
             ImGui::Begin("Tools", nullptr, ImGuiWindowFlags_NoMove);
             vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
             vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
-            static vec2 gotoLocation;
-            ImGui::InputFloat2("##goto", value_ptr(gotoLocation));
+            static vec3 gotoLocation;
+            ImGui::InputFloat3("##goto", value_ptr(gotoLocation));
             ImGui::SameLine();
             if (ImGui::Button("Jump", ImVec2(vMax.x - vMin.x - ImGui::GetCursorPosX() + 5, 0))) {
                 centerPos = gotoLocation;
-                glUniform2fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
+                glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
             }
             float buttonWidth = (vMax.x - vMin.x - 20.f) / 4.f;
             if (tangent_plane) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
@@ -620,16 +637,12 @@ public:
 
                     glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
                     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-                    float* p = reinterpret_cast<float*>(glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
-                    vec4 fragPos = vec4(p[static_cast<int>(6 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 0)],
-                                        p[static_cast<int>(6 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 1)],
-                                        p[static_cast<int>(6 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 2)],
-                                        p[static_cast<int>(6 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 3)]);
-                    vec2 gradvec = vec2(p[static_cast<int>(6 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 4)],
-                                        p[static_cast<int>(6 * (wHeight * (wHeight - y) + (x - sidebarWidth)) + 5)]);
-                    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+                    float data[6];
+                    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * (wHeight - y) + (x - sidebarWidth))) * sizeof(float), 6 * sizeof(float), data);
+                    vec4 fragPos = { data[0], data[1], data[2], data[3] };
+                    vec2 gradvec = { data[4], data[5] };
 
-                    vec4 c = graphs[*reinterpret_cast<int*>(&fragPos.w)].color * 1.3f;
+                    vec4 c = graphs[static_cast<int>(fragPos.w)].color * 1.3f;
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 9.f);
                     ImGui::ColorEdit4("##infocolor", value_ptr(c), ImGuiColorEditFlags_NoInputs);
                     ImGui::SameLine();
@@ -653,17 +666,23 @@ public:
                         const char* eq = "(%.6f)+(%.6f)*(x-(%.6f))+(%.6f)*(y-(%.6f))";
                         char eqf[88]{};
                         sprintf_s(eqf, eq, params[0], params[1], params[2], params[3], params[4]);
-                        graphs.push_back(Graph(graphs.size(), UserDefined, eqf, 25, colors[(graphs.size() - 1) % colors.size()], true, gridSSBO, EBO));
+                        graphs.push_back(Graph(graphs.size(), UserDefined, eqf, 100, colors[(graphs.size() - 1) % colors.size()], true, gridSSBO, EBO));
                         graphs[graphs.size() - 1].setup(true);
                         apply_tangent_plane = false;
                         tangent_plane = false;
                         graphs[0].enabled = false;
+                    }
+                    if (doubleClickPressed) {
+                        centerPos = fragPos;
+                        glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
+                        doubleClickPressed = false;
                     }
                 } else goto mouse_not_on_graph;
             } else {
             mouse_not_on_graph:
                 graphs[0].enabled = false;
                 apply_tangent_plane = false;
+                doubleClickPressed = false;
             }
             ImGui::PopFont();
 
