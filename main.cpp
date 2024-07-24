@@ -570,11 +570,15 @@ public:
                     if (graphs[i].valid) graphs[i].enabled = true;
                 }
                 ImGui::SameLine();
+                int logLength = strlen(graphs[i].infoLog);
                 if (ImGui::Button("X", ImVec2(16, 0))) {
                     graphs.erase(graphs.begin() + i);
                 }
-                else if (!graphs[i].valid && strlen(graphs[i].infoLog)) {
-                    ImGui::InputTextMultiline("##errorlist", graphs[i].infoLog, 512, ImVec2((vMax.x - vMin.x), 0), ImGuiInputTextFlags_ReadOnly);
+                else if (!graphs[i].valid && logLength > 0) {
+                    int nLines = 1;
+                    for (int j = 0; j < logLength; j++) if (graphs[i].infoLog[j] == '\n') nLines++;
+                    if (graphs[i].infoLog[logLength - 1] == '\n') graphs[i].infoLog[logLength - 1] = '\0';
+                    ImGui::InputTextMultiline("##errorlist", graphs[i].infoLog, 512, ImVec2((vMax.x - vMin.x), 11 * nLines + 6), ImGuiInputTextFlags_ReadOnly);
                 }
                 ImGui::EndChild();
             }
@@ -634,7 +638,7 @@ public:
                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
                         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
-
+                        
                     glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
                     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                     float data[6];
@@ -705,7 +709,6 @@ public:
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glBindFramebuffer(GL_FRAMEBUFFER, FBO);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            
             
             glViewport(sidebarWidth, 0, wWidth - sidebarWidth, wHeight);
 
