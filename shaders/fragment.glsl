@@ -45,7 +45,7 @@ void main() {
 
 	vec3 lightDir = -normalize(lightPos + fragPos);
 	vec3 viewDir = -normalize(cameraPos + fragPos);
-	vec3 specular = vec3(pow(max(dot(normalvec, normalize(lightDir + viewDir)), 0.0), 8)) * 0.8f;
+	vec3 specular = vec3(pow(max(dot(normalvec, normalize(lightDir + viewDir)), 0.0), 8)) * 0.6f;
 	
 	fragColor = vec4((ambient + diffuse + specular) * color.rgb, color.w);
 

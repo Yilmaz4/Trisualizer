@@ -50,6 +50,18 @@ void GLAPIENTRY glMessageCallback(GLenum source, GLenum type, GLuint id, GLenum 
 }
 #endif
 
+float quad[12] = {
+    -1.0f, -1.0f, -1.0f,  1.0f, 1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,  1.0f, 1.0f, -1.0f
+};
+std::vector<vec4> colors = {
+    vec4(0.000f, 0.500f, 1.000f, 1.f),
+    vec4(0.823f, 0.000f, 0.000f, 1.f),
+    vec4(0.924f, 0.395f, 0.000f, 1.f),
+    vec4(0.058f, 0.570f, 0.000f, 1.f),
+    vec4(0.496f, 0.000f, 0.652f, 1.f),
+};
+
 namespace ImGui {
     ImFont* font;
 
@@ -93,7 +105,9 @@ class Graph {
     GLuint computeProgram = NULL, SSBO, EBO;
 public:
     int idx;
-    bool enabled = true;
+    bool enabled;
+    bool valid;
+    char* infoLog = new char[512]{};
     int type;
     int grid_res;
     std::vector<unsigned int> indices;
@@ -101,9 +115,10 @@ public:
     std::string defn = std::string(100, '\0');
     vec4 color;
 
-    Graph(int idx, int type, std::string definition, int res, vec4 color, GLuint SSBO, GLuint EBO)
-        : type(type), idx(idx), grid_res(res), color(color), SSBO(SSBO), EBO(EBO) {
+    Graph(int idx, int type, std::string definition, int res, vec4 color, bool enabled, GLuint SSBO, GLuint EBO)
+        : type(type), idx(idx), grid_res(res), color(color), enabled(enabled), SSBO(SSBO), EBO(EBO), defn(definition) {}
 
+    void setup(bool upload_defn = true) {
         for (unsigned int y = 0; y < grid_res - 1; ++y) {
             for (unsigned int x = 0; x < grid_res; ++x) {
                 unsigned int idx0 = y * grid_res + x;
@@ -117,13 +132,11 @@ public:
                 indices.push_back((y + 1) * grid_res);
             }
         }
-        defn = definition;
-        upload_definition();
+        if (upload_defn) upload_definition();
     }
-
+    
     void upload_definition() {
         int success;
-        char infoLog[512];
 
         unsigned int computeShader = glCreateShader(GL_COMPUTE_SHADER);
         char* computeSource = read_resource(IDR_CMPT);
@@ -135,7 +148,7 @@ public:
         glGetShaderiv(computeShader, GL_COMPILE_STATUS, &success);
         if (!success) {
             glGetShaderInfoLog(computeShader, 512, NULL, infoLog);
-            std::cerr << infoLog << std::endl;
+            valid = enabled = false;
             return;
         }
         if (computeProgram != 0) glDeleteProgram(computeProgram);
@@ -147,6 +160,7 @@ public:
         delete[] computeSource, modifiedSource;
 
         glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
+        valid = true;
     }
 
     void use_compute(float zoom, vec2 centerPos) const {
@@ -190,11 +204,6 @@ public:
     GLuint FBO, gridSSBO;
     GLuint depthMap, frameTex, posBuffer;
 
-    float quad[12] = {
-        -1.0f, -1.0f, -1.0f,  1.0f, 1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,  1.0f, 1.0f, -1.0f
-    };
-
     Trisualizer() {
         glfwInit();
 
@@ -231,9 +240,8 @@ public:
         io.Fonts->AddFontDefault();
         static const ImWchar ranges[] = {
             0x0020, 0x00FF,
-            0x2202, 0x2202, // ∂ Partial derivative symbol
-            0x2207, 0x2207, // ∇ Gradient vector symbol
-            0,
+            0x2202, 0x2202, // ∂
+            0x2207, 0x2207, // ∇
         };
         font_title = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\consola.ttf", 11.f, nullptr, ranges);
         IM_ASSERT(font_title != NULL);
@@ -255,7 +263,6 @@ public:
 
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
-        glEnable(GL_MULTISAMPLE);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_BLEND);
 #ifdef _DEBUG
@@ -345,10 +352,6 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameTex, 0);
-
-        graphs.push_back({ 0, UserDefined, "sin(x * y)", 500, vec4(0.f, 0.5f, 1.f, 1.f), gridSSBO, EBO });
-        graphs.push_back({ 1, UserDefined, "cos(x * y)", 500, vec4(1.f, 0.5f, 0.f, 1.f), gridSSBO, EBO });
-        graphs.push_back({ 2, UserDefined, "x", 500, vec4(1.f, 0.5f, 1.f, 1.f), gridSSBO, EBO });
 
         mainloop();
     }
@@ -511,19 +514,33 @@ public:
                 updateBufferSize = true;
                 sidebarWidth = swidth;
             }
-            if (ImGui::Button("+ New", ImVec2(50, 0))) {
-
+            if (ImGui::Button("+ New", ImVec2(60, 0))) {
+                int i = graphs.size();
+                graphs.push_back(Graph(graphs.size(), UserDefined, "", 500, colors[i % colors.size()], false, gridSSBO, EBO));
+                graphs[graphs.size() - 1].setup(false);
             }
             for (int i = 0; i < graphs.size(); i++) {
                 if (graphs[i].type != UserDefined) continue;
                 ImGui::BeginChild(std::format("##child{}", i).c_str(), ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+                ImVec2 vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
+                ImVec2 vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
+                ImGui::BeginDisabled(!graphs[i].valid);
                 ImGui::Checkbox(std::format("##check{}", i).c_str(), &graphs[i].enabled);
+                ImGui::EndDisabled();
                 ImGui::SameLine();
                 ImGui::ColorEdit4(std::format("##color{}", i).c_str(), value_ptr(graphs[i].color), ImGuiColorEditFlags_NoInputs);
                 ImGui::SameLine();
-                ImGui::PushItemWidth(sidebarWidth - 76);
+                ImGui::PushItemWidth((vMax.x - vMin.x) - 65);
                 if (ImGui::InputText(std::format("##defn{}", i).c_str(), graphs[i].defn.data(), 512, ImGuiInputTextFlags_EnterReturnsTrue)) {
                     graphs[i].upload_definition();
+                    if (graphs[i].valid) graphs[i].enabled = true;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("X", ImVec2(16, 0))) {
+                    graphs.erase(graphs.begin() + i);
+                }
+                else if (!graphs[i].valid) {
+                    ImGui::InputTextMultiline("##errorlist", graphs[i].infoLog, 512, ImVec2((vMax.x - vMin.x), 40), ImGuiInputTextFlags_ReadOnly);
                 }
                 ImGui::EndChild();
             }
@@ -547,7 +564,7 @@ public:
 
             double x, y;
             glfwGetCursorPos(window, &x, &y);
-            if (!ImGui::GetIO().WantCaptureMouse && x - sidebarWidth > 0. && x - sidebarWidth < (wWidth - sidebarWidth) && y > 0. && y < wHeight) {
+            if (graphs.size() > 0 && !ImGui::GetIO().WantCaptureMouse && x - sidebarWidth > 0. && x - sidebarWidth < (wWidth - sidebarWidth) && y > 0. && y < wHeight) {
                 float data[1];
                 glBindFramebuffer(GL_FRAMEBUFFER, FBO);
                 glBindTexture(GL_TEXTURE_2D, depthMap);

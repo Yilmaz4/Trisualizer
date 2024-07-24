@@ -16,6 +16,5 @@ void main() {
 	float x = zoom * ((gl_GlobalInvocationID.x - grid_res / 2.f) / grid_res) + centerPos.x;
     float y = zoom * ((gl_GlobalInvocationID.y - grid_res / 2.f) / grid_res) + centerPos.y;
 	float val = (%s) / zoom;
-	if (val > .5f || val < -.5f) val = 1.f / 0.f;
     grid[gl_GlobalInvocationID.y * grid_res + gl_GlobalInvocationID.x] = val;
 }
