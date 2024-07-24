@@ -102,8 +102,8 @@ enum GraphType {
 };
 
 class Graph {
-    GLuint computeProgram = NULL, SSBO, EBO;
 public:
+    GLuint computeProgram = NULL, SSBO, EBO;
     int idx;
     bool enabled;
     bool valid;
@@ -133,6 +133,7 @@ public:
             }
         }
         if (upload_defn) upload_definition();
+        else valid = false;
     }
     
     void upload_definition() {
@@ -191,7 +192,7 @@ public:
     float gridLineDensity = 3.f;
     bool autoRotate = false;
     bool trace = true;
-    bool tangent_plane = false;
+    bool tangent_plane = false, apply_tangent_plane = false;
     bool gradient_vector = false;
     vec2 centerPos = vec2(0.f);
 
@@ -353,6 +354,11 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameTex, 0);
 
+        graphs.push_back(Graph(0, TangentPlane, "plane_params[0]+plane_params[1]*(x-plane_params[2])+plane_params[3]*(y-plane_params[4])", 25, vec4(0.f), false, gridSSBO, EBO));
+        graphs[0].setup(true);
+        graphs.push_back(Graph(1, UserDefined, "sin(x * y)", 500, colors[0], true, gridSSBO, EBO));
+        graphs[1].setup(true);
+
         mainloop();
     }
 
@@ -378,6 +384,9 @@ private:
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
                 glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
                 app->updateBufferSize = false;
+            }
+            if (action == GLFW_PRESS && app->tangent_plane) {
+                app->apply_tangent_plane = true;
             }
         }
     }
@@ -504,6 +513,8 @@ public:
 
             ImGui::End();
 
+            ImVec2 vMin, vMax;
+
             ImGuiWindowClass window_class;
             window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
             ImGui::SetNextWindowClass(&window_class);
@@ -514,11 +525,17 @@ public:
                 updateBufferSize = true;
                 sidebarWidth = swidth;
             }
-            if (ImGui::Button("+ New", ImVec2(60, 0))) {
-                int i = graphs.size();
+            if (ImGui::Button("New", ImVec2(50, 0))) {
+                int i = graphs.size() - 1;
                 graphs.push_back(Graph(graphs.size(), UserDefined, "", 500, colors[i % colors.size()], false, gridSSBO, EBO));
                 graphs[graphs.size() - 1].setup(false);
             }
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 0.4f, 1.f));
+            int nVertices = 0;
+            for (const Graph& g : graphs) if (g.enabled) nVertices += g.grid_res * g.grid_res;
+            ImGui::Text("FPS:%.1f  Number of vertices: %d", 1.0 / timeStep, nVertices);
+            ImGui::PopStyleColor();
             for (int i = 0; i < graphs.size(); i++) {
                 if (graphs[i].type != UserDefined) continue;
                 ImGui::BeginChild(std::format("##child{}", i).c_str(), ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
@@ -539,8 +556,8 @@ public:
                 if (ImGui::Button("X", ImVec2(16, 0))) {
                     graphs.erase(graphs.begin() + i);
                 }
-                else if (!graphs[i].valid) {
-                    ImGui::InputTextMultiline("##errorlist", graphs[i].infoLog, 512, ImVec2((vMax.x - vMin.x), 40), ImGuiInputTextFlags_ReadOnly);
+                else if (!graphs[i].valid && strlen(graphs[i].infoLog)) {
+                    ImGui::InputTextMultiline("##errorlist", graphs[i].infoLog, 512, ImVec2((vMax.x - vMin.x), 0), ImGuiInputTextFlags_ReadOnly);
                 }
                 ImGui::EndChild();
             }
@@ -548,18 +565,41 @@ public:
 
             ImGui::SetNextWindowClass(&window_class);
             ImGui::Begin("Sliders", nullptr, ImGuiWindowFlags_NoMove);
-            ImGui::Text("slider");
+            vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
+            vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
             ImGui::End();
 
             ImGui::SetNextWindowClass(&window_class);
             ImGui::Begin("Tools", nullptr, ImGuiWindowFlags_NoMove);
+            vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
+            vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
             static vec2 gotoLocation;
             ImGui::InputFloat2("##goto", value_ptr(gotoLocation));
             ImGui::SameLine();
-            if (ImGui::Button("Jump", ImVec2(sidebarWidth - ImGui::GetCursorPosX() - 10, 0))) {
+            if (ImGui::Button("Jump", ImVec2(vMax.x - vMin.x - ImGui::GetCursorPosX() + 5, 0))) {
                 centerPos = gotoLocation;
                 glUniform2fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
             }
+            float buttonWidth = (vMax.x - vMin.x - 20.f) / 4.f;
+            if (tangent_plane) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
+            if (ImGui::Button("Tangent\n Plane", ImVec2(buttonWidth, 60))) {
+                tangent_plane ^= 1;
+                if (!tangent_plane) ImGui::PopStyleColor();
+            }
+            else if (tangent_plane) ImGui::PopStyleColor();
+            ImGui::SameLine();
+            if (ImGui::Button("Gradient\n Vector", ImVec2(buttonWidth, 60))) {
+                
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Min/Max", ImVec2(buttonWidth, 60))) {
+
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Integral", ImVec2(buttonWidth, 60))) {
+
+            }
+            ImGui::SameLine();
             ImGui::End();
 
             double x, y;
@@ -599,7 +639,31 @@ public:
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5.f);
                     ImGui::Text(u8"\u2202z/\u2202x=%6.3f\n\u2202z/\u2202y=%6.3f", gradvec.x, gradvec.y);
                     ImGui::End();
-                }
+
+                    GLfloat params[5] = { fragPos.z, gradvec.x, fragPos.x, gradvec.y, fragPos.y };
+                    if (tangent_plane) {
+                        glUseProgram(graphs[0].computeProgram);
+                        glUniform1fv(glGetUniformLocation(graphs[0].computeProgram, "plane_params"), 5, params);
+                        graphs[0].enabled = true;
+                        vec4 nc = colors[(graphs.size() - 1) % colors.size()];
+                        graphs[0].color = vec4(nc.r, nc.g, nc.b, 0.4f);
+                        glUseProgram(shaderProgram);
+                    }
+                    if (apply_tangent_plane) {
+                        const char* eq = "(%.6f)+(%.6f)*(x-(%.6f))+(%.6f)*(y-(%.6f))";
+                        char eqf[88]{};
+                        sprintf_s(eqf, eq, params[0], params[1], params[2], params[3], params[4]);
+                        graphs.push_back(Graph(graphs.size(), UserDefined, eqf, 25, colors[(graphs.size() - 1) % colors.size()], true, gridSSBO, EBO));
+                        graphs[graphs.size() - 1].setup(true);
+                        apply_tangent_plane = false;
+                        tangent_plane = false;
+                        graphs[0].enabled = false;
+                    }
+                } else goto mouse_not_on_graph;
+            } else {
+            mouse_not_on_graph:
+                graphs[0].enabled = false;
+                apply_tangent_plane = false;
             }
             ImGui::PopFont();
 
@@ -627,9 +691,13 @@ public:
             glViewport(sidebarWidth, 0, wWidth - sidebarWidth, wHeight);
 
             static bool yes = false;
-            for (int i = 0; i < graphs.size(); i++) {
+            for (int i = 1; i <= graphs.size(); i++) {
+                if (i == graphs.size()) i = 0;
                 const Graph& g = graphs[i];
-                if (!g.enabled) continue;
+                if (!g.enabled) {
+                    if (i == 0) break;
+                    continue;
+                }
                 g.use_compute(zoom, centerPos);
                 glDispatchCompute(g.grid_res, g.grid_res, 1);
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
@@ -638,9 +706,11 @@ public:
                 glUniform1i(glGetUniformLocation(shaderProgram, "index"), i);
                 glUniform4f(glGetUniformLocation(shaderProgram, "color"), g.color.r, g.color.g, g.color.b, g.color.w);
                 glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), g.grid_res);
+                glUniform1i(glGetUniformLocation(shaderProgram, "tangent_plane"), g.type == TangentPlane);
                 glBindVertexArray(VAO);
                 glUniform1i(glGetUniformLocation(shaderProgram, "quad"), false);
                 glDrawElements(GL_TRIANGLE_STRIP, g.indices.size(), GL_UNSIGNED_INT, 0);
+                if (i == 0) break;
             }
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, frameTex);

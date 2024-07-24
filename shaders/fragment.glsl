@@ -27,6 +27,7 @@ uniform float graph_size;
 uniform ivec2 regionSize;
 uniform ivec2 windowSize;
 uniform vec2 centerPos;
+uniform bool tangent_plane;
 
 uniform bool quad;
 layout(binding = 0) uniform sampler2D frameTex;
@@ -46,6 +47,7 @@ void main() {
 	vec3 lightDir = -normalize(lightPos + fragPos);
 	vec3 viewDir = -normalize(cameraPos + fragPos);
 	vec3 specular = vec3(pow(max(dot(normalvec, normalize(lightDir + viewDir)), 0.0), 8)) * 0.6f;
+	if (tangent_plane) specular = vec3(0.f);
 	
 	fragColor = vec4((ambient + diffuse + specular) * color.rgb, color.w);
 
@@ -73,10 +75,12 @@ void main() {
 		fragColor = vec4(fragColor.rgb * 0.4, fragColor.w);
 	}
 
-	posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 0] = gridCoord.x;
-	posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 1] = gridCoord.y;
-	posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 2] = fragPos.y * zoom / graph_size;
-	posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 3] = intBitsToFloat(index);
-	posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 4] = partialx;
-	posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 5] = partialy;
+	if (!tangent_plane) {
+		posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 0] = gridCoord.x;
+		posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 1] = gridCoord.y;
+		posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 2] = fragPos.y * zoom / graph_size;
+		posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 3] = intBitsToFloat(index);
+		posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 4] = partialx;
+		posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 5] = partialy;
+	}
 }
