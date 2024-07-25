@@ -26,21 +26,13 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "glm/gtx/string_cast.hpp"
-#include <stb/stb_image_write.h>
-#include <tinyfiledialogs/tinyfiledialogs.h>
 
 #include <iostream>
-#include <fstream>
-#include <sstream>
 #include <vector>
 #include <iomanip>
 #include <ctime>
 #include <cmath>
 #include <string>
-#include <filesystem>
-#include <functional>
-#include <algorithm>
-#include <regex>
 
 #include "resource.h"
 
@@ -697,10 +689,11 @@ public:
                     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                     float data[6];
                     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * (wHeight - y) + x - 300.f)) * sizeof(float), 6 * sizeof(float), data);
-                    vec4 fragPos = { data[0], data[1], data[2], data[3] };
+                    vec3 fragPos = { data[0], data[1], data[2] };
+                    int index = static_cast<int>(data[3]);
                     vec2 gradvec = { data[4], data[5] };
 
-                    if (static_cast<int>(fragPos.w) >= graphs.size()) {
+                    if (index >= graphs.size()) {
                         goto mouse_not_on_graph;
                     }
 
@@ -710,7 +703,7 @@ public:
                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
                         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
 
-                    vec4 c = graphs[static_cast<int>(fragPos.w)].color * 1.3f;
+                    vec4 c = graphs[index].color * 1.3f;
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 9.f);
                     ImGui::ColorEdit4("##infocolor", value_ptr(c), ImGuiColorEditFlags_NoInputs);
                     ImGui::SameLine();
