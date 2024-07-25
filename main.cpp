@@ -9,10 +9,11 @@
 #define _USE_MATH_DEFINES
 #define IMGUI_DEFINE_MATH_OPERATORS
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#define NOMINMAX
 
 #include <Windows.h>
-#include "resource.h"
+#include <objidl.h>
+#include <gdiplus.h>
+#include <shlwapi.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -41,6 +42,12 @@
 #include <algorithm>
 #include <regex>
 
+#include "resource.h"
+
+#pragma comment(lib, "Gdiplus.lib")
+#pragma comment(lib, "Shlwapi.lib")
+
+using namespace Gdiplus;
 using namespace glm;
 
 #ifdef _DEBUG
@@ -88,6 +95,35 @@ inline char* read_resource(int name) {
     memcpy(res, static_cast<const char*>(LockResource(rcData)), size);
     res[size] = '\0';
     return res;
+}
+
+HMODULE getCurrentModule() {
+    HMODULE hModule = NULL;
+    GetModuleHandleEx(
+        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+        (LPCTSTR)getCurrentModule,
+        &hModule);
+    return hModule;
+}
+
+BITMAP loadImageFromResource(int resourceID) {
+    HBITMAP hbitmap = NULL;
+    ULONG_PTR token;
+    Gdiplus::GdiplusStartupInput tmp;
+    Gdiplus::GdiplusStartup(&token, &tmp, NULL);
+    if (auto hres = FindResource(getCurrentModule(), MAKEINTRESOURCE(resourceID), RT_RCDATA))
+        if (auto size = SizeofResource(getCurrentModule(), hres))
+            if (auto data = LockResource(LoadResource(getCurrentModule(), hres)))
+                if (auto stream = SHCreateMemStream((BYTE*)data, size))
+                {
+                    Gdiplus::Bitmap bmp(stream);
+                    stream->Release();
+                    bmp.GetHBITMAP(Gdiplus::Color::Transparent, &hbitmap);
+                }
+    Gdiplus::GdiplusShutdown(token);
+    BITMAP bitmap;
+    GetObject(hbitmap, sizeof(BITMAP), &bitmap);
+    return bitmap;
 }
 
 struct Slider {
@@ -439,6 +475,17 @@ public:
         double prevTime = glfwGetTime();
         mat4 view, proj;
 
+        BITMAP tangentPlane_icon = loadImageFromResource(TNGTPLANE_ICON);
+        unsigned int tangentPlane_texture = 0;
+        glGenTextures(1, &tangentPlane_texture);
+        glBindTexture(GL_TEXTURE_2D, tangentPlane_texture);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tangentPlane_icon.bmWidth, tangentPlane_icon.bmHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)tangentPlane_icon.bmBits);
+
         do {
             glfwPollEvents();
             ImGui_ImplOpenGL3_NewFrame();
@@ -457,6 +504,8 @@ public:
             zoomSpeed -= (zoomSpeed - 1.f) * min(timeStep * 10.f, 1.0);
 
             ImGui::PushFont(font_title);
+
+            bool aboutTrisualizerPopup = false;
 
             if (ImGui::BeginMainMenuBar()) {
                 if (ImGui::BeginMenu("File")) {
@@ -481,11 +530,15 @@ public:
                 }
                 if (ImGui::BeginMenu("Help")) {
                     if (ImGui::MenuItem("About")) {
-
+                        aboutTrisualizerPopup = true;
                     }
                     ImGui::EndMenu();
                 }
                 ImGui::EndMainMenuBar();
+            }
+
+            if (aboutTrisualizerPopup) {
+                ImGui::OpenPopup("About Trisualizer");
             }
 
             static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
@@ -546,10 +599,12 @@ public:
                 updateBufferSize = true;
                 sidebarWidth = swidth;
             }
+            bool set_focus = false;
             if (ImGui::Button("New", ImVec2(50, 0))) {
                 int i = graphs.size() - 1;
                 graphs.push_back(Graph(graphs.size(), UserDefined, "", 500, colors[i % colors.size()], false, gridSSBO, EBO));
                 graphs[graphs.size() - 1].setup(false);
+                set_focus = true;
             }
             ImGui::SameLine();
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 0.4f, 1.f));
@@ -567,6 +622,9 @@ public:
                 ImGui::ColorEdit4(std::format("##color{}", i).c_str(), value_ptr(graphs[i].color), ImGuiColorEditFlags_NoInputs);
                 ImGui::SameLine();
                 ImGui::PushItemWidth((vMax.x - vMin.x) - 65);
+                if (i == graphs.size() - 1 && set_focus) {
+                    ImGui::SetKeyboardFocusHere(0);
+                }
                 if (ImGui::InputText(std::format("##defn{}", i).c_str(), graphs[i].defn.data(), 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
                     graphs[i].upload_definition();
                     if (graphs[i].valid) graphs[i].enabled = true;
@@ -603,31 +661,31 @@ public:
                 centerPos = gotoLocation;
                 glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
             }
-            float buttonWidth = (vMax.x - vMin.x - 20.f) / 4.f;
+            float buttonWidth = (vMax.x - vMin.x - 61.f) / 4.f;
             if (tangent_plane) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
-            if (ImGui::Button("Tangent\n Plane", ImVec2(buttonWidth, 60))) {
+            if (ImGui::ImageButton("tangent_plane", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 tangent_plane ^= 1;
                 if (!tangent_plane) ImGui::PopStyleColor();
             }
             else if (tangent_plane) ImGui::PopStyleColor();
             ImGui::SameLine();
-            if (ImGui::Button("Gradient\n Vector", ImVec2(buttonWidth, 60))) {
+            if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 
             }
             ImGui::SameLine();
-            if (ImGui::Button("Min/Max", ImVec2(buttonWidth, 60))) {
+            if (ImGui::ImageButton("min_max", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
 
             }
             ImGui::SameLine();
-            if (ImGui::Button("Integral", ImVec2(buttonWidth, 60))) {
+            if (ImGui::ImageButton("integral", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
 
             }
-            ImGui::SameLine();
+
             ImGui::End();
 
             double x, y;
             glfwGetCursorPos(window, &x, &y);
-            if (graphs.size() > 0 && !ImGui::GetIO().WantCaptureMouse && x - sidebarWidth > 0. && x - sidebarWidth < (wWidth - sidebarWidth) && y > 0. && y < wHeight) {
+            if (graphs.size() > 0 && x - sidebarWidth > 0. && x - sidebarWidth < (wWidth - sidebarWidth) && y > 0. && y < wHeight) {
                 float data[1];
                 glBindFramebuffer(GL_FRAMEBUFFER, FBO);
                 glBindTexture(GL_TEXTURE_2D, depthMap);
@@ -635,18 +693,22 @@ public:
                 glBindFramebuffer(GL_FRAMEBUFFER, NULL);
 
                 if (data[0] != 1.f) {
+                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
+                    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+                    float data[6];
+                    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * (wHeight - y) + x - 300.f)) * sizeof(float), 6 * sizeof(float), data);
+                    vec4 fragPos = { data[0], data[1], data[2], data[3] };
+                    vec2 gradvec = { data[4], data[5] };
+
+                    if (static_cast<int>(fragPos.w) >= graphs.size()) {
+                        goto mouse_not_on_graph;
+                    }
+
                     ImGui::SetNextWindowPos(ImVec2(x + 10.f, y));
                     ImGui::Begin("info", nullptr,
                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
                         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
-                        
-                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
-                    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-                    float data[6];
-                    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * (wHeight - y) + (x - sidebarWidth))) * sizeof(float), 6 * sizeof(float), data);
-                    vec4 fragPos = { data[0], data[1], data[2], data[3] };
-                    vec2 gradvec = { data[4], data[5] };
 
                     vec4 c = graphs[static_cast<int>(fragPos.w)].color * 1.3f;
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 9.f);
@@ -690,6 +752,20 @@ public:
                 apply_tangent_plane = false;
                 doubleClickPressed = false;
             }
+
+            if (ImGui::BeginPopupModal("About Trisualizer", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+                ImGui::Text("Version v" VERSION " (Build date: " __DATE__ " " __TIME__ ")\n\nTrisualizer is a two-variable function grapher");
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(150, 150, 150, 255));
+                ImGui::Text(u8"Copyright © 2017-2024 Yilmaz Alpaslan");
+                ImGui::PopStyleColor();
+                if (ImGui::Button("Open GitHub Page"))
+                    ShellExecuteW(0, 0, L"https://github.com/Yilmaz4/Trisualizer", 0, 0, SW_SHOW);
+                ImGui::SameLine();
+                if (ImGui::Button("Close"))
+                    ImGui::CloseCurrentPopup();
+                ImGui::EndPopup();
+            }
+
             ImGui::PopFont();
 
             if (autoRotate)
