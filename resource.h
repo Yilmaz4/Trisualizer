@@ -3,3 +3,8 @@
 #define IDR_VRTX 101
 #define IDR_FRAG 102
 #define IDR_CMPT 103
+
+#define TNGTPLANE_ICON 201
+#define GRADVEC_ICON 202
+#define MINMAX_ICON 203
+#define INTEGRAL_ICON 204
