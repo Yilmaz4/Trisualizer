@@ -188,6 +188,7 @@ public:
     std::vector<Slider> sliders;
 
     float theta = 45, phi = 45;
+    float zoomSpeed = 1.f;
     float zoom = 8.f;
     float graph_size = 1.3f;
     bool gridLines = true;
@@ -412,8 +413,7 @@ private:
             glUniform1f(glGetUniformLocation(app->shaderProgram, "graph_size"), app->graph_size);
         }
         else {
-            app->zoom *= pow(0.9, y);
-            glUniform1f(glGetUniformLocation(app->shaderProgram, "zoom"), app->zoom);
+            app->zoomSpeed = pow(0.9f, y);
         }
     }
 
@@ -451,6 +451,10 @@ public:
             double currentTime = glfwGetTime();
             double timeStep = currentTime - prevTime;
             prevTime = currentTime;
+
+            zoom *= zoomSpeed;
+            glUniform1f(glGetUniformLocation(shaderProgram, "zoom"), zoom);
+            zoomSpeed -= (zoomSpeed - 1.f) * min(timeStep * 10.f, 1.0);
 
             ImGui::PushFont(font_title);
 
@@ -549,9 +553,7 @@ public:
             }
             ImGui::SameLine();
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 0.4f, 1.f));
-            int nVertices = 0;
-            for (const Graph& g : graphs) if (g.enabled) nVertices += g.grid_res * g.grid_res;
-            ImGui::Text("FPS:%.1f  Number of vertices: %d", 1.0 / timeStep, nVertices);
+            ImGui::Text("FPS: %.1f", 1.0 / timeStep);
             ImGui::PopStyleColor();
             for (int i = 0; i < graphs.size(); i++) {
                 if (graphs[i].type != UserDefined) continue;
@@ -571,7 +573,7 @@ public:
                 }
                 ImGui::SameLine();
                 int logLength = strlen(graphs[i].infoLog);
-                if (ImGui::Button("X", ImVec2(16, 0))) {
+                if (ImGui::Button("x", ImVec2(16, 0))) {
                     graphs.erase(graphs.begin() + i);
                 }
                 else if (!graphs[i].valid && logLength > 0) {
