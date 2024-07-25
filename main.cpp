@@ -5,6 +5,9 @@
 #endif
 
 #pragma warning(disable: 26495)
+#pragma warning(disable: 6387)
+#pragma warning(disable: 4018)
+#pragma warning(disable: 4244)
 
 #define _USE_MATH_DEFINES
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -132,7 +135,7 @@ enum GraphType {
 class Graph {
 public:
     GLuint computeProgram = NULL, SSBO, EBO;
-    int idx;
+    size_t idx;
     bool enabled;
     bool valid;
     char* infoLog = new char[512]{};
@@ -143,7 +146,7 @@ public:
     std::string defn = std::string(256, '\0');
     vec4 color;
 
-    Graph(int idx, int type, std::string definition, int res, vec4 color, bool enabled, GLuint SSBO, GLuint EBO)
+    Graph(size_t idx, int type, std::string definition, int res, vec4 color, bool enabled, GLuint SSBO, GLuint EBO)
         : type(type), idx(idx), grid_res(res), color(color), enabled(enabled), SSBO(SSBO), EBO(EBO) {
         defn = definition;
     }
@@ -200,7 +203,7 @@ public:
         glUniform1i(glGetUniformLocation(computeProgram, "grid_res"), grid_res);
         glUniform3fv(glGetUniformLocation(computeProgram, "centerPos"), 1, value_ptr(centerPos));
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, pow(grid_res, 2) * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, pow(grid_res, 2) * (int)sizeof(float), nullptr, GL_DYNAMIC_DRAW);
     }
     void use_shader() const {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
@@ -437,7 +440,7 @@ private:
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
         if (ImGui::GetIO().WantCaptureMouse) return;
         if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-            app->graph_size *= pow(0.9, -y);
+            app->graph_size *= pow(0.9f, -y);
             glUniform1f(glGetUniformLocation(app->shaderProgram, "graph_size"), app->graph_size);
         }
         else {
@@ -593,7 +596,7 @@ public:
             }
             bool set_focus = false;
             if (ImGui::Button("New", ImVec2(50, 0))) {
-                int i = graphs.size() - 1;
+                size_t i = graphs.size() - 1;
                 graphs.push_back(Graph(graphs.size(), UserDefined, "", 500, colors[i % colors.size()], false, gridSSBO, EBO));
                 graphs[graphs.size() - 1].setup(false);
                 set_focus = true;
@@ -622,7 +625,7 @@ public:
                     if (graphs[i].valid) graphs[i].enabled = true;
                 }
                 ImGui::SameLine();
-                int logLength = strlen(graphs[i].infoLog);
+                size_t logLength = strlen(graphs[i].infoLog);
                 if (ImGui::Button("x", ImVec2(16, 0))) {
                     graphs.erase(graphs.begin() + i);
                 }
@@ -802,7 +805,7 @@ public:
                 glUniform1i(glGetUniformLocation(shaderProgram, "tangent_plane"), g.type == TangentPlane);
                 glBindVertexArray(VAO);
                 glUniform1i(glGetUniformLocation(shaderProgram, "quad"), false);
-                glDrawElements(GL_TRIANGLE_STRIP, g.indices.size(), GL_UNSIGNED_INT, 0);
+                glDrawElements(GL_TRIANGLE_STRIP, (GLsizei)g.indices.size(), GL_UNSIGNED_INT, 0);
                 if (i == 0) break;
             }
             glActiveTexture(GL_TEXTURE0);
