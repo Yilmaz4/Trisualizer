@@ -57,15 +57,11 @@ void main() {
 	if (!gl_FrontFacing) {
 		normalvec *= -1;
 	}
-	vec3 ambient = vec3(ambientStrength);
 	vec3 diffuse = vec3(max(dot(normalvec, normalize(fragPos - lightPos)), 0.f));
-
-	vec3 lightDir = -normalize(lightPos + fragPos);
-	vec3 viewDir = -normalize(cameraPos + fragPos);
-	vec3 specular = vec3(pow(max(dot(normalvec, normalize(lightDir + viewDir)), 0.0), 8)) * 0.6f;
+	vec3 specular = vec3(pow(max(dot(normalvec, normalize(-normalize(lightPos + fragPos) - normalize(cameraPos + fragPos))), 0.0), 8)) * 0.6f;
 
 	if (tangent_plane) fragColor = color;
-	else fragColor = vec4((ambient + diffuse + specular) * color.rgb, color.w);
+	else fragColor = vec4((ambientStrength + diffuse + specular) * color.rgb, color.w);
 
 	float partialx = 1.f / tan(acos(dot(vec3(1,0,0), normalize(dot(normalvec, vec3(1,0,0)) * vec3(1,0,0) + dot(normalvec, vec3(0,1,0)) * vec3(0,1,0)))));
 	float partialy = 1.f / tan(acos(dot(vec3(0,0,1), normalize(dot(normalvec, vec3(0,0,1)) * vec3(0,0,1) + dot(normalvec, vec3(0,1,0)) * vec3(0,1,0)))));
