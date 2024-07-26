@@ -219,6 +219,7 @@ public:
     std::vector<Slider> sliders;
 
     float theta = 45, phi = 45;
+    double zoomTimestamp = 0.f;
     float zoomSpeed = 1.f;
     float zoom = 8.f;
     float graph_size = 1.3f;
@@ -234,11 +235,13 @@ public:
     bool updateBufferSize = false;
     double lastMousePress = 0.0;
     bool doubleClickPressed = false;
+    int ssaa_factor = 3.f;
+    bool ssaa = true;
 
     GLuint shaderProgram;
     GLuint VAO, VBO, EBO;
     GLuint FBO, gridSSBO;
-    GLuint depthMap, frameTex, posBuffer;
+    GLuint depthMap, frameTex, posBuffer, kernelBuffer;
 
     Trisualizer() {
         glfwInit();
@@ -292,7 +295,7 @@ public:
         ImGui_ImplGlfw_InitForOpenGL(window, true);
         ImGui_ImplOpenGL3_Init("#version 460");
 
-        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
             std::cerr << "Failed to create OpenGL window" << std::endl;
             return;
         }
@@ -345,7 +348,7 @@ public:
 
         glGenBuffers(1, &posBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * 600 * 600 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * 600 * ssaa_factor * 600 * ssaa_factor * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, posBuffer);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "posbuffer"), 1);
 
@@ -353,9 +356,36 @@ public:
         glUniform1f(glGetUniformLocation(shaderProgram, "graph_size"), graph_size);
         glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
         glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLineDensity);
-        glUniform2i(glGetUniformLocation(shaderProgram, "windowSize"), 1000, 600);
         glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), 0.f, 6.f, 0.f);
         glUniform3f(glGetUniformLocation(shaderProgram, "centerPos"), 0.f, 0.f, 0.f);
+
+        const float radius = ssaa_factor;
+        auto gaussian = [](float x, float mu, float sigma) -> float {
+            const float a = (x - mu) / sigma;
+            return std::exp(-0.5 * a * a);
+        };
+        const float sigma = radius / 2.f;
+        int rowLength = 2 * radius + 1;
+        std::vector<float> kernel(rowLength * rowLength);
+        float sum = 0;
+        for (uint64_t row = 0; row < rowLength; row++) {
+            for (uint64_t col = 0; col < rowLength; col++) {
+                float x = gaussian(row, radius, sigma) * gaussian(col, radius, sigma);
+                kernel[row * rowLength + col] = x;
+                sum += x;
+            }
+        }
+        for (uint64_t row = 0; row < rowLength; row++) {
+            for (uint64_t col = 0; col < rowLength; col++) {
+                kernel[row * rowLength + col] /= sum;
+            }
+        }
+        glGenBuffers(1, &kernelBuffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, kernelBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, kernelBuffer);
+        glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "kernel"), 2);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, kernel.size() * sizeof(float), kernel.data(), GL_STATIC_DRAW);
+        glUniform1i(glGetUniformLocation(shaderProgram, "radius"), radius);
 
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
@@ -373,7 +403,7 @@ public:
 
         glGenTextures(1, &depthMap);
         glBindTexture(GL_TEXTURE_2D, depthMap);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 1000, 600, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 1000 * ssaa_factor, 600 * ssaa_factor, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -382,7 +412,7 @@ public:
 
         glGenTextures(1, &frameTex);
         glBindTexture(GL_TEXTURE_2D, frameTex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 1000, 600, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 1000 * ssaa_factor, 600 * ssaa_factor, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -401,12 +431,11 @@ private:
     static inline void on_windowResize(GLFWwindow* window, int width, int height) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
         glBindTexture(GL_TEXTURE_2D, app->depthMap);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width * app->ssaa_factor, height * app->ssaa_factor, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glBindTexture(GL_TEXTURE_2D, app->frameTex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width * app->ssaa_factor, height * app->ssaa_factor, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
-        glUniform2i(glGetUniformLocation(app->shaderProgram, "windowSize"), width, height);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * app->ssaa_factor * height * app->ssaa_factor * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
     }
 
     static inline void on_mouseButton(GLFWwindow* window, int button, int action, int mods) {
@@ -419,7 +448,7 @@ private:
                     int width, height;
                     glfwGetWindowSize(window, &width, &height);
                     glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
-                    glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+                    glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * app->ssaa_factor * height * app->ssaa_factor * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
                     app->updateBufferSize = false;
                 }
                 break;
@@ -445,6 +474,7 @@ private:
         }
         else {
             app->zoomSpeed = pow(0.9f, y);
+            app->zoomTimestamp = glfwGetTime();
         }
     }
 
@@ -497,6 +527,7 @@ public:
             zoom *= zoomSpeed;
             glUniform1f(glGetUniformLocation(shaderProgram, "zoom"), zoom);
             zoomSpeed -= (zoomSpeed - 1.f) * min(timeStep * 10.f, 1.0);
+            if (currentTime - zoomTimestamp > 1.0) zoomSpeed = 1.f; 
 
             ImGui::PushFont(font_title);
 
@@ -521,6 +552,13 @@ public:
                         glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLines ? gridLineDensity : 0.f);
                     }
                     ImGui::MenuItem("Auto-rotate", nullptr, &autoRotate);
+                    ImGui::SeparatorText("Graphics");
+                    if (ImGui::MenuItem("Anti-aliasing", nullptr, &ssaa)) {
+                        if (ssaa) ssaa_factor = 3.f;
+                        else ssaa_factor = 1.f;
+                        on_windowResize(window, wWidth, wHeight);
+                        glUniform1i(glGetUniformLocation(shaderProgram, "radius"), ssaa_factor);
+                    }
                     ImGui::EndMenu();
                 }
                 if (ImGui::BeginMenu("Help")) {
@@ -663,18 +701,26 @@ public:
                 if (!tangent_plane) ImGui::PopStyleColor();
             }
             else if (tangent_plane) ImGui::PopStyleColor();
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                ImGui::SetTooltip("Tangent Plane", ImGui::GetStyle().HoverDelayNormal);
             ImGui::SameLine();
             if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 
             }
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                ImGui::SetTooltip("Gradient Vector", ImGui::GetStyle().HoverDelayNormal);
             ImGui::SameLine();
             if (ImGui::ImageButton("min_max", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
 
             }
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                ImGui::SetTooltip("Local Minima/Maxima", ImGui::GetStyle().HoverDelayNormal);
             ImGui::SameLine();
             if (ImGui::ImageButton("integral", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
 
             }
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                ImGui::SetTooltip("Double Integral", ImGui::GetStyle().HoverDelayNormal);
 
             ImGui::End();
 
@@ -684,14 +730,14 @@ public:
                 float data[1];
                 glBindFramebuffer(GL_FRAMEBUFFER, FBO);
                 glBindTexture(GL_TEXTURE_2D, depthMap);
-                glReadPixels(x, wHeight - y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, data);
+                glReadPixels(x * ssaa_factor, (wHeight - y) * ssaa_factor, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, data);
                 glBindFramebuffer(GL_FRAMEBUFFER, NULL);
 
                 if (data[0] != 1.f) {
                     glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
                     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                     float data[6];
-                    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * (wHeight - y) + x - 300.f)) * sizeof(float), 6 * sizeof(float), data);
+                    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * ssaa_factor * (wHeight - y) * ssaa_factor + x * ssaa_factor - 300.f * ssaa_factor)) * sizeof(float), 6 * sizeof(float), data);
                     vec3 fragPos = { data[0], data[1], data[2] };
                     int index = static_cast<int>(data[3]);
                     vec2 gradvec = { data[4], data[5] };
@@ -699,7 +745,6 @@ public:
                     if (index >= graphs.size()) {
                         goto mouse_not_on_graph;
                     }
-
                     ImGui::SetNextWindowPos(ImVec2(x + 10.f, y));
                     ImGui::Begin("info", nullptr,
                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
@@ -762,19 +807,18 @@ public:
                 ImGui::EndPopup();
             }
 
+            //ImGui::ShowDemoWindow();
+
             ImGui::PopFont();
 
             if (autoRotate)
                 phi += timeStep * 5.f;
 
-            int h, w;
-            glfwGetWindowSize(window, &w, &h);
             auto cameraPos = vec3(sin(glm::radians(theta)) * cos(glm::radians(phi)), cos(glm::radians(theta)), sin(glm::radians(theta)) * sin(glm::radians(phi)));
             view = lookAt(cameraPos, vec3(0.f), { 0.f, 1.f, 0.f });
             proj = ortho(-1.f, 1.f, -(float)wHeight / (float)(wWidth - sidebarWidth), (float)wHeight / (float)(wWidth - sidebarWidth), -10.f, 10.f);
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "vpmat"), 1, GL_FALSE, value_ptr(proj * view));
             glUniform3fv(glGetUniformLocation(shaderProgram, "cameraPos"), 1, value_ptr(cameraPos));
-            glUniform2i(glGetUniformLocation(shaderProgram, "regionSize"), wWidth - sidebarWidth, wHeight);
 
             ImGui::Render();
 
@@ -784,9 +828,10 @@ public:
             glBindFramebuffer(GL_FRAMEBUFFER, FBO);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             
-            glViewport(sidebarWidth, 0, wWidth - sidebarWidth, wHeight);
+            glViewport(sidebarWidth * ssaa_factor, 0, (wWidth - sidebarWidth) * ssaa_factor, wHeight * ssaa_factor);
+            glUniform2i(glGetUniformLocation(shaderProgram, "regionSize"), wWidth * ssaa_factor - sidebarWidth * ssaa_factor, wHeight * ssaa_factor);
+            glUniform2i(glGetUniformLocation(shaderProgram, "windowSize"), wWidth * ssaa_factor, wHeight * ssaa_factor);
 
-            static bool yes = false;
             for (int i = 1; i <= graphs.size(); i++) {
                 if (i == graphs.size()) i = 0;
                 const Graph& g = graphs[i];
@@ -808,6 +853,9 @@ public:
                 glDrawElements(GL_TRIANGLE_STRIP, (GLsizei)g.indices.size(), GL_UNSIGNED_INT, 0);
                 if (i == 0) break;
             }
+
+            glViewport(sidebarWidth, 0, wWidth - sidebarWidth, wHeight);
+
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, frameTex);
             glBindFramebuffer(GL_FRAMEBUFFER, NULL);

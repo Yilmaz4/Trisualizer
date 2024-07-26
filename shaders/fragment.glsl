@@ -10,6 +10,10 @@ layout(std430, binding = 0) volatile buffer gridbuffer {
 layout(std430, binding = 1) volatile buffer posbuffer {
 	float posbuf[];
 };
+layout(std430, binding = 2) readonly buffer kernel {
+    float weights[];
+};
+uniform int radius;
 
 in vec3 normal;
 in vec3 fragPos;
@@ -34,7 +38,19 @@ layout(binding = 0) uniform sampler2D frameTex;
 
 void main() {
 	if (quad) {
-		fragColor = texture(frameTex, gl_FragCoord.xy / windowSize);
+		if (radius > 1) {
+			vec3 blurredColor = vec3(0.0);
+			int kernelSize = 2 * radius + 1;
+			for (int i = -radius; i <= radius; i++) {
+				for (int j = -radius; j <= radius; j++) {
+					vec3 c = texture(frameTex, (gl_FragCoord.xy * radius + vec2(i, j)) / windowSize).rgb;
+					blurredColor += c * weights[(i + radius) * kernelSize + (j + radius)];
+				}
+			}
+			fragColor = vec4(blurredColor, 1.f);
+		} else {
+			fragColor = vec4(texture(frameTex, gl_FragCoord.xy / windowSize).rgb, 1.f);
+		}
 		return;
 	}
 	vec3 normalvec = normal;
