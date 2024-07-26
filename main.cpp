@@ -348,7 +348,7 @@ public:
 
         glGenBuffers(1, &posBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * 600 * ssaa_factor * 600 * ssaa_factor * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * 600 * 600 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, posBuffer);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "posbuffer"), 1);
 
@@ -435,7 +435,7 @@ private:
         glBindTexture(GL_TEXTURE_2D, app->frameTex);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width * app->ssaa_factor, height * app->ssaa_factor, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * app->ssaa_factor * height * app->ssaa_factor * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
     }
 
     static inline void on_mouseButton(GLFWwindow* window, int button, int action, int mods) {
@@ -448,7 +448,7 @@ private:
                     int width, height;
                     glfwGetWindowSize(window, &width, &height);
                     glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
-                    glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * app->ssaa_factor * height * app->ssaa_factor * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+                    glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
                     app->updateBufferSize = false;
                 }
                 break;
@@ -737,7 +737,7 @@ public:
                     glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
                     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                     float data[6];
-                    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * ssaa_factor * (wHeight - y) * ssaa_factor + x * ssaa_factor - 300.f * ssaa_factor)) * sizeof(float), 6 * sizeof(float), data);
+                    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * (wHeight - y) + x)) * sizeof(float), 6 * sizeof(float), data);
                     vec3 fragPos = { data[0], data[1], data[2] };
                     int index = static_cast<int>(data[3]);
                     vec2 gradvec = { data[4], data[5] };

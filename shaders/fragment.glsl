@@ -87,12 +87,15 @@ void main() {
 		fragColor = vec4(fragColor.rgb * 0.4, fragColor.w);
 	}
 
-	if (!tangent_plane) {
-		posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 0] = gridCoord.x;
-		posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 1] = gridCoord.y;
-		posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 2] = fragPos.y * zoom / graph_size;
-		posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 3] = float(index);
-		posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 4] = partialx;
-		posbuf[6 * int(regionSize.y * gl_FragCoord.y + gl_FragCoord.x) + 5] = partialy;
+	if (!tangent_plane && int(gl_FragCoord.x) % radius == 0 && int(gl_FragCoord.y) % radius == 0) {
+		float x = int(gl_FragCoord.x / radius) - 600;
+		float y = int(gl_FragCoord.y / radius);
+		float h = int(regionSize.y / radius);
+		posbuf[6 * int(h * y + x) + 0] = gridCoord.x;
+		posbuf[6 * int(h * y + x) + 1] = gridCoord.y;
+		posbuf[6 * int(h * y + x) + 2] = fragPos.y * zoom / graph_size;
+		posbuf[6 * int(h * y + x) + 3] = float(index);
+		posbuf[6 * int(h * y + x) + 4] = partialx;
+		posbuf[6 * int(h * y + x) + 5] = partialy;
 	}
 }
