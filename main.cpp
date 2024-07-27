@@ -138,6 +138,7 @@ public:
     size_t idx;
     bool enabled;
     bool valid;
+    bool advanced_view = false;
     char* infoLog = new char[512]{};
     int type;
     int grid_res;
@@ -279,8 +280,11 @@ public:
         io.Fonts->AddFontDefault();
         static const ImWchar ranges[] = {
             0x0020, 0x00FF,
+            0x02C4, 0x02C4,
+            0x02C5, 0x02C5,
             0x2202, 0x2202, // ∂
             0x2207, 0x2207, // ∇
+            
         };
         font_title = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\consola.ttf", 11.f, nullptr, ranges);
         IM_ASSERT(font_title != NULL);
@@ -511,6 +515,29 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tangentPlane_icon.bmWidth, tangentPlane_icon.bmHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)tangentPlane_icon.bmBits);
 
+        BITMAP gradVec_icon = loadImageFromResource(GRADVEC_ICON);
+        unsigned int gradVec_texture = 0;
+        glGenTextures(1, &gradVec_texture);
+        glBindTexture(GL_TEXTURE_2D, gradVec_texture);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, gradVec_icon.bmWidth, gradVec_icon.bmHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)gradVec_icon.bmBits);
+
+        
+        BITMAP integral_icon = loadImageFromResource(INTEGRAL_ICON);
+        unsigned int integral_texture = 0;
+        glGenTextures(1, &integral_texture);
+        glBindTexture(GL_TEXTURE_2D, integral_texture);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, integral_icon.bmWidth, integral_icon.bmHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)integral_icon.bmBits);
+
         do {
             glfwPollEvents();
             ImGui_ImplOpenGL3_NewFrame();
@@ -654,13 +681,17 @@ public:
                 ImGui::SameLine();
                 ImGui::ColorEdit4(std::format("##color{}", i).c_str(), value_ptr(graphs[i].color), ImGuiColorEditFlags_NoInputs);
                 ImGui::SameLine();
-                ImGui::PushItemWidth((vMax.x - vMin.x) - 65);
+                ImGui::PushItemWidth((vMax.x - vMin.x) - 85);
                 if (i == graphs.size() - 1 && set_focus) {
                     ImGui::SetKeyboardFocusHere(0);
                 }
                 if (ImGui::InputText(std::format("##defn{}", i).c_str(), graphs[i].defn.data(), 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
                     graphs[i].upload_definition();
                     if (graphs[i].valid) graphs[i].enabled = true;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button(graphs[i].advanced_view ? u8"˄" : u8"˅", ImVec2(16, 0))) {
+                    graphs[i].advanced_view ^= 1;
                 }
                 ImGui::SameLine();
                 size_t logLength = strlen(graphs[i].infoLog);
@@ -695,20 +726,28 @@ public:
                 glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
             }
             float buttonWidth = (vMax.x - vMin.x - 61.f) / 4.f;
+
+            if (gradient_vector) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
+            if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)gradVec_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+                gradient_vector ^= 1;
+                tangent_plane = false;
+                if (!gradient_vector) ImGui::PopStyleColor();
+            }
+            else if (gradient_vector) ImGui::PopStyleColor();
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                ImGui::SetTooltip("Gradient Vector", ImGui::GetStyle().HoverDelayNormal);
+
+            ImGui::SameLine();
             if (tangent_plane) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
             if (ImGui::ImageButton("tangent_plane", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 tangent_plane ^= 1;
+                gradient_vector = false;
                 if (!tangent_plane) ImGui::PopStyleColor();
             }
             else if (tangent_plane) ImGui::PopStyleColor();
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                 ImGui::SetTooltip("Tangent Plane", ImGui::GetStyle().HoverDelayNormal);
-            ImGui::SameLine();
-            if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
-                
-            }
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                ImGui::SetTooltip("Gradient Vector", ImGui::GetStyle().HoverDelayNormal);
+
             ImGui::SameLine();
             if (ImGui::ImageButton("min_max", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
 
@@ -716,7 +755,7 @@ public:
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                 ImGui::SetTooltip("Local Minima/Maxima", ImGui::GetStyle().HoverDelayNormal);
             ImGui::SameLine();
-            if (ImGui::ImageButton("integral", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+            if (ImGui::ImageButton("integral", (void*)(intptr_t)integral_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
 
             }
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
@@ -760,6 +799,7 @@ public:
                     ImGui::SameLine();
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5.f);
                     ImGui::Text(u8"\u2202z/\u2202x=%6.3f\n\u2202z/\u2202y=%6.3f", gradvec.x, gradvec.y);
+                    ImVec2 prevWindowSize = ImGui::GetWindowSize();
                     ImGui::End();
 
                     GLfloat params[5] = { fragPos.z, gradvec.x, fragPos.x, gradvec.y, fragPos.y };
@@ -770,6 +810,13 @@ public:
                         vec4 nc = colors[(graphs.size() - 1) % colors.size()];
                         graphs[0].color = vec4(nc.r, nc.g, nc.b, 0.4f);
                         glUseProgram(shaderProgram);
+                        ImGui::SetNextWindowPos(ImVec2(x + 10.f, y + prevWindowSize.y + 3.f));
+                        ImGui::Begin("tooltip", nullptr,
+                            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+                            ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
+                            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
+                        ImGui::Text("Left-click to save tangent plane");
+                        ImGui::End();
                     }
                     if (apply_tangent_plane) {
                         const char* eq = "(%.6f)+(%.6f)*(x-(%.6f))+(%.6f)*(y-(%.6f))";
