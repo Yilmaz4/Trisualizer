@@ -54,9 +54,7 @@ void main() {
 		return;
 	}
 	vec3 normalvec = normal;
-	if (!gl_FrontFacing) {
-		normalvec *= -1;
-	}
+	normalvec *= int(gl_FrontFacing) * 2 - 1;
 	vec3 diffuse = vec3(max(dot(normalvec, normalize(fragPos - lightPos)), 0.f));
 	vec3 specular = vec3(pow(max(dot(normalvec, normalize(-normalize(lightPos + fragPos) - normalize(cameraPos + fragPos))), 0.0), 8)) * 0.6f;
 
@@ -67,24 +65,26 @@ void main() {
 	float partialy = 1.f / tan(acos(dot(vec3(0,0,1), normalize(dot(normalvec, vec3(0,0,1)) * vec3(0,0,1) + dot(normalvec, vec3(0,1,0)) * vec3(0,1,0)))));
 	vec2 gradient = vec2(partialx, partialy);
 
-	float Rx = gridLineDensity / 100.f;
-	float rx = partialx * Rx;
-	float hx = sqrt(Rx * Rx + rx * rx);
-	float hxp = hx - Rx;
-	float rxp = rx * hxp / hx;
-	float Rxp = sqrt(hxp * hxp - rxp * rxp);
+	if (gridLineDensity != 0.f) {
+		float Rx = gridLineDensity / 100.f;
+		float rx = partialx * Rx;
+		float hx = sqrt(Rx * Rx + rx * rx);
+		float hxp = hx - Rx;
+		float rxp = rx * hxp / hx;
+		float Rxp = sqrt(hxp * hxp - rxp * rxp);
 
-	float Ry = gridLineDensity / 100.f;
-	float ry = partialy * Ry;
-	float hy = sqrt(Ry * Ry + ry * ry);
-	float hyp = hy - Ry;
-	float ryp = ry * hyp / hy;
-	float Ryp = sqrt(hyp * hyp - ryp * ryp);
+		float Ry = gridLineDensity / 100.f;
+		float ry = partialy * Ry;
+		float hy = sqrt(Ry * Ry + ry * ry);
+		float hyp = hy - Ry;
+		float ryp = ry * hyp / hy;
+		float Ryp = sqrt(hyp * hyp - ryp * ryp);
 
-	float gridLines = pow(2.f, floor(log2(zoom)) - gridLineDensity);
-	if (abs(gridCoord.x / gridLines - floor(gridCoord.x / gridLines)) < Rx - Rxp ||
-		abs(gridCoord.y / gridLines - floor(gridCoord.y / gridLines)) < Ry - Ryp) {
-		fragColor = vec4(fragColor.rgb * 0.4, fragColor.w);
+		float gridLines = pow(2.f, floor(log2(zoom)) - gridLineDensity);
+		if (abs(gridCoord.x / gridLines - floor(gridCoord.x / gridLines)) < Rx - Rxp ||
+			abs(gridCoord.y / gridLines - floor(gridCoord.y / gridLines)) < Ry - Ryp) {
+			fragColor = vec4(fragColor.rgb * 0.4, fragColor.w);
+		}
 	}
 
 	if (!tangent_plane && int(gl_FragCoord.x) % radius == 0 && int(gl_FragCoord.y) % radius == 0) {
