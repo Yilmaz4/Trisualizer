@@ -88,7 +88,7 @@ void main() {
 	}
 
 	if (!tangent_plane && int(gl_FragCoord.x) % radius == 0 && int(gl_FragCoord.y) % radius == 0) {
-		float x = int(gl_FragCoord.x / radius) - 600;
+		float x = int(gl_FragCoord.x / radius) - regionSize.y / radius; // idk why i have to subtract regionSize.y, it just works
 		float y = int(gl_FragCoord.y / radius);
 		float h = int(regionSize.y / radius);
 		posbuf[6 * int(h * y + x) + 0] = gridCoord.x;
