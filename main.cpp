@@ -36,6 +36,7 @@
 #include <ctime>
 #include <cmath>
 #include <string>
+#include <regex>
 
 #include "resource.h"
 
@@ -124,7 +125,12 @@ BITMAP loadImageFromResource(int resourceID) {
 struct Slider {
     float value;
     float min, max;
-    char symbol;
+    char symbol[32];
+    bool config = true;
+
+    Slider(float defval, float min, float max, const char* sym) : value(defval), min(min), max(max) {
+        strcpy_s(symbol, sym);
+    }
 };
 
 enum GraphType {
@@ -136,23 +142,25 @@ class Graph {
 public:
     GLuint computeProgram = NULL, SSBO, EBO;
     size_t idx;
-    bool enabled;
-    bool valid;
+    bool enabled = false;
+    bool valid = false;
     bool advanced_view = false;
+    bool grid_lines = true;
     char* infoLog = new char[512]{};
     int type;
     int grid_res;
     std::vector<unsigned int> indices;
 
-    std::string defn = std::string(256, '\0');
+    char defn[256]{};
     vec4 color;
 
-    Graph(size_t idx, int type, std::string definition, int res, vec4 color, bool enabled, GLuint SSBO, GLuint EBO)
+    Graph(size_t idx, int type, const char* definition, int res, vec4 color, bool enabled, GLuint SSBO, GLuint EBO)
         : type(type), idx(idx), grid_res(res), color(color), enabled(enabled), SSBO(SSBO), EBO(EBO) {
-        defn = definition;
+        strcpy_s(defn, definition);
     }
 
-    void setup(bool upload_defn = true) {
+    void setup() {
+        indices.clear();
         for (unsigned int y = 0; y < grid_res - 1; ++y) {
             for (unsigned int x = 0; x < grid_res; ++x) {
                 unsigned int idx0 = y * grid_res + x;
@@ -166,23 +174,37 @@ public:
                 indices.push_back((y + 1) * grid_res);
             }
         }
-        if (upload_defn) upload_definition();
-        else valid = false;
     }
     
-    void upload_definition() {
+    void upload_definition(std::vector<Slider>& sliders) {
         int success;
 
+        std::string pdefn = defn;
+        pdefn.resize(512);
+        for (int i = 0; i < sliders.size(); i++) {
+            std::string pattern = "\\b";
+            pattern.append(sliders[i].symbol);
+            pattern.append("\\b");
+            pdefn = std::regex_replace(pdefn, std::regex(pattern), std::format("sliders[{}]", i));
+        }
         unsigned int computeShader = glCreateShader(GL_COMPUTE_SHADER);
         char* computeSource = read_resource(IDR_CMPT);
         size_t size = strlen(computeSource) + 512;
         char* modifiedSource = new char[size];
-        sprintf_s(modifiedSource, size, computeSource, defn.c_str());
+        sprintf_s(modifiedSource, size, computeSource, pdefn.c_str());
         glShaderSource(computeShader, 1, &modifiedSource, NULL);
         glCompileShader(computeShader);
         glGetShaderiv(computeShader, GL_COMPILE_STATUS, &success);
         if (!success) {
-            glGetShaderInfoLog(computeShader, 512, NULL, infoLog);
+            char temp[512];
+            glGetShaderInfoLog(computeShader, 512, NULL, temp);
+            int k = 0;
+            for (int i = 0, j = 0; i < strlen(temp); i++, j++) {
+                if (j < 21) continue; // omit GLSL details
+                infoLog[k++] = temp[i];
+                if (temp[i] == '\n') j = -1;
+            }
+            infoLog[k] = '\0';
             valid = enabled = false;
             return;
         }
@@ -195,6 +217,7 @@ public:
         delete[] computeSource, modifiedSource;
 
         glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
+        glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "sliderbuffer"), 3);
         valid = true;
     }
 
@@ -230,19 +253,20 @@ public:
     bool trace = true;
     bool tangent_plane = false, apply_tangent_plane = false;
     bool gradient_vector = false;
+    bool integral = false, compute_integral = false;
     vec3 centerPos = vec3(0.f);
     vec2 mousePos = vec2(0.f);
     int sidebarWidth = 300;
     bool updateBufferSize = false;
     double lastMousePress = 0.0;
     bool doubleClickPressed = false;
-    int ssaa_factor = 3.f;
-    bool ssaa = true;
+    int ssaa_factor = 1.f; // change to 3.f when enabling SSAA by default
+    bool ssaa = false;
 
     GLuint shaderProgram;
     GLuint VAO, VBO, EBO;
     GLuint FBO, gridSSBO;
-    GLuint depthMap, frameTex, posBuffer, kernelBuffer;
+    GLuint depthMap, frameTex, posBuffer, kernelBuffer, sliderBuffer;
 
     Trisualizer() {
         glfwInit();
@@ -356,14 +380,7 @@ public:
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, posBuffer);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "posbuffer"), 1);
 
-        glUniform1f(glGetUniformLocation(shaderProgram, "zoom"), zoom);
-        glUniform1f(glGetUniformLocation(shaderProgram, "graph_size"), graph_size);
-        glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
-        glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLineDensity);
-        glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), 0.f, 6.f, 0.f);
-        glUniform3f(glGetUniformLocation(shaderProgram, "centerPos"), 0.f, 0.f, 0.f);
-
-        const float radius = ssaa_factor;
+        const float radius = 3.f;
         auto gaussian = [](float x, float mu, float sigma) -> float {
             const float a = (x - mu) / sigma;
             return std::exp(-0.5 * a * a);
@@ -389,7 +406,18 @@ public:
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, kernelBuffer);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "kernel"), 2);
         glBufferData(GL_SHADER_STORAGE_BUFFER, kernel.size() * sizeof(float), kernel.data(), GL_STATIC_DRAW);
-        glUniform1i(glGetUniformLocation(shaderProgram, "radius"), radius);
+        glUniform1i(glGetUniformLocation(shaderProgram, "radius"), ssaa_factor);
+
+        glGenBuffers(1, &sliderBuffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, sliderBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, sliderBuffer);
+
+        glUniform1f(glGetUniformLocation(shaderProgram, "zoom"), zoom);
+        glUniform1f(glGetUniformLocation(shaderProgram, "graph_size"), graph_size);
+        glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
+        glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLineDensity);
+        glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), 0.f, 6.f, 0.f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "centerPos"), 0.f, 0.f, 0.f);
 
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
@@ -424,9 +452,11 @@ public:
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameTex, 0);
 
         graphs.push_back(Graph(0, TangentPlane, "plane_params[0]+plane_params[1]*(x-plane_params[2])+plane_params[3]*(y-plane_params[4])", 100, vec4(0.f), false, gridSSBO, EBO));
-        graphs[0].setup(true);
+        graphs[0].setup();
+        graphs[0].upload_definition(sliders);
         graphs.push_back(Graph(1, UserDefined, "sin(x * y)", 500, colors[0], true, gridSSBO, EBO));
-        graphs[1].setup(true);
+        graphs[1].setup();
+        graphs[1].upload_definition(sliders);
 
         mainloop();
     }
@@ -621,8 +651,7 @@ public:
             ImGui::PopStyleVar(3);
 
             ImGuiIO& io = ImGui::GetIO();
-            if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
-            {
+            if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
                 ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
                 ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
 
@@ -639,8 +668,8 @@ public:
                     auto dock_id_down = ImGui::DockBuilderSplitNode(dock_id_middle, ImGuiDir_Down, 0.5f, nullptr, &dock_id_middle);
 
                     ImGui::DockBuilderDockWindow("Symbolic View", dock_id_left);
+                    ImGui::DockBuilderDockWindow("Variables", dock_id_middle);
                     ImGui::DockBuilderDockWindow("Tools", dock_id_down);
-                    ImGui::DockBuilderDockWindow("Sliders", dock_id_middle);
                     ImGui::DockBuilderFinish(dockspace_id);
                 }
             }
@@ -660,10 +689,10 @@ public:
                 sidebarWidth = swidth;
             }
             bool set_focus = false;
-            if (ImGui::Button("New", ImVec2(50, 0))) {
+            if (ImGui::Button("New function", ImVec2(100, 0))) {
                 size_t i = graphs.size() - 1;
                 graphs.push_back(Graph(graphs.size(), UserDefined, "", 500, colors[i % colors.size()], false, gridSSBO, EBO));
-                graphs[graphs.size() - 1].setup(false);
+                graphs[graphs.size() - 1].setup();
                 set_focus = true;
             }
             ImGui::SameLine();
@@ -672,46 +701,103 @@ public:
             ImGui::PopStyleColor();
             for (int i = 0; i < graphs.size(); i++) {
                 if (graphs[i].type != UserDefined) continue;
+                Graph& g = graphs[i];
                 ImGui::BeginChild(std::format("##child{}", i).c_str(), ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
                 ImVec2 vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
                 ImVec2 vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
-                ImGui::BeginDisabled(!graphs[i].valid);
-                ImGui::Checkbox(std::format("##check{}", i).c_str(), &graphs[i].enabled);
-                ImGui::EndDisabled();
+                ImGui::BeginDisabled(!g.valid);
+                ImGui::Checkbox(std::format("##check{}", i).c_str(), &g.enabled);
                 ImGui::SameLine();
-                ImGui::ColorEdit4(std::format("##color{}", i).c_str(), value_ptr(graphs[i].color), ImGuiColorEditFlags_NoInputs);
+                ImGui::ColorEdit4(std::format("##color{}", i).c_str(), value_ptr(g.color), ImGuiColorEditFlags_NoInputs);
+                ImGui::EndDisabled();
                 ImGui::SameLine();
                 ImGui::PushItemWidth((vMax.x - vMin.x) - 85);
                 if (i == graphs.size() - 1 && set_focus) {
                     ImGui::SetKeyboardFocusHere(0);
                 }
-                if (ImGui::InputText(std::format("##defn{}", i).c_str(), graphs[i].defn.data(), 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
-                    graphs[i].upload_definition();
-                    if (graphs[i].valid) graphs[i].enabled = true;
+                if (ImGui::InputText(std::format("##defn{}", i).c_str(), g.defn, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                    g.upload_definition(sliders);
+                    if (g.valid) g.enabled = true;
                 }
                 ImGui::SameLine();
-                if (ImGui::Button(graphs[i].advanced_view ? u8"˄" : u8"˅", ImVec2(16, 0))) {
-                    graphs[i].advanced_view ^= 1;
+                if (ImGui::Button(g.advanced_view ? u8"˄" : u8"˅", ImVec2(16, 0))) {
+                    g.advanced_view ^= 1;
                 }
                 ImGui::SameLine();
-                size_t logLength = strlen(graphs[i].infoLog);
                 if (ImGui::Button("x", ImVec2(16, 0))) {
                     graphs.erase(graphs.begin() + i);
+                    ImGui::EndChild();
+                    continue;
                 }
-                else if (!graphs[i].valid && logLength > 0) {
+                size_t logLength = strlen(g.infoLog);
+                if (!g.valid && logLength > 0) {
                     int nLines = 1;
-                    for (int j = 0; j < logLength; j++) if (graphs[i].infoLog[j] == '\n') nLines++;
-                    if (graphs[i].infoLog[logLength - 1] == '\n') graphs[i].infoLog[logLength - 1] = '\0';
-                    ImGui::InputTextMultiline("##errorlist", graphs[i].infoLog, 512, ImVec2((vMax.x - vMin.x), 11 * nLines + 6), ImGuiInputTextFlags_ReadOnly);
+                    for (int j = 0; j < logLength; j++) if (g.infoLog[j] == '\n') nLines++;
+                    if (g.infoLog[logLength - 1] == '\n') g.infoLog[logLength - 1] = '\0';
+                    ImGui::InputTextMultiline("##errorlist", g.infoLog, 512, ImVec2((vMax.x - vMin.x), 11 * nLines + 6), ImGuiInputTextFlags_ReadOnly);
+                }
+                if (g.advanced_view) {
+                    ImGui::BeginDisabled(!g.valid);
+                    ImGui::SetNextItemWidth(60.f);
+                    if (ImGui::DragInt(std::format("Resolution##{}", i).c_str(), &g.grid_res, g.grid_res / 20.f, 10, 1000)) {
+                        g.setup();
+                    }
+                    ImGui::SameLine();
+                    ImGui::BeginDisabled(!gridLines);
+                    ImGui::Checkbox(std::format("Grid lines##{}", i).c_str(), &g.grid_lines);
+                    ImGui::EndDisabled();
+                    ImGui::EndDisabled();
                 }
                 ImGui::EndChild();
             }
             ImGui::End();
 
             ImGui::SetNextWindowClass(&window_class);
-            ImGui::Begin("Sliders", nullptr, ImGuiWindowFlags_NoMove);
+            ImGui::Begin("Variables", nullptr, ImGuiWindowFlags_NoMove);
             vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
             vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
+            bool update_all_functions = false;
+            if (ImGui::Button("New variable", ImVec2(100, 0))) {
+                sliders.push_back({ 0, -5, 5, std::format("v{}", sliders.size() + 1).c_str() });
+                update_all_functions = true;
+            }
+            for (int i = 0; i < sliders.size(); i++) {
+                Slider& s = sliders[i];
+                ImGui::BeginChild(std::format("##child{}", i).c_str(), ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+                ImVec2 vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
+                ImVec2 vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
+                ImGui::SetNextItemWidth(vMax.x - vMin.x - 45.f);
+                ImGui::SliderFloat(std::format("##slider{}", i).c_str(), &s.value, s.min, s.max);
+                ImGui::SameLine();
+                if (ImGui::Button(s.config ? u8"˄" : u8"˅", ImVec2(16, 0)))
+                    s.config ^= 1;
+                ImGui::SameLine();
+                if (ImGui::Button("x", ImVec2(16, 0))) {
+                    sliders.erase(sliders.begin() + i);
+                    update_all_functions = true;
+                    ImGui::EndChild();
+                    continue;
+                }
+                if (s.config) {
+                    float inputWidth = (vMax.x - vMin.x) / 3.f - 3.5f;
+                    ImGui::PushItemWidth(inputWidth);
+                    if (ImGui::InputText(std::format("##sym{}", i).c_str(), s.symbol, 32, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                        update_all_functions = true;
+                    }
+                    ImGui::SameLine();
+                    ImGui::InputFloat(std::format("##min{}", i).c_str(), &s.min);
+                    ImGui::SameLine();
+                    ImGui::InputFloat(std::format("##max{}", i).c_str(), &s.max);
+                    ImGui::PopItemWidth();
+                }
+                ImGui::EndChild();
+            }
+            if (update_all_functions) {
+                for (Graph& g : graphs) {
+                    if (strlen(g.defn) == 0.f) continue;
+                    g.upload_definition(sliders);
+                }
+            }
             ImGui::End();
 
             ImGui::SetNextWindowClass(&window_class);
@@ -731,6 +817,7 @@ public:
             if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)gradVec_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 gradient_vector ^= 1;
                 tangent_plane = false;
+                integral = false;
                 if (!gradient_vector) ImGui::PopStyleColor();
             }
             else if (gradient_vector) ImGui::PopStyleColor();
@@ -742,6 +829,7 @@ public:
             if (ImGui::ImageButton("tangent_plane", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 tangent_plane ^= 1;
                 gradient_vector = false;
+                integral = false;
                 if (!tangent_plane) ImGui::PopStyleColor();
             }
             else if (tangent_plane) ImGui::PopStyleColor();
@@ -754,10 +842,16 @@ public:
             }
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                 ImGui::SetTooltip("Local Minima/Maxima", ImGui::GetStyle().HoverDelayNormal);
-            ImGui::SameLine();
-            if (ImGui::ImageButton("integral", (void*)(intptr_t)integral_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
 
+            ImGui::SameLine();
+            if (integral) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
+            if (ImGui::ImageButton("integral", (void*)(intptr_t)integral_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+                integral ^= 1;
+                tangent_plane = false;
+                gradient_vector = false;
+                if (!integral) ImGui::PopStyleColor();
             }
+            else if (integral) ImGui::PopStyleColor();
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                 ImGui::SetTooltip("Double Integral", ImGui::GetStyle().HoverDelayNormal);
 
@@ -823,7 +917,8 @@ public:
                         char eqf[88]{};
                         sprintf_s(eqf, eq, params[0], params[1], params[2], params[3], params[4]);
                         graphs.push_back(Graph(graphs.size(), UserDefined, eqf, 100, colors[(graphs.size() - 1) % colors.size()], true, gridSSBO, EBO));
-                        graphs[graphs.size() - 1].setup(true);
+                        graphs[graphs.size() - 1].setup();
+                        graphs[graphs.size() - 1].upload_definition(sliders);
                         apply_tangent_plane = false;
                         tangent_plane = false;
                         graphs[0].enabled = false;
@@ -879,6 +974,12 @@ public:
             glUniform2i(glGetUniformLocation(shaderProgram, "regionSize"), wWidth * ssaa_factor - sidebarWidth * ssaa_factor, wHeight * ssaa_factor);
             glUniform2i(glGetUniformLocation(shaderProgram, "windowSize"), wWidth * ssaa_factor, wHeight * ssaa_factor);
 
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, sliderBuffer);
+            std::vector<float> values(sliders.size());
+            for (int i = 0; i < values.size(); i++)
+                values[i] = sliders[i].value;
+            glBufferData(GL_SHADER_STORAGE_BUFFER, values.size() * sizeof(float), values.data(), GL_DYNAMIC_DRAW);
+            
             for (int i = 1; i <= graphs.size(); i++) {
                 if (i == graphs.size()) i = 0;
                 const Graph& g = graphs[i];
@@ -895,6 +996,8 @@ public:
                 glUniform4f(glGetUniformLocation(shaderProgram, "color"), g.color.r, g.color.g, g.color.b, g.color.w);
                 glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), g.grid_res);
                 glUniform1i(glGetUniformLocation(shaderProgram, "tangent_plane"), g.type == TangentPlane);
+                if (gridLines)
+                    glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), g.grid_lines ? gridLineDensity : 0.f);
                 glBindVertexArray(VAO);
                 glUniform1i(glGetUniformLocation(shaderProgram, "quad"), false);
                 glDrawElements(GL_TRIANGLE_STRIP, (GLsizei)g.indices.size(), GL_UNSIGNED_INT, 0);
