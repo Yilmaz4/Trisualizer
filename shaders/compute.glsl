@@ -10,14 +10,16 @@ layout(std430, binding = 1) readonly buffer sliderbuffer {
 };
 
 uniform int grid_res;
-uniform float zoom;
+uniform float zoomx;
+uniform float zoomy;
+uniform float zoomz;
 uniform vec3 centerPos;
 
 uniform float plane_params[5];
 
 void main() {
-	float x = zoom * ((gl_GlobalInvocationID.x - grid_res / 2.f) / grid_res) + centerPos.x;
-    float y = zoom * ((gl_GlobalInvocationID.y - grid_res / 2.f) / grid_res) + centerPos.y;
-	float val = (%s) / zoom;
+	float x = zoomx * ((gl_GlobalInvocationID.x - grid_res / 2.f) / grid_res) + centerPos.x;
+    float y = zoomy * ((gl_GlobalInvocationID.y - grid_res / 2.f) / grid_res) + centerPos.y;
+	float val = (%s) / zoomz;
     grid[gl_GlobalInvocationID.y * grid_res + gl_GlobalInvocationID.x] = val;
 }

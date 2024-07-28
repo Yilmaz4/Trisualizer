@@ -91,12 +91,10 @@ void main() {
 
 	if (integral) {
 		if (index != integrand_idx) {
-			fragColor = vec4(fragColor.rgb, fragColor.w * 0.4f);
+			fragColor = vec4(fragColor.rgb, fragColor.w * 0.1f);
 		}
 		else {
-			vec2 a = min(corner1, corner2);
-			vec2 b = max(corner1, corner2);
-			vec2 s = step(a, gridCoord) * step(gridCoord, b);
+			vec2 s = step(min(corner1, corner2), gridCoord) * step(gridCoord, max(corner1, corner2));
 			fragColor = vec4(fragColor.rgb, fragColor.w * (1.f - (1.f - s.x * s.y) * 0.8f));
 		}
 	}
