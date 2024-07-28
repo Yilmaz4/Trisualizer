@@ -719,7 +719,7 @@ public:
                 if (i == graphs.size() - 1 && set_focus) {
                     ImGui::SetKeyboardFocusHere(0);
                 }
-                if (ImGui::InputText(std::format("##defn{}", i).c_str(), g.defn, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                if (ImGui::InputText(std::format("##defn{}", i).c_str(), g.defn, 256)) {
                     g.upload_definition(sliders);
                     if (g.valid) g.enabled = true;
                 }
@@ -761,10 +761,25 @@ public:
             vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
             vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
             bool update_all_functions = false;
-            if (ImGui::Button("New variable", ImVec2(100, 0))) {
+            float buttonWidth = (vMax.x - vMin.x) / 3.f - 4.f;
+            if (ImGui::Button("New variable", ImVec2(buttonWidth, 0))) {
                 sliders.push_back({ 0, -5, 5, std::format("v{}", sliders.size() + 1).c_str() });
                 update_all_functions = true;
             }
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!sliders.size());
+            if (ImGui::Button("Collapse all", ImVec2(buttonWidth, 0))) {
+                for (Slider& s : sliders) {
+                    s.config = false;
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Expand all", ImVec2(buttonWidth, 0))) {
+                for (Slider& s : sliders) {
+                    s.config = true;
+                }
+            }
+            ImGui::EndDisabled();
             for (int i = 0; i < sliders.size(); i++) {
                 Slider& s = sliders[i];
                 ImGui::BeginChild(std::format("##child{}", i).c_str(), ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
@@ -819,10 +834,16 @@ public:
                         }
                         if (strlen(s.infoLog) == 0) update_all_functions = true;
                     }
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                        ImGui::SetTooltip("Symbol", ImGui::GetStyle().HoverDelayNormal);
                     ImGui::SameLine();
                     ImGui::InputFloat(std::format("##min{}", i).c_str(), &s.min);
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                        ImGui::SetTooltip("Lower limit", ImGui::GetStyle().HoverDelayNormal);
                     ImGui::SameLine();
                     ImGui::InputFloat(std::format("##max{}", i).c_str(), &s.max);
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                        ImGui::SetTooltip("Upper limit", ImGui::GetStyle().HoverDelayNormal);
                     ImGui::PopItemWidth();
                 }
                 if (!s.valid && strlen(s.infoLog) > 0) {
@@ -845,11 +866,11 @@ public:
             static vec3 gotoLocation;
             ImGui::InputFloat3("##goto", value_ptr(gotoLocation));
             ImGui::SameLine();
-            if (ImGui::Button("Jump", ImVec2(vMax.x - vMin.x - ImGui::GetCursorPosX() + 5, 0))) {
+            if (ImGui::Button("Jump", ImVec2(vMax.x - vMin.x - ImGui::GetCursorPosX() + 8, 0))) {
                 centerPos = gotoLocation;
                 glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
             }
-            float buttonWidth = (vMax.x - vMin.x - 61.f) / 4.f;
+            buttonWidth = (vMax.x - vMin.x - 61.f) / 4.f + 0.7f;
 
             if (gradient_vector) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
             if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)gradVec_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
