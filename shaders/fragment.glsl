@@ -17,7 +17,6 @@ uniform int radius;
 
 in vec3 normal;
 in vec3 fragPos;
-in vec2 gridPos;
 in vec2 gridCoord;
 
 uniform float ambientStrength;
@@ -32,6 +31,10 @@ uniform ivec2 regionSize;
 uniform ivec2 windowSize;
 uniform vec3 centerPos;
 uniform bool tangent_plane;
+uniform bool integral;
+uniform vec2 corner1;
+uniform vec2 corner2;
+uniform int integrand_idx;
 
 uniform bool quad;
 layout(binding = 0) uniform sampler2D frameTex;
@@ -60,7 +63,6 @@ void main() {
 	if (tangent_plane) fragColor = color;
 	else fragColor = vec4((ambientStrength + diffuse + specular) * color.rgb, color.w);
 
-
 	float partialx = 1.f / tan(acos(dot(vec3(1,0,0), normalize(dot(normal, vec3(1,0,0)) * vec3(1,0,0) + dot(normal, vec3(0,1,0)) * vec3(0,1,0)))));
 	float partialy = 1.f / tan(acos(dot(vec3(0,0,1), normalize(dot(normal, vec3(0,0,1)) * vec3(0,0,1) + dot(normal, vec3(0,1,0)) * vec3(0,1,0)))));
 	vec2 gradient = vec2(partialx, partialy);
@@ -83,7 +85,19 @@ void main() {
 		float gridLines = pow(2.f, floor(log2(zoom)) - gridLineDensity);
 		if (abs(gridCoord.x / gridLines - floor(gridCoord.x / gridLines)) < Rx - Rxp ||
 			abs(gridCoord.y / gridLines - floor(gridCoord.y / gridLines)) < Ry - Ryp) {
-			fragColor = vec4(fragColor.rgb * 0.4, fragColor.w);
+			fragColor = vec4(fragColor.rgb * 0.4f, fragColor.w);
+		}
+	}
+
+	if (integral) {
+		if (index != integrand_idx) {
+			fragColor = vec4(fragColor.rgb, fragColor.w * 0.4f);
+		}
+		else {
+			vec2 a = min(corner1, corner2);
+			vec2 b = max(corner1, corner2);
+			vec2 s = step(a, gridCoord) * step(gridCoord, b);
+			fragColor = vec4(fragColor.rgb, fragColor.w * (1.f - (1.f - s.x * s.y) * 0.8f));
 		}
 	}
 

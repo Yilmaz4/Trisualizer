@@ -228,10 +228,10 @@ public:
     void use_compute(float zoom, vec3 centerPos) const {
         glUseProgram(computeProgram);
         glUniform1f(glGetUniformLocation(computeProgram, "zoom"), zoom);
-        glUniform1i(glGetUniformLocation(computeProgram, "grid_res"), grid_res);
+        glUniform1i(glGetUniformLocation(computeProgram, "grid_res"), grid_res + 2);
         glUniform3fv(glGetUniformLocation(computeProgram, "centerPos"), 1, value_ptr(centerPos));
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, pow(grid_res, 2) * (int)sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, pow(grid_res + 2, 2) * (int)sizeof(float), nullptr, GL_DYNAMIC_DRAW);
     }
     void use_shader() const {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
@@ -257,7 +257,8 @@ public:
     bool trace = true;
     bool tangent_plane = false, apply_tangent_plane = false;
     bool gradient_vector = false;
-    bool integral = false, compute_integral = false;
+    bool integral = false, second_corner = false, apply_integral = false;
+    vec2 first_corner;
     vec3 centerPos = vec3(0.f);
     vec2 mousePos = vec2(0.f);
     int sidebarWidth = 300;
@@ -458,7 +459,7 @@ public:
         graphs.push_back(Graph(0, TangentPlane, "plane_params[0]+plane_params[1]*(x-plane_params[2])+plane_params[3]*(y-plane_params[4])", 100, vec4(0.f), false, gridSSBO, EBO));
         graphs[0].setup();
         graphs[0].upload_definition(sliders);
-        graphs.push_back(Graph(1, UserDefined, "sin(x * y)", 500, colors[0], true, gridSSBO, EBO));
+        graphs.push_back(Graph(1, UserDefined, "sin(x * y)", 250, colors[0], true, gridSSBO, EBO));
         graphs[1].setup();
         graphs[1].upload_definition(sliders);
 
@@ -493,6 +494,9 @@ private:
             case GLFW_PRESS:
                 if (app->tangent_plane) {
                     app->apply_tangent_plane = true;
+                }
+                if (app->integral) {
+                    app->apply_integral = true;
                 }
                 if (glfwGetTime() - app->lastMousePress < 0.2) {
                     app->doubleClickPressed = true;
@@ -677,7 +681,6 @@ public:
                     ImGui::DockBuilderFinish(dockspace_id);
                 }
             }
-
             ImGui::End();
 
             ImVec2 vMin, vMax;
@@ -695,7 +698,7 @@ public:
             bool set_focus = false;
             if (ImGui::Button("New function", ImVec2(100, 0))) {
                 size_t i = graphs.size() - 1;
-                graphs.push_back(Graph(graphs.size(), UserDefined, "", 500, colors[i % colors.size()], false, gridSSBO, EBO));
+                graphs.push_back(Graph(graphs.size(), UserDefined, "", 250, colors[i % colors.size()], false, gridSSBO, EBO));
                 graphs[graphs.size() - 1].setup();
                 set_focus = true;
             }
@@ -711,9 +714,9 @@ public:
                 ImVec2 vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
                 ImGui::BeginDisabled(!g.valid);
                 ImGui::Checkbox(std::format("##check{}", i).c_str(), &g.enabled);
+                ImGui::EndDisabled();
                 ImGui::SameLine();
                 ImGui::ColorEdit4(std::format("##color{}", i).c_str(), value_ptr(g.color), ImGuiColorEditFlags_NoInputs);
-                ImGui::EndDisabled();
                 ImGui::SameLine();
                 ImGui::PushItemWidth((vMax.x - vMin.x) - 85);
                 if (i == graphs.size() - 1 && set_focus) {
@@ -982,6 +985,35 @@ public:
                         tangent_plane = false;
                         graphs[0].enabled = false;
                     }
+                    if (integral) {
+                        ImGui::SetNextWindowPos(ImVec2(x + 10.f, y + prevWindowSize.y + 3.f));
+                        ImGui::Begin("tooltip", nullptr,
+                            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+                            ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
+                            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
+                        ImGui::Text("Left-click to set the %s corner", second_corner ? "2nd" : "1st");
+                        ImGui::End();
+                        if (second_corner) {
+                            glUniform2f(glGetUniformLocation(shaderProgram, "corner2"), fragPos.x, fragPos.y);
+                        }
+                    }
+                    if (apply_integral) {
+                        if (!second_corner) {
+                            first_corner = vec2(fragPos.x, fragPos.y);
+                            glUniform1i(glGetUniformLocation(shaderProgram, "integral"), true);
+                            glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), index);
+                            glUniform2f(glGetUniformLocation(shaderProgram, "corner1"), fragPos.x, fragPos.y);
+                            glUniform2f(glGetUniformLocation(shaderProgram, "corner2"), fragPos.x, fragPos.y);
+                            second_corner = true;
+                        }
+                        else {
+                            std::cout << to_string(first_corner) << std::endl << fragPos.x << " " << fragPos.y << std::endl;
+                            integral = false;
+                            second_corner = false;
+                            glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
+                        }
+                        apply_integral = false;
+                    }
                     if (doubleClickPressed) {
                         centerPos = fragPos;
                         glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
@@ -992,6 +1024,7 @@ public:
             mouse_not_on_graph:
                 graphs[0].enabled = false;
                 apply_tangent_plane = false;
+                apply_integral = false;
                 doubleClickPressed = false;
             }
 
@@ -1047,7 +1080,7 @@ public:
                     continue;
                 }
                 g.use_compute(zoom, centerPos);
-                glDispatchCompute(g.grid_res, g.grid_res, 1);
+                glDispatchCompute(g.grid_res + 2, g.grid_res + 2, 1);
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                 glUseProgram(shaderProgram);
                 g.use_shader();
