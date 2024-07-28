@@ -53,16 +53,16 @@ void main() {
 		}
 		return;
 	}
-	vec3 normalvec = normal;
-	normalvec *= int(gl_FrontFacing) * 2 - 1;
+	vec3 normalvec = normal * (int(gl_FrontFacing) * 2 - 1);
 	vec3 diffuse = vec3(max(dot(normalvec, normalize(fragPos - lightPos)), 0.f));
 	vec3 specular = vec3(pow(max(dot(normalvec, normalize(-normalize(lightPos + fragPos) - normalize(cameraPos + fragPos))), 0.0), 8)) * 0.6f;
 
 	if (tangent_plane) fragColor = color;
 	else fragColor = vec4((ambientStrength + diffuse + specular) * color.rgb, color.w);
 
-	float partialx = 1.f / tan(acos(dot(vec3(1,0,0), normalize(dot(normalvec, vec3(1,0,0)) * vec3(1,0,0) + dot(normalvec, vec3(0,1,0)) * vec3(0,1,0)))));
-	float partialy = 1.f / tan(acos(dot(vec3(0,0,1), normalize(dot(normalvec, vec3(0,0,1)) * vec3(0,0,1) + dot(normalvec, vec3(0,1,0)) * vec3(0,1,0)))));
+
+	float partialx = 1.f / tan(acos(dot(vec3(1,0,0), normalize(dot(normal, vec3(1,0,0)) * vec3(1,0,0) + dot(normal, vec3(0,1,0)) * vec3(0,1,0)))));
+	float partialy = 1.f / tan(acos(dot(vec3(0,0,1), normalize(dot(normal, vec3(0,0,1)) * vec3(0,0,1) + dot(normal, vec3(0,1,0)) * vec3(0,1,0)))));
 	vec2 gradient = vec2(partialx, partialy);
 
 	if (gridLineDensity != 0.f) {
