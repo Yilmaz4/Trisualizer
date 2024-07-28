@@ -555,7 +555,6 @@ private:
         glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, g.grid_res * g.grid_res * sizeof(float), data);
         float dx = abs(integral_limits.first.x - integral_limits.second.x) / g.grid_res;
         float dy = abs(integral_limits.first.y - integral_limits.second.y) / g.grid_res;
-        std::cout << dx << " " << dy << std::endl;
         integral_result = 0.f;
         for (int i = 0; i < g.grid_res * g.grid_res; i++) {
             float val = data[i];
@@ -939,14 +938,14 @@ public:
             ImGui::SameLine();
             if (integral) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
             if (ImGui::ImageButton("integral", (void*)(intptr_t)integral_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
-                integral ^= 1;
-                tangent_plane = false;
-                gradient_vector = false;
                 if (!integral) {
-                    ImGui::PopStyleColor();
                     glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
                     integral = show_integral_result = apply_integral = second_corner = false;
                 }
+                integral ^= 1;
+                tangent_plane = false;
+                gradient_vector = false;
+                if (!integral) ImGui::PopStyleColor();
             }
             else if (integral) ImGui::PopStyleColor();
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
@@ -1044,7 +1043,6 @@ public:
                         }
                         else {
                             integral_limits.second = vec3(fragPos.x, fragPos.y, fragPos.z);
-                            std::cout << to_string(integral_limits.first) << std::endl << to_string(integral_limits.second) << std::endl;
                             integral = false;
                             second_corner = false;
                             compute_integral();
