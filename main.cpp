@@ -127,6 +127,8 @@ struct Slider {
     float min, max;
     char symbol[32];
     bool config = true;
+    bool valid = true;
+    char infoLog[128];
 
     Slider(float defval, float min, float max, const char* sym) : value(defval), min(min), max(max) {
         strcpy_s(symbol, sym);
@@ -182,6 +184,7 @@ public:
         std::string pdefn = defn;
         pdefn.resize(512);
         for (int i = 0; i < sliders.size(); i++) {
+            if (!sliders[i].valid) continue;
             std::string pattern = "\\b";
             pattern.append(sliders[i].symbol);
             pattern.append("\\b");
@@ -218,6 +221,7 @@ public:
 
         glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "gridbuffer"), 0);
         glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "sliderbuffer"), 3);
+        if (!valid) enabled = true;
         valid = true;
     }
 
@@ -767,7 +771,9 @@ public:
                 ImVec2 vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
                 ImVec2 vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
                 ImGui::SetNextItemWidth(vMax.x - vMin.x - 45.f);
+                ImGui::BeginDisabled(!s.valid);
                 ImGui::SliderFloat(std::format("##slider{}", i).c_str(), &s.value, s.min, s.max);
+                ImGui::EndDisabled();
                 ImGui::SameLine();
                 if (ImGui::Button(s.config ? u8"˄" : u8"˅", ImVec2(16, 0)))
                     s.config ^= 1;
@@ -781,14 +787,46 @@ public:
                 if (s.config) {
                     float inputWidth = (vMax.x - vMin.x) / 3.f - 3.5f;
                     ImGui::PushItemWidth(inputWidth);
-                    if (ImGui::InputText(std::format("##sym{}", i).c_str(), s.symbol, 32, ImGuiInputTextFlags_EnterReturnsTrue)) {
-                        update_all_functions = true;
+                    auto charFilter = [](ImGuiInputTextCallbackData* data) -> int {
+                        const char* forbiddenChars = "!'^+%&/()=?_*-<>£#$½{[]}\\|.:,;\" ";
+                        if (strchr(forbiddenChars, data->EventChar)) return 1;
+                        return 0;
+                    };
+                    if (ImGui::InputText(std::format("##sym{}", i).c_str(), s.symbol, 32, ImGuiInputTextFlags_CallbackCharFilter, charFilter)) {
+                        s.infoLog[0] = '\0';
+                        s.valid = true;
+                        if (strlen(s.symbol) == 0) {
+                            s.valid = false;
+                        }
+                        else {
+                            for (int j = 0; j < sliders.size(); j++) {
+                                if (j == i) continue;
+                                const Slider& x = sliders[j];
+                                if (!strcmp(x.symbol, s.symbol)) {
+                                    strcpy_s(s.infoLog, "cannot have the same symbol as another variable");
+                                    s.valid = false;
+                                    break;
+                                }
+                            }
+                            if (!strcmp(s.symbol, "x") || !strcmp(s.symbol, "y")) {
+                                strcpy_s(s.infoLog, "cannot be \"x\" or \"y\"");
+                                s.valid = false;
+                            }
+                            if (isdigit(s.symbol[0])) {
+                                strcpy_s(s.infoLog, "cannot start with a digit");
+                                s.valid = false;
+                            }
+                        }
+                        if (strlen(s.infoLog) == 0) update_all_functions = true;
                     }
                     ImGui::SameLine();
                     ImGui::InputFloat(std::format("##min{}", i).c_str(), &s.min);
                     ImGui::SameLine();
                     ImGui::InputFloat(std::format("##max{}", i).c_str(), &s.max);
                     ImGui::PopItemWidth();
+                }
+                if (!s.valid && strlen(s.infoLog) > 0) {
+                    ImGui::InputTextMultiline("##errorlist", s.infoLog, 128, ImVec2((vMax.x - vMin.x), 17), ImGuiInputTextFlags_ReadOnly);
                 }
                 ImGui::EndChild();
             }
