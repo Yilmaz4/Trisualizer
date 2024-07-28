@@ -32,9 +32,9 @@ void main() {
 	gridCoord = vec2(zoom * (x - halfres) / grid_res, zoom * (y - halfres) / grid_res) + centerPos.xy;
 	
 	vec3 v1, v2, v3, v4;
-	if (x == grid_res - 1.f) v1 = fragPos;
+	if (x == grid_res) v1 = fragPos;
 	else v1 = vec3((graph_size / grid_res) * (x + 1 - halfres), graph_size * grid[int(y * grid_res + (x + 1.f))], (graph_size / grid_res) * (y - halfres));
-	if (y == grid_res - 1.f) v2 = fragPos;
+	if (y == grid_res) v2 = fragPos;
 	else v2 = vec3((graph_size / grid_res) * (x - halfres), graph_size * grid[int((y + 1.f) * grid_res + x)], (graph_size / grid_res) * (y + 1 - halfres));
 
 	if (x == 0.f) v3 = fragPos;
