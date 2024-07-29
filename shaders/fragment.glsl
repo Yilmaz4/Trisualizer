@@ -100,6 +100,7 @@ void main() {
 	}
 
 	if (!tangent_plane && int(gl_FragCoord.x) % radius == 0 && int(gl_FragCoord.y) % radius == 0) {
+		if (integral && index != integrand_idx) return;
 		float x = int(gl_FragCoord.x / radius) - regionSize.y / radius; // idk why i have to subtract regionSize.y, it just works
 		float y = int(gl_FragCoord.y / radius);
 		float h = int(regionSize.y / radius);

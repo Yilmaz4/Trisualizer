@@ -128,6 +128,7 @@ struct Slider {
     char symbol[32];
     bool config = true;
     bool valid = true;
+    std::vector<bool> used_in;
     char infoLog[128];
 
     Slider(float defval, float min, float max, const char* sym) : value(defval), min(min), max(max) {
@@ -188,7 +189,9 @@ public:
             std::string pattern = "\\b";
             pattern.append(sliders[i].symbol);
             pattern.append("\\b");
-            pdefn = std::regex_replace(pdefn, std::regex(pattern), std::format("sliders[{}]", i));
+            std::string temp = std::regex_replace(pdefn, std::regex(pattern), std::format("sliders[{}]", i));
+            sliders[i].used_in[idx] = (pdefn != temp);
+            pdefn = temp;
         }
         unsigned int computeShader = glCreateShader(GL_COMPUTE_SHADER);
         char* computeSource = read_resource(IDR_CMPT);
@@ -260,8 +263,8 @@ public:
     bool tangent_plane = false, apply_tangent_plane = false;
     bool gradient_vector = false;
     bool integral = false, second_corner = false, apply_integral = false, show_integral_result = false;
-    int integrand_index;
-    float integral_result;
+    int integrand_index = -1;
+    float integral_result, middle_height, dx, dy;
     std::pair<vec3, vec3> integral_limits;
     vec3 centerPos = vec3(0.f);
     vec2 mousePos = vec2(0.f);
@@ -539,7 +542,7 @@ private:
 
     void compute_integral() {
         Graph g = graphs[integrand_index];
-        g.grid_res = 750;
+        g.grid_res = 2000;
         vec3 center = (integral_limits.first + integral_limits.second) / 2.f;
         glUseProgram(g.computeProgram);
         glUniform1f(glGetUniformLocation(g.computeProgram, "zoomx"), abs(integral_limits.first.x - integral_limits.second.x));
@@ -553,14 +556,15 @@ private:
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         float* data = new float[g.grid_res * g.grid_res]{};
         glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, g.grid_res * g.grid_res * sizeof(float), data);
-        float dx = abs(integral_limits.first.x - integral_limits.second.x) / g.grid_res;
-        float dy = abs(integral_limits.first.y - integral_limits.second.y) / g.grid_res;
+        dx = abs(integral_limits.first.x - integral_limits.second.x) / g.grid_res;
+        dy = abs(integral_limits.first.y - integral_limits.second.y) / g.grid_res;
         integral_result = 0.f;
         for (int i = 0; i < g.grid_res * g.grid_res; i++) {
             float val = data[i];
             if (isnan(val) || isinf(val)) continue;
             integral_result += val * dx * dy;
         }
+        middle_height = data[g.grid_res * (g.grid_res / 2) + (g.grid_res / 2)];
         delete[] data;
     }
 public:
@@ -726,6 +730,9 @@ public:
                 size_t i = graphs.size() - 1;
                 graphs.push_back(Graph(graphs.size(), UserDefined, "", 250, colors[i % colors.size()], false, gridSSBO, EBO));
                 graphs[graphs.size() - 1].setup();
+                for (Slider& s : sliders) {
+                    s.used_in.push_back(false);
+                }
                 set_focus = true;
             }
             ImGui::SameLine();
@@ -751,6 +758,10 @@ public:
                 if (ImGui::InputText(std::format("##defn{}", i).c_str(), g.defn, 256)) {
                     g.upload_definition(sliders);
                     if (g.valid) g.enabled = true;
+                    if (i == integrand_index) {
+                        glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
+                        integral = show_integral_result = apply_integral = second_corner = false;
+                    }
                 }
                 ImGui::SameLine();
                 if (ImGui::Button(g.advanced_view ? u8"˄" : u8"˅", ImVec2(16, 0))) {
@@ -763,6 +774,9 @@ public:
                         integral = show_integral_result = apply_integral = second_corner = false;
                     }
                     graphs.erase(graphs.begin() + i);
+                    for (Slider& s : sliders) {
+                        s.used_in.erase(s.used_in.begin() + i);
+                    }
                     ImGui::EndChild();
                     continue;
                 }
@@ -797,6 +811,9 @@ public:
             float buttonWidth = (vMax.x - vMin.x) / 3.f - 4.f;
             if (ImGui::Button("New variable", ImVec2(buttonWidth, 0))) {
                 sliders.push_back({ 0, -5, 5, std::format("v{}", sliders.size() + 1).c_str() });
+                for (int i = 0; i < graphs.size(); i++) {
+                    sliders[sliders.size() - 1].used_in.push_back(false);
+                }
                 update_all_functions = true;
             }
             ImGui::SameLine();
@@ -820,7 +837,14 @@ public:
                 ImVec2 vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
                 ImGui::SetNextItemWidth(vMax.x - vMin.x - 45.f);
                 ImGui::BeginDisabled(!s.valid);
-                ImGui::SliderFloat(std::format("##slider{}", i).c_str(), &s.value, s.min, s.max);
+                if (ImGui::SliderFloat(std::format("##slider{}", i).c_str(), &s.value, s.min, s.max)) {
+                    for (int j = 0; j < graphs.size(); j++) {
+                        if (sliders[i].used_in[j] && (integral && second_corner || show_integral_result) && j == integrand_index) {
+                            glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
+                            integral = show_integral_result = apply_integral = second_corner = false;
+                        }
+                    }
+                }
                 ImGui::EndDisabled();
                 ImGui::SameLine();
                 if (ImGui::Button(s.config ? u8"˄" : u8"˅", ImVec2(16, 0)))
@@ -943,6 +967,10 @@ public:
                     integral = show_integral_result = apply_integral = second_corner = false;
                 }
                 integral ^= 1;
+                if (second_corner) {
+                    second_corner = false;
+                    glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
+                }
                 tangent_plane = false;
                 gradient_vector = false;
                 if (!integral) ImGui::PopStyleColor();
@@ -1068,7 +1096,7 @@ public:
                 vec3 v = (integral_limits.first + integral_limits.second) / 2.f - centerPos;
                 const float gridres = graphs[integrand_index].grid_res + 2;
                 const float halfres = gridres / 2.f;
-                vec4 ndc = proj * view * vec4(graph_size * v.x / zoom, graph_size * v.z / zoom * graph_size, graph_size * v.y / zoom, 1.f);
+                vec4 ndc = proj * view * vec4(graph_size * v.x / zoom, (middle_height - centerPos.z) / zoom * graph_size, graph_size * v.y / zoom, 1.f);
                 ndc = ndc / ndc.w;
                 ImGui::SetNextWindowPos(ImVec2((ndc.x + 1.f) * (wWidth - sidebarWidth) / 2.f + sidebarWidth, (wHeight - (ndc.y + 1.f) * wHeight / 2.f)));
                 static bool result_window = true;
@@ -1078,7 +1106,10 @@ public:
                 ImGui::Text(u8"%.4f \u2264 x \u2264 %.4f, %.4f \u2264 y \u2264 %.4f",
                     min(integral_limits.first.x, integral_limits.second.x), max(integral_limits.first.x, integral_limits.second.x),
                     min(integral_limits.first.y, integral_limits.second.y), max(integral_limits.first.y, integral_limits.second.y));
-                ImGui::Text("Signed volume: %.6f", integral_result);
+                ImGui::Text("Signed volume \u2248 %.6f", integral_result);
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(120, 120, 120, 255));
+                ImGui::Text(u8"\u2206x = %.3e, \u2206y = %.3e", dx, dy);
+                ImGui::PopStyleColor();
                 ImGui::End();
                 if (result_window == false) {
                     show_integral_result = false;
@@ -1130,14 +1161,9 @@ public:
             for (int i = 0; i < values.size(); i++)
                 values[i] = sliders[i].value;
             glBufferData(GL_SHADER_STORAGE_BUFFER, values.size() * sizeof(float), values.data(), GL_DYNAMIC_DRAW);
-            
-            for (int i = 1; i <= graphs.size(); i++) {
-                if (i == graphs.size()) i = 0;
+
+            auto render_graph = [&](int i) {
                 const Graph& g = graphs[i];
-                if (!g.enabled) {
-                    if (i == 0) break;
-                    continue;
-                }
                 g.use_compute(zoom, centerPos);
                 glDispatchCompute(g.grid_res + 2, g.grid_res + 2, 1);
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
@@ -1152,6 +1178,21 @@ public:
                 glBindVertexArray(VAO);
                 glUniform1i(glGetUniformLocation(shaderProgram, "quad"), false);
                 glDrawElements(GL_TRIANGLE_STRIP, (GLsizei)g.indices.size(), GL_UNSIGNED_INT, 0);
+                
+            };
+            
+            if (integral && second_corner || show_integral_result) {
+                render_graph(integrand_index);
+            }
+            for (int i = 1; i <= graphs.size(); i++) {
+                if (i == graphs.size()) i = 0;
+                const Graph& g = graphs[i];
+                if (!g.enabled) {
+                    if (i == 0) break;
+                    continue;
+                }
+                if (i == integrand_index && (integral && second_corner || show_integral_result)) continue;
+                render_graph(i);
                 if (i == 0) break;
             }
 
