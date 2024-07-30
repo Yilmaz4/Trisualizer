@@ -149,6 +149,7 @@ public:
     bool valid = false;
     bool advanced_view = false;
     bool grid_lines = true;
+    float shininess = 16;
     char* infoLog = new char[512]{};
     int type;
     int grid_res;
@@ -423,7 +424,7 @@ public:
         glUniform1f(glGetUniformLocation(shaderProgram, "graph_size"), graph_size);
         glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
         glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLineDensity);
-        glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), 0.f, 6.f, 0.f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), 0.f, 50.f, 0.f);
         glUniform3f(glGetUniformLocation(shaderProgram, "centerPos"), 0.f, 0.f, 0.f);
 
         glGenVertexArrays(1, &VAO);
@@ -793,6 +794,9 @@ public:
                     if (ImGui::DragInt(std::format("Resolution##{}", i).c_str(), &g.grid_res, g.grid_res / 20.f, 10, 1000)) {
                         g.setup();
                     }
+                    ImGui::SetNextItemWidth(40.f);
+                    ImGui::SameLine();
+                    ImGui::DragFloat(std::format("Shininess##{}", i).c_str(), &g.shininess, g.shininess / 40.f, 1.f, 1024.f, "%.0f");
                     ImGui::SameLine();
                     ImGui::BeginDisabled(!gridLines);
                     ImGui::Checkbox(std::format("Grid lines##{}", i).c_str(), &g.grid_lines);
@@ -933,7 +937,8 @@ public:
             if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)gradVec_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 gradient_vector ^= 1;
                 tangent_plane = false;
-                integral = false;
+                glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
+                integral = show_integral_result = apply_integral = second_corner = false;
                 if (!gradient_vector) ImGui::PopStyleColor();
             }
             else if (gradient_vector) ImGui::PopStyleColor();
@@ -945,7 +950,8 @@ public:
             if (ImGui::ImageButton("tangent_plane", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 tangent_plane ^= 1;
                 gradient_vector = false;
-                integral = false;
+                glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
+                integral = show_integral_result = apply_integral = second_corner = false;
                 if (!tangent_plane) ImGui::PopStyleColor();
             }
             else if (tangent_plane) ImGui::PopStyleColor();
@@ -954,7 +960,7 @@ public:
 
             ImGui::SameLine();
             if (ImGui::ImageButton("min_max", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
-
+                
             }
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                 ImGui::SetTooltip("Local Minima/Maxima", ImGui::GetStyle().HoverDelayNormal);
@@ -984,106 +990,101 @@ public:
             double x, y;
             glfwGetCursorPos(window, &x, &y);
             if (graphs.size() > 0 && x - sidebarWidth > 0. && x - sidebarWidth < (wWidth - sidebarWidth) && y > 0. && y < wHeight) {
-                float data[1];
-                glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-                glBindTexture(GL_TEXTURE_2D, depthMap);
-                glReadPixels(x * ssaa_factor, (wHeight - y) * ssaa_factor, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, data);
-                glBindFramebuffer(GL_FRAMEBUFFER, NULL);
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
+                glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+                float data[6];
+                glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * (wHeight - y) + x)) * sizeof(float), 6 * sizeof(float), data);
+                vec3 fragPos = { data[0], data[1], data[2] };
+                int index = static_cast<int>(data[3]);
+                vec2 gradvec = { data[4], data[5] };
 
-                if (data[0] != 1.f) {
-                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
-                    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-                    float data[6];
-                    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * (wHeight - y) + x)) * sizeof(float), 6 * sizeof(float), data);
-                    vec3 fragPos = { data[0], data[1], data[2] };
-                    int index = static_cast<int>(data[3]);
-                    vec2 gradvec = { data[4], data[5] };
+                if (index >= graphs.size() || index == 0) {
+                    goto mouse_not_on_graph;
+                }
+                ImGui::SetNextWindowPos(ImVec2(x + 10.f, y));
+                ImGui::Begin("info", nullptr,
+                    ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+                    ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
+                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
 
-                    if (index >= graphs.size()) {
-                        goto mouse_not_on_graph;
-                    }
-                    ImGui::SetNextWindowPos(ImVec2(x + 10.f, y));
-                    ImGui::Begin("info", nullptr,
+                vec4 c = graphs[index].color * 1.3f;
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 9.f);
+                ImGui::ColorEdit4("##infocolor", value_ptr(c), ImGuiColorEditFlags_NoInputs);
+                ImGui::SameLine();
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 11.f);
+                ImGui::Text(u8"X=%6.3f\nY=%6.3f\nZ=%6.3f", fragPos.x, fragPos.y, fragPos.z);
+                ImGui::SameLine();
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5.f);
+                ImGui::Text(u8"\u2202z/\u2202x=%6.3f\n\u2202z/\u2202y=%6.3f", gradvec.x, gradvec.y);
+                ImVec2 prevWindowSize = ImGui::GetWindowSize();
+                ImGui::End();
+
+                GLfloat params[5] = { fragPos.z, gradvec.x, fragPos.x, gradvec.y, fragPos.y };
+                if (tangent_plane) {
+                    glUseProgram(graphs[0].computeProgram);
+                    glUniform1fv(glGetUniformLocation(graphs[0].computeProgram, "plane_params"), 5, params);
+                    graphs[0].enabled = true;
+                    vec4 nc = colors[(graphs.size() - 1) % colors.size()];
+                    graphs[0].color = vec4(nc.r, nc.g, nc.b, 0.4f);
+                    glUseProgram(shaderProgram);
+                    ImGui::SetNextWindowPos(ImVec2(x + 10.f, y + prevWindowSize.y + 3.f));
+                    ImGui::Begin("tooltip", nullptr,
                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
                         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
-
-                    vec4 c = graphs[index].color * 1.3f;
-                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 9.f);
-                    ImGui::ColorEdit4("##infocolor", value_ptr(c), ImGuiColorEditFlags_NoInputs);
-                    ImGui::SameLine();
-                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 11.f);
-                    ImGui::Text(u8"X=%6.3f\nY=%6.3f\nZ=%6.3f", fragPos.x, fragPos.y, fragPos.z);
-                    ImGui::SameLine();
-                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5.f);
-                    ImGui::Text(u8"\u2202z/\u2202x=%6.3f\n\u2202z/\u2202y=%6.3f", gradvec.x, gradvec.y);
-                    ImVec2 prevWindowSize = ImGui::GetWindowSize();
+                    ImGui::Text("Left-click to save tangent plane");
                     ImGui::End();
-
-                    GLfloat params[5] = { fragPos.z, gradvec.x, fragPos.x, gradvec.y, fragPos.y };
-                    if (tangent_plane) {
-                        glUseProgram(graphs[0].computeProgram);
-                        glUniform1fv(glGetUniformLocation(graphs[0].computeProgram, "plane_params"), 5, params);
-                        graphs[0].enabled = true;
-                        vec4 nc = colors[(graphs.size() - 1) % colors.size()];
-                        graphs[0].color = vec4(nc.r, nc.g, nc.b, 0.4f);
-                        glUseProgram(shaderProgram);
-                        ImGui::SetNextWindowPos(ImVec2(x + 10.f, y + prevWindowSize.y + 3.f));
-                        ImGui::Begin("tooltip", nullptr,
-                            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
-                            ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
-                            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
-                        ImGui::Text("Left-click to save tangent plane");
-                        ImGui::End();
+                }
+                if (apply_tangent_plane) {
+                    const char* eq = "(%.6f)+(%.6f)*(x-(%.6f))+(%.6f)*(y-(%.6f))";
+                    char eqf[88]{};
+                    sprintf_s(eqf, eq, params[0], params[1], params[2], params[3], params[4]);
+                    graphs.push_back(Graph(graphs.size(), UserDefined, eqf, 100, colors[(graphs.size() - 1) % colors.size()], true, gridSSBO, EBO));
+                    graphs[graphs.size() - 1].setup();
+                    graphs[graphs.size() - 1].upload_definition(sliders);
+                    apply_tangent_plane = false;
+                    tangent_plane = false;
+                    graphs[0].enabled = false;
+                    for (Slider& s : sliders) {
+                        s.used_in.push_back(false);
                     }
-                    if (apply_tangent_plane) {
-                        const char* eq = "(%.6f)+(%.6f)*(x-(%.6f))+(%.6f)*(y-(%.6f))";
-                        char eqf[88]{};
-                        sprintf_s(eqf, eq, params[0], params[1], params[2], params[3], params[4]);
-                        graphs.push_back(Graph(graphs.size(), UserDefined, eqf, 100, colors[(graphs.size() - 1) % colors.size()], true, gridSSBO, EBO));
-                        graphs[graphs.size() - 1].setup();
-                        graphs[graphs.size() - 1].upload_definition(sliders);
-                        apply_tangent_plane = false;
-                        tangent_plane = false;
-                        graphs[0].enabled = false;
+                }
+                if (integral) {
+                    ImGui::SetNextWindowPos(ImVec2(x + 10.f, y + prevWindowSize.y + 3.f));
+                    ImGui::Begin("tooltip", nullptr,
+                        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+                        ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
+                        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
+                    ImGui::Text("Left-click to set the %s corner", second_corner ? "2nd" : "1st");
+                    ImGui::End();
+                    if (second_corner) {
+                        glUniform2f(glGetUniformLocation(shaderProgram, "corner2"), fragPos.x, fragPos.y);
                     }
-                    if (integral) {
-                        ImGui::SetNextWindowPos(ImVec2(x + 10.f, y + prevWindowSize.y + 3.f));
-                        ImGui::Begin("tooltip", nullptr,
-                            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
-                            ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
-                            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
-                        ImGui::Text("Left-click to set the %s corner", second_corner ? "2nd" : "1st");
-                        ImGui::End();
-                        if (second_corner) {
-                            glUniform2f(glGetUniformLocation(shaderProgram, "corner2"), fragPos.x, fragPos.y);
-                        }
+                }
+                if (apply_integral) {
+                    if (!second_corner) {
+                        integral_limits.first = vec3(fragPos.x, fragPos.y, fragPos.z);
+                        integrand_index = index;
+                        glUniform1i(glGetUniformLocation(shaderProgram, "integral"), true);
+                        glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), index);
+                        glUniform2f(glGetUniformLocation(shaderProgram, "corner1"), fragPos.x, fragPos.y);
+                        glUniform2f(glGetUniformLocation(shaderProgram, "corner2"), fragPos.x, fragPos.y);
+                        second_corner = true;
                     }
-                    if (apply_integral) {
-                        if (!second_corner) {
-                            integral_limits.first = vec3(fragPos.x, fragPos.y, fragPos.z);
-                            integrand_index = index;
-                            glUniform1i(glGetUniformLocation(shaderProgram, "integral"), true);
-                            glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), index);
-                            glUniform2f(glGetUniformLocation(shaderProgram, "corner1"), fragPos.x, fragPos.y);
-                            glUniform2f(glGetUniformLocation(shaderProgram, "corner2"), fragPos.x, fragPos.y);
-                            second_corner = true;
-                        }
-                        else {
-                            integral_limits.second = vec3(fragPos.x, fragPos.y, fragPos.z);
-                            integral = false;
-                            second_corner = false;
-                            compute_integral();
-                            show_integral_result = true;
-                        }
-                        apply_integral = false;
+                    else {
+                        integral_limits.second = vec3(fragPos.x, fragPos.y, fragPos.z);
+                        integral = false;
+                        second_corner = false;
+                        compute_integral();
+                        show_integral_result = true;
                     }
-                    if (doubleClickPressed) {
-                        centerPos = fragPos;
-                        glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
-                        doubleClickPressed = false;
-                    }
-                } else goto mouse_not_on_graph;
+                    apply_integral = false;
+                }
+                if (doubleClickPressed) {
+                    centerPos = fragPos;
+                    glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
+                    doubleClickPressed = false;
+                }
             } else {
             mouse_not_on_graph:
                 graphs[0].enabled = false;
@@ -1103,10 +1104,10 @@ public:
                 ImGui::Begin("Volume under surface", &result_window,
                     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
                     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove);
-                ImGui::Text(u8"%.4f \u2264 x \u2264 %.4f, %.4f \u2264 y \u2264 %.4f",
+                ImGui::Text(u8"%.4g \u2264 x \u2264 %.4g, %.4g \u2264 y \u2264 %.4g",
                     min(integral_limits.first.x, integral_limits.second.x), max(integral_limits.first.x, integral_limits.second.x),
                     min(integral_limits.first.y, integral_limits.second.y), max(integral_limits.first.y, integral_limits.second.y));
-                ImGui::Text("Signed volume \u2248 %.6f", integral_result);
+                ImGui::Text("Signed volume \u2248 %.9f", integral_result);
                 ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(120, 120, 120, 255));
                 ImGui::Text(u8"\u2206x = %.3e, \u2206y = %.3e", dx, dy);
                 ImGui::PopStyleColor();
@@ -1146,6 +1147,9 @@ public:
 
             ImGui::Render();
 
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
+            glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32F, GL_RED, GL_FLOAT, nullptr);
+
             glClearColor(0.05f, 0.05f, 0.05f, 1.f);
             glBindFramebuffer(GL_FRAMEBUFFER, NULL);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1173,28 +1177,25 @@ public:
                 glUniform4f(glGetUniformLocation(shaderProgram, "color"), g.color.r, g.color.g, g.color.b, g.color.w);
                 glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), g.grid_res);
                 glUniform1i(glGetUniformLocation(shaderProgram, "tangent_plane"), g.type == TangentPlane);
+                glUniform1f(glGetUniformLocation(shaderProgram, "shininess"), g.shininess);
                 if (gridLines)
                     glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), g.grid_lines ? gridLineDensity : 0.f);
                 glBindVertexArray(VAO);
                 glUniform1i(glGetUniformLocation(shaderProgram, "quad"), false);
                 glDrawElements(GL_TRIANGLE_STRIP, (GLsizei)g.indices.size(), GL_UNSIGNED_INT, 0);
-                
             };
             
-            if (integral && second_corner || show_integral_result) {
+            glBindTexture(GL_TEXTURE_2D, depthMap);
+            
+            if (integral && second_corner || show_integral_result)
                 render_graph(integrand_index);
-            }
-            for (int i = 1; i <= graphs.size(); i++) {
-                if (i == graphs.size()) i = 0;
+            for (int i = 1; i < graphs.size(); i++) {
                 const Graph& g = graphs[i];
-                if (!g.enabled) {
-                    if (i == 0) break;
-                    continue;
-                }
+                if (!g.enabled) continue;
                 if (i == integrand_index && (integral && second_corner || show_integral_result)) continue;
                 render_graph(i);
-                if (i == 0) break;
             }
+            if (graphs[0].enabled) render_graph(0);
 
             glViewport(sidebarWidth, 0, wWidth - sidebarWidth, wHeight);
 
