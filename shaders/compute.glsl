@@ -9,6 +9,8 @@ layout(std430, binding = 1) readonly buffer sliderbuffer {
 	float sliders[];
 };
 
+const float PI = 3.141592;
+
 uniform int grid_res;
 uniform float zoomx;
 uniform float zoomy;

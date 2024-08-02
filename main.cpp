@@ -245,6 +245,13 @@ public:
     }
 };
 
+enum RegionType {
+    CartesianRectangle,
+    Type1, 
+    Type2,
+    Polar,
+};
+
 class Trisualizer {
     GLFWwindow* window = nullptr;
     ImFont* font_title = nullptr;
@@ -263,9 +270,13 @@ public:
     bool trace = true;
     bool tangent_plane = false, apply_tangent_plane = false;
     bool gradient_vector = false;
+
     bool integral = false, second_corner = false, apply_integral = false, show_integral_result = false;
-    int integrand_index = -1;
+    int integrand_index = -1, region_type = CartesianRectangle, integral_precision = 2000;
+    float x_min, x_max, y_min, y_max, theta_min, theta_max;
+    char x_min_eq[32], x_max_eq[32], y_min_eq[32], y_max_eq[32], r_min_eq[32], r_max_eq[32];
     float integral_result, middle_height, dx, dy;
+
     std::pair<vec3, vec3> integral_limits;
     vec3 centerPos = vec3(0.f);
     vec2 mousePos = vec2(0.f);
@@ -273,8 +284,8 @@ public:
     bool updateBufferSize = false;
     double lastMousePress = 0.0;
     bool doubleClickPressed = false;
-    int ssaa_factor = 1.f; // change to 3.f when enabling SSAA by default
-    bool ssaa = false;
+    int ssaa_factor = 3.f; // change to 3.f when enabling SSAA by default
+    bool ssaa = true;
 
     GLuint shaderProgram;
     GLuint VAO, VBO, EBO;
@@ -384,7 +395,7 @@ public:
 
         glGenBuffers(1, &posBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * 600 * 600 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * 1000 * 600 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, posBuffer);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "posbuffer"), 1);
 
@@ -477,7 +488,7 @@ private:
         glBindTexture(GL_TEXTURE_2D, app->frameTex);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width * app->ssaa_factor, height * app->ssaa_factor, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * width * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
     }
 
     static inline void on_mouseButton(GLFWwindow* window, int button, int action, int mods) {
@@ -485,15 +496,6 @@ private:
         switch (button) {
         case GLFW_MOUSE_BUTTON_LEFT:
             switch (action) {
-            case GLFW_RELEASE:
-                if (app->updateBufferSize) {
-                    int width, height;
-                    glfwGetWindowSize(window, &width, &height);
-                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
-                    glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
-                    app->updateBufferSize = false;
-                }
-                break;
             case GLFW_PRESS:
                 if (app->tangent_plane) {
                     app->apply_tangent_plane = true;
@@ -518,7 +520,7 @@ private:
             glUniform1f(glGetUniformLocation(app->shaderProgram, "graph_size"), app->graph_size);
         }
         else {
-            app->zoomSpeed = pow(0.9f, y);
+            app->zoomSpeed = pow(0.95f, y);
             app->zoomTimestamp = glfwGetTime();
         }
     }
@@ -703,7 +705,7 @@ public:
                     ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
 
                     auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.3f, nullptr, &dockspace_id);
-                    auto dock_id_middle = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 0.5f, nullptr, &dock_id_left);
+                    auto dock_id_middle = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 0.6f, nullptr, &dock_id_left);
                     auto dock_id_down = ImGui::DockBuilderSplitNode(dock_id_middle, ImGuiDir_Down, 0.5f, nullptr, &dock_id_middle);
 
                     ImGui::DockBuilderDockWindow("Symbolic View", dock_id_left);
@@ -721,11 +723,7 @@ public:
             ImGui::SetNextWindowClass(&window_class);
             ImGui::Begin("Symbolic View", nullptr, ImGuiWindowFlags_NoMove);
 
-            float swidth = ImGui::GetWindowSize().x;
-            if (sidebarWidth != swidth) {
-                updateBufferSize = true;
-                sidebarWidth = swidth;
-            }
+            sidebarWidth = ImGui::GetWindowSize().x;
             bool set_focus = false;
             if (ImGui::Button("New function", ImVec2(100, 0))) {
                 size_t i = graphs.size() - 1;
@@ -985,6 +983,81 @@ public:
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                 ImGui::SetTooltip("Double Integral", ImGui::GetStyle().HoverDelayNormal);
 
+            if (integral || show_integral_result) {
+                ImGui::BeginChild(ImGui::GetID("region_type"), ImVec2(100, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+                ImGui::BeginDisabled(show_integral_result);
+                if (ImGui::RadioButton("Rectangle", region_type == CartesianRectangle)) region_type = CartesianRectangle;
+                if (ImGui::RadioButton("Type I", region_type == Type1)) region_type = Type1;
+                if (ImGui::RadioButton("Type II", region_type == Type2)) region_type = Type2;
+                if (ImGui::RadioButton("Polar", region_type == Polar)) region_type = Polar;
+                ImGui::EndDisabled();
+                ImGui::EndChild();
+                ImGui::SameLine();
+                ImGui::BeginChild(ImGui::GetID("region_bounds"), ImVec2(vMax.x - vMin.x - 106.f, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+                ImGui::BeginDisabled(show_integral_result);
+                vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
+                vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
+                ImGui::PushItemWidth((vMax.x - vMin.x - 42.f) / 2.f);
+                switch (region_type) {
+                case CartesianRectangle:
+                    ImGui::InputFloat(u8"\u2264 x \u2264", &x_min, 0.f, 0.f, "%g");
+                    ImGui::SameLine();
+                    ImGui::InputFloat("##x_max", &x_max, 0.f, 0.f, "%g");
+
+                    ImGui::InputFloat(u8"\u2264 y \u2264", &y_min, 0.f, 0.f, "%g");
+                    ImGui::SameLine();
+                    ImGui::InputFloat("##y_max", &y_max, 0.f, 0.f, "%g");
+                    break;
+                case Type1:
+                    ImGui::InputFloat(u8"\u2264 x \u2264", &x_min, 0.f, 0.f, "%g");
+                    ImGui::SameLine();
+                    ImGui::InputFloat("##x_max", &x_max, 0.f, 0.f, "%g");
+
+                    ImGui::InputText(u8"\u2264 y \u2264", y_min_eq, 32);
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                        ImGui::SetTooltip("Enter a function of x", ImGui::GetStyle().HoverDelayNormal);
+                    ImGui::SameLine();
+                    ImGui::InputText("##y_max", y_max_eq, 32);
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                        ImGui::SetTooltip("Enter a function of x", ImGui::GetStyle().HoverDelayNormal);
+                    break;
+                case Type2:
+                    ImGui::InputText(u8"\u2264 x \u2264", x_min_eq, 32);
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                        ImGui::SetTooltip("Enter a function of y", ImGui::GetStyle().HoverDelayNormal);
+                    ImGui::SameLine();
+                    ImGui::InputText("##x_max", x_max_eq, 32);
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                        ImGui::SetTooltip("Enter a function of y", ImGui::GetStyle().HoverDelayNormal);
+
+                    ImGui::InputFloat(u8"\u2264 y \u2264", &y_min, 0.f, 0.f, "%g");
+                    ImGui::SameLine();
+                    ImGui::InputFloat("##y_max", &y_max, 0.f, 0.f, "%g");
+                    break;
+                case Polar:
+                    ImGui::InputFloat(u8"\u2264 \u03b8 \u2264", &theta_min, 0.f, 0.f, "%g");
+                    ImGui::SameLine();
+                    ImGui::InputFloat("##theta_max", &theta_max, 0.f, 0.f, "%g");
+
+                    ImGui::InputText(u8"\u2264 r \u2264", r_min_eq, 32);
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                        ImGui::SetTooltip(u8"Enter a function of \u03b8", ImGui::GetStyle().HoverDelayNormal);
+                    ImGui::SameLine();
+                    ImGui::InputText("##r_max", r_max_eq, 32);
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                        ImGui::SetTooltip(u8"Enter a function of \u03b8", ImGui::GetStyle().HoverDelayNormal);
+                    break;
+                }
+                ImGui::PopItemWidth();
+                ImGui::SetNextItemWidth(vMax.x - vMin.x - 62.f);
+                if (ImGui::InputInt("Precision", &integral_precision, 50, 100))
+                    if (integral_precision < 0) integral_precision = 0;
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                    ImGui::SetTooltip("Precision, higher the better", ImGui::GetStyle().HoverDelayNormal);
+                ImGui::EndDisabled();
+                ImGui::EndChild();
+            }
+
             ImGui::End();
 
             double x, y;
@@ -993,7 +1066,8 @@ public:
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                 float data[6];
-                glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * (wHeight - y) + x)) * sizeof(float), 6 * sizeof(float), data);
+                int idx = static_cast<int>(6 * (wHeight * (wHeight - y) + x - sidebarWidth)) * sizeof(float);
+                glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * y + x)) * sizeof(float), 6 * sizeof(float), data);
                 vec3 fragPos = { data[0], data[1], data[2] };
                 int index = static_cast<int>(data[3]);
                 vec2 gradvec = { data[4], data[5] };
@@ -1006,7 +1080,7 @@ public:
                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                     ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
                     ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
-
+                ImGui::Text("%i", idx);
                 vec4 c = graphs[index].color * 1.3f;
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 9.f);
                 ImGui::ColorEdit4("##infocolor", value_ptr(c), ImGuiColorEditFlags_NoInputs);
@@ -1036,9 +1110,9 @@ public:
                     ImGui::End();
                 }
                 if (apply_tangent_plane) {
-                    const char* eq = "(%.6f)+(%.6f)*(x-(%.6f))+(%.6f)*(y-(%.6f))";
+                    const char* eq = "%.6f%+.6f*(x%+.6f)%+.6f*(y%+.6f)";
                     char eqf[88]{};
-                    sprintf_s(eqf, eq, params[0], params[1], params[2], params[3], params[4]);
+                    sprintf_s(eqf, eq, params[0], params[1], -params[2], params[3], -params[4]);
                     graphs.push_back(Graph(graphs.size(), UserDefined, eqf, 100, colors[(graphs.size() - 1) % colors.size()], true, gridSSBO, EBO));
                     graphs[graphs.size() - 1].setup();
                     graphs[graphs.size() - 1].upload_definition(sliders);
@@ -1070,12 +1144,17 @@ public:
                         glUniform2f(glGetUniformLocation(shaderProgram, "corner1"), fragPos.x, fragPos.y);
                         glUniform2f(glGetUniformLocation(shaderProgram, "corner2"), fragPos.x, fragPos.y);
                         second_corner = true;
+                        region_type = CartesianRectangle;
                     }
                     else {
                         integral_limits.second = vec3(fragPos.x, fragPos.y, fragPos.z);
                         integral = false;
                         second_corner = false;
                         compute_integral();
+                        x_min = min(integral_limits.first.x, integral_limits.second.x);
+                        x_max = max(integral_limits.first.x, integral_limits.second.x);
+                        y_min = min(integral_limits.first.y, integral_limits.second.y);
+                        y_max = max(integral_limits.first.y, integral_limits.second.y);
                         show_integral_result = true;
                     }
                     apply_integral = false;

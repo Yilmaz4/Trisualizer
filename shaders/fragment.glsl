@@ -104,9 +104,10 @@ void main() {
 
 	if (!tangent_plane && int(gl_FragCoord.x) % radius == 0 && int(gl_FragCoord.y) % radius == 0) {
 		if (integral && index != integrand_idx) return;
-		float x = int(gl_FragCoord.x / radius) - regionSize.y / radius; // idk why i have to subtract regionSize.y, it just works
+		float x = int(gl_FragCoord.x / radius); // idk why i have to subtract regionSize.y, it just works
 		float y = int(gl_FragCoord.y / radius);
 		float h = int(regionSize.y / radius);
+		y = h - y;
 		posbuf[6 * int(h * y + x) + 0] = gridCoord.x;
 		posbuf[6 * int(h * y + x) + 1] = gridCoord.y;
 		posbuf[6 * int(h * y + x) + 2] = fragPos.y * zoom / graph_size;
