@@ -395,7 +395,7 @@ public:
 
         glGenBuffers(1, &posBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * 1000 * 600 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * 700 * 600 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, posBuffer);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "posbuffer"), 1);
 
@@ -488,7 +488,7 @@ private:
         glBindTexture(GL_TEXTURE_2D, app->frameTex);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width * app->ssaa_factor, height * app->ssaa_factor, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * width * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
     }
 
     static inline void on_mouseButton(GLFWwindow* window, int button, int action, int mods) {
@@ -496,16 +496,23 @@ private:
         switch (button) {
         case GLFW_MOUSE_BUTTON_LEFT:
             switch (action) {
+            case GLFW_RELEASE:
+                if (app->updateBufferSize) {
+                    int width, height;
+                    glfwGetWindowSize(window, &width, &height);
+                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
+                    glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+                    std::cout << "updated\n";
+                    app->updateBufferSize = false;
+                }
+                break;
             case GLFW_PRESS:
-                if (app->tangent_plane) {
+                if (app->tangent_plane)
                     app->apply_tangent_plane = true;
-                }
-                if (app->integral) {
+                if (app->integral)
                     app->apply_integral = true;
-                }
-                if (glfwGetTime() - app->lastMousePress < 0.2) {
+                if (glfwGetTime() - app->lastMousePress < 0.2)
                     app->doubleClickPressed = true;
-                }
                 app->lastMousePress = glfwGetTime();
                 break;
             }
@@ -723,7 +730,11 @@ public:
             ImGui::SetNextWindowClass(&window_class);
             ImGui::Begin("Symbolic View", nullptr, ImGuiWindowFlags_NoMove);
 
-            sidebarWidth = ImGui::GetWindowSize().x;
+            float sw = ImGui::GetWindowSize().x;
+            if (sw != sidebarWidth) {
+                sidebarWidth = sw;
+                updateBufferSize = true;
+            }
             bool set_focus = false;
             if (ImGui::Button("New function", ImVec2(100, 0))) {
                 size_t i = graphs.size() - 1;
@@ -985,7 +996,7 @@ public:
 
             if (integral || show_integral_result) {
                 ImGui::BeginChild(ImGui::GetID("region_type"), ImVec2(100, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
-                ImGui::BeginDisabled(show_integral_result);
+                ImGui::BeginDisabled(show_integral_result || second_corner);
                 if (ImGui::RadioButton("Rectangle", region_type == CartesianRectangle)) region_type = CartesianRectangle;
                 if (ImGui::RadioButton("Type I", region_type == Type1)) region_type = Type1;
                 if (ImGui::RadioButton("Type II", region_type == Type2)) region_type = Type2;
@@ -994,7 +1005,7 @@ public:
                 ImGui::EndChild();
                 ImGui::SameLine();
                 ImGui::BeginChild(ImGui::GetID("region_bounds"), ImVec2(vMax.x - vMin.x - 106.f, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
-                ImGui::BeginDisabled(show_integral_result);
+                ImGui::BeginDisabled(show_integral_result || second_corner);
                 vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
                 vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
                 ImGui::PushItemWidth((vMax.x - vMin.x - 42.f) / 2.f);
@@ -1054,6 +1065,9 @@ public:
                     if (integral_precision < 0) integral_precision = 0;
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                     ImGui::SetTooltip("Precision, higher the better", ImGui::GetStyle().HoverDelayNormal);
+                if (ImGui::Button("Compute", ImVec2(vMax.x - vMin.x, 0.f))) {
+
+                }
                 ImGui::EndDisabled();
                 ImGui::EndChild();
             }
@@ -1066,8 +1080,7 @@ public:
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                 float data[6];
-                int idx = static_cast<int>(6 * (wHeight * (wHeight - y) + x - sidebarWidth)) * sizeof(float);
-                glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * y + x)) * sizeof(float), 6 * sizeof(float), data);
+                glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * y + x - sidebarWidth)) * sizeof(float), 6 * sizeof(float), data);
                 vec3 fragPos = { data[0], data[1], data[2] };
                 int index = static_cast<int>(data[3]);
                 vec2 gradvec = { data[4], data[5] };
@@ -1075,12 +1088,19 @@ public:
                 if (index >= graphs.size() || index == 0) {
                     goto mouse_not_on_graph;
                 }
-                ImGui::SetNextWindowPos(ImVec2(x + 10.f, y));
                 ImGui::Begin("info", nullptr,
                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                     ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
                     ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
-                ImGui::Text("%i", idx);
+                ImVec2 size = ImGui::GetWindowSize();
+                ImVec2 pos = { (float)x + 20.0f, (float)y + 20.f };
+                if (size.x > wWidth - pos.x - 5)
+                    pos.x = wWidth - size.x - 5;
+                if (size.y > wHeight - pos.y - 5)
+                    pos.y = wHeight - size.y - 5;
+                if (pos.x < 5) pos.x = 5;
+                if (pos.y < 5) pos.y = 5;
+                ImGui::SetWindowPos(pos);
                 vec4 c = graphs[index].color * 1.3f;
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 9.f);
                 ImGui::ColorEdit4("##infocolor", value_ptr(c), ImGuiColorEditFlags_NoInputs);
@@ -1101,11 +1121,19 @@ public:
                     vec4 nc = colors[(graphs.size() - 1) % colors.size()];
                     graphs[0].color = vec4(nc.r, nc.g, nc.b, 0.4f);
                     glUseProgram(shaderProgram);
-                    ImGui::SetNextWindowPos(ImVec2(x + 10.f, y + prevWindowSize.y + 3.f));
                     ImGui::Begin("tooltip", nullptr,
                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
                         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
+                    ImVec2 size = ImGui::GetWindowSize();
+                    ImVec2 pos = { (float)x + 20.0f, (float)y + 20.f + prevWindowSize.y + 3.f };
+                    if (size.x > wWidth - pos.x - 5)
+                        pos.x = wWidth - size.x - 5;
+                    if (size.y > wHeight - pos.y - 5)
+                        pos.y = wHeight - size.y - 5;
+                    if (pos.x < 5) pos.x = 5;
+                    if (pos.y < 5) pos.y = 5;
+                    ImGui::SetWindowPos(pos);
                     ImGui::Text("Left-click to save tangent plane");
                     ImGui::End();
                 }
@@ -1124,11 +1152,19 @@ public:
                     }
                 }
                 if (integral) {
-                    ImGui::SetNextWindowPos(ImVec2(x + 10.f, y + prevWindowSize.y + 3.f));
                     ImGui::Begin("tooltip", nullptr,
                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
                         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
+                    ImVec2 size = ImGui::GetWindowSize();
+                    ImVec2 pos = { (float)x + 20.0f, (float)y + 20.f + prevWindowSize.y + 3.f };
+                    if (size.x > wWidth - pos.x - 5)
+                        pos.x = wWidth - size.x - 5;
+                    if (size.y > wHeight - pos.y - 5)
+                        pos.y = wHeight - size.y - 5;
+                    if (pos.x < 5) pos.x = 5;
+                    if (pos.y < 5) pos.y = 5;
+                    ImGui::SetWindowPos(pos);
                     ImGui::Text("Left-click to set the %s corner", second_corner ? "2nd" : "1st");
                     ImGui::End();
                     if (second_corner) {
@@ -1263,8 +1299,6 @@ public:
                 glUniform1i(glGetUniformLocation(shaderProgram, "quad"), false);
                 glDrawElements(GL_TRIANGLE_STRIP, (GLsizei)g.indices.size(), GL_UNSIGNED_INT, 0);
             };
-            
-            glBindTexture(GL_TEXTURE_2D, depthMap);
             
             if (integral && second_corner || show_integral_result)
                 render_graph(integrand_index);
