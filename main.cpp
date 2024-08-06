@@ -511,7 +511,7 @@ private:
             case GLFW_PRESS:
                 if (app->tangent_plane)
                     app->apply_tangent_plane = true;
-                if (app->integral)
+                if (app->integral && !app->show_integral_result)
                     app->apply_integral = true;
                 if (glfwGetTime() - app->lastMousePress < 0.2)
                     app->doubleClickPressed = true;
@@ -559,7 +559,7 @@ private:
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-layout(std430, binding = 0) volatile buffer samplebuffer {
+layout(std430, binding = 4) volatile buffer samplebuffer {
 	float samples[];
 };
 uniform int samplesize;
@@ -599,8 +599,8 @@ void main() {
         GLuint sampleBuffer;
         glGenBuffers(1, &sampleBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, sampleBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, sampleBuffer);
-        glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "samplebuffer"), 0);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, sampleBuffer);
+        glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "samplebuffer"), 4);
         glBufferData(GL_SHADER_STORAGE_BUFFER, samplesize * sizeof(float), nullptr, GL_STATIC_DRAW);
 
         glUniform1i(glGetUniformLocation(computeProgram, "samplesize"), samplesize);
