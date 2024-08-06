@@ -4,9 +4,6 @@ layout(early_fragment_tests) in;
 
 out vec4 fragColor;
 
-layout(std430, binding = 0) volatile buffer gridbuffer {
-	float grid[];
-};
 layout(std430, binding = 1) volatile buffer posbuffer {
 	float posbuf[];
 };
@@ -18,6 +15,7 @@ uniform int radius;
 in vec3 normal;
 in vec3 fragPos;
 in vec2 gridCoord;
+flat in float inRegion;
 
 uniform float ambientStrength;
 uniform vec3 lightPos;
@@ -95,10 +93,11 @@ void main() {
 	if (integral) {
 		if (index != integrand_idx) {
 			fragColor = vec4(fragColor.rgb, fragColor.w * 0.1f);
-		}
-		else {
+		} else if (region_type == -1) {
 			vec2 s = step(min(corner1, corner2), gridCoord) * step(gridCoord, max(corner1, corner2));
 			fragColor = vec4(fragColor.rgb, fragColor.w * (1.f - (1.f - s.x * s.y) * 0.8f));
+		} else {
+			fragColor = vec4(fragColor.rgb, fragColor.w * (inRegion * 0.8f + 0.2f));
 		}
 	}
 

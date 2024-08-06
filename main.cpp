@@ -180,7 +180,7 @@ public:
         }
     }
     
-    void upload_definition(std::vector<Slider>& sliders) {
+    void upload_definition(std::vector<Slider>& sliders, const char* regionBool = "true") {
         int success;
 
         std::string pdefn = defn;
@@ -198,7 +198,7 @@ public:
         char* computeSource = read_resource(IDR_CMPT);
         size_t size = strlen(computeSource) + 512;
         char* modifiedSource = new char[size];
-        sprintf_s(modifiedSource, size, computeSource, pdefn.c_str());
+        sprintf_s(modifiedSource, size, computeSource, pdefn.c_str(), regionBool);
         glShaderSource(computeShader, 1, &modifiedSource, NULL);
         glCompileShader(computeShader);
         glGetShaderiv(computeShader, GL_COMPILE_STATUS, &success);
@@ -237,7 +237,7 @@ public:
         glUniform1i(glGetUniformLocation(computeProgram, "grid_res"), grid_res + 2);
         glUniform3fv(glGetUniformLocation(computeProgram, "centerPos"), 1, value_ptr(centerPos));
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, pow(grid_res + 2, 2) * (int)sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 2 * pow(grid_res + 2, 2) * (int)sizeof(float), nullptr, GL_DYNAMIC_DRAW);
     }
     void use_shader() const {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
@@ -274,7 +274,9 @@ public:
     bool integral = false, second_corner = false, apply_integral = false, show_integral_result = false;
     int integrand_index = -1, region_type = CartesianRectangle, integral_precision = 2000;
     float x_min, x_max, y_min, y_max, theta_min, theta_max;
-    char x_min_eq[32], x_max_eq[32], y_min_eq[32], y_max_eq[32], r_min_eq[32], r_max_eq[32];
+    char x_min_eq[32], x_max_eq[32], y_min_eq[32], y_max_eq[32], r_min_eq[32], r_max_eq[32], integral_infoLog[512];
+    float x_min_eq_min, x_max_eq_max, y_min_eq_min, y_max_eq_max;
+    vec3 center_of_region;
     float integral_result, middle_height, dx, dy;
 
     std::pair<vec3, vec3> integral_limits;
@@ -550,32 +552,146 @@ private:
         app->mousePos = { x, y };
     }
 
-    void compute_integral() {
+    std::pair<float, float> min_max(char var, const char* func, float rbegin, float rend, int samplesize, char* infoLog) {
+        unsigned int computeShader = glCreateShader(GL_COMPUTE_SHADER);
+        const char* computeSource = R"glsl(
+#version 460 core
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(std430, binding = 0) volatile buffer samplebuffer {
+	float samples[];
+};
+uniform int samplesize;
+uniform float rbegin;
+uniform float rend;
+
+void main() {
+	float %c = rbegin + ((rend - rbegin) / samplesize) * float(gl_GlobalInvocationID.x);
+    samples[gl_GlobalInvocationID.x] = float(%s);
+})glsl";
+        size_t size = strlen(computeSource) + 256;
+        char* modifiedSource = new char[size];
+        sprintf_s(modifiedSource, size, computeSource, var, func);
+        glShaderSource(computeShader, 1, &modifiedSource, NULL);
+        glCompileShader(computeShader);
+        int success;
+        glGetShaderiv(computeShader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            char temp[512];
+            glGetShaderInfoLog(computeShader, 512, NULL, temp);
+            int k = 0;
+            for (int i = 0, j = 0; i < strlen(temp); i++, j++) {
+                if (j < 21) continue;
+                infoLog[k++] = temp[i];
+                if (temp[i] == '\n') j = -1;
+            }
+            infoLog[k] = '\0';
+            return std::pair(std::numeric_limits<float>::quiet_NaN(), 0.f);
+        }
+        GLuint computeProgram = glCreateProgram();
+        glAttachShader(computeProgram, computeShader);
+        glLinkProgram(computeProgram);
+        glDeleteShader(computeShader);
+        glUseProgram(computeProgram);
+        delete[] modifiedSource;
+
+        GLuint sampleBuffer;
+        glGenBuffers(1, &sampleBuffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, sampleBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, sampleBuffer);
+        glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "samplebuffer"), 0);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, samplesize * sizeof(float), nullptr, GL_STATIC_DRAW);
+
+        glUniform1i(glGetUniformLocation(computeProgram, "samplesize"), samplesize);
+        glUniform1f(glGetUniformLocation(computeProgram, "rbegin"), rbegin);
+        glUniform1f(glGetUniformLocation(computeProgram, "rend"), rend);
+
+        glDispatchCompute(samplesize, 1, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        float* data = new float[samplesize]{};
+        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, samplesize * sizeof(float), data);
+        float min = std::numeric_limits<float>::max(), max = std::numeric_limits<float>::min();
+        for (int i = 0; i < samplesize; i++) {
+            float s = data[i];
+            if (isnan(s) || isinf(s)) continue;
+            if (s < min) min = s;
+            if (s > max) max = s;
+        }
+        delete[] data;
+        glDeleteProgram(computeProgram);
+        glDeleteBuffers(1, &sampleBuffer);
+        return std::pair(min, max);
+    }
+
+    bool compute_integral(char* infoLog) {
         Graph g = graphs[integrand_index];
-        g.grid_res = 2000;
-        vec3 center = (integral_limits.first + integral_limits.second) / 2.f;
-        glUseProgram(g.computeProgram);
-        glUniform1f(glGetUniformLocation(g.computeProgram, "zoomx"), abs(integral_limits.first.x - integral_limits.second.x));
-        glUniform1f(glGetUniformLocation(g.computeProgram, "zoomy"), abs(integral_limits.first.y - integral_limits.second.y));
+        g.grid_res = integral_precision;
+        float xmin, xmax, ymin, ymax;
+        char regionBool[256];
+        switch (region_type) {
+        case CartesianRectangle:
+            xmin = x_min, xmax = x_max, ymin = y_min, ymax = y_max;
+            sprintf_s(regionBool, "float(%.9f) <= x && x <= float(%.9f) && float(%.9f) <= y && y <= float(%.9f)", xmin, xmax, ymin, ymax);
+            break;
+        case Type1: {
+            xmin = x_min, xmax = x_max;
+            std::pair<float, float> yminbounds = min_max('x', y_min_eq, xmin, xmax, g.grid_res, infoLog);
+            std::pair<float, float> ymaxbounds = min_max('x', y_max_eq, xmin, xmax, g.grid_res, infoLog);
+            if (isnan(yminbounds.first) || isnan(ymaxbounds.first)) {
+                return false;
+            }
+            ymin = y_min_eq_min = yminbounds.first, ymax = y_max_eq_max = ymaxbounds.second;
+            sprintf_s(regionBool, "float(%s) <= y && y <= float(%s) && float(%.9f) <= x && x <= float(%.9f)", y_min_eq, y_max_eq, xmin, xmax);
+            break;
+        }
+        case Type2: {
+            ymin = y_min, ymax = y_max;
+            std::pair<float, float> xminbounds = min_max('y', x_min_eq, ymin, ymax, g.grid_res, infoLog);
+            std::pair<float, float> xmaxbounds = min_max('y', x_max_eq, ymin, ymax, g.grid_res, infoLog);
+            if (isnan(xminbounds.first) || isnan(xmaxbounds.first)) {
+                return false;
+            }
+            xmin = x_min_eq_min = xminbounds.first, xmax = x_max_eq_max = xmaxbounds.second;
+            sprintf_s(regionBool, "float(%s) <= x && x <= float(%s) && float(%.9f) <= y && y <= float(%.9f)", x_min_eq, x_max_eq, ymin, ymax);
+            break;
+        }
+        case Polar: {
+            std::pair<float, float> rminbounds = min_max('t', r_min_eq, theta_min, theta_max, g.grid_res, infoLog);
+            std::pair<float, float> rmaxbounds = min_max('t', r_max_eq, theta_min, theta_max, g.grid_res, infoLog);
+            if (isnan(rminbounds.first) || isnan(rmaxbounds.first)) {
+                return false;
+            }
+            // todo
+        }}
+        g.upload_definition(sliders, regionBool);
+
+        center_of_region = vec3((xmax + xmin) / 2.f, (ymax + ymin) / 2.f, 0.f);
+        glUniform1f(glGetUniformLocation(g.computeProgram, "zoomx"), abs(xmax - xmin));
+        glUniform1f(glGetUniformLocation(g.computeProgram, "zoomy"), abs(ymax - ymin));
         glUniform1f(glGetUniformLocation(g.computeProgram, "zoomz"), 1.f);
         glUniform1i(glGetUniformLocation(g.computeProgram, "grid_res"), g.grid_res);
-        glUniform3fv(glGetUniformLocation(g.computeProgram, "centerPos"), 1, value_ptr(center));
+        glUniform3fv(glGetUniformLocation(g.computeProgram, "centerPos"), 1, value_ptr(center_of_region));
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, g.SSBO);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, g.grid_res * g.grid_res * (int)sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 2 * g.grid_res * g.grid_res * (int)sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glDispatchCompute(g.grid_res, g.grid_res, 1);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-        float* data = new float[g.grid_res * g.grid_res]{};
-        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, g.grid_res * g.grid_res * sizeof(float), data);
-        dx = abs(integral_limits.first.x - integral_limits.second.x) / g.grid_res;
-        dy = abs(integral_limits.first.y - integral_limits.second.y) / g.grid_res;
+        float* data = new float[2 * g.grid_res * g.grid_res]{};
+        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 2 * g.grid_res * g.grid_res * sizeof(float), data);
+        dx = abs(xmax - xmin) / g.grid_res;
+        dy = abs(ymax - ymin) / g.grid_res;
         integral_result = 0.f;
-        for (int i = 0; i < g.grid_res * g.grid_res; i++) {
+        for (int i = 0; i < 2 * g.grid_res * g.grid_res; i += 2) {
             float val = data[i];
-            if (isnan(val) || isinf(val)) continue;
+            bool in_region = static_cast<bool>(data[i + 1]);
+            if (isnan(val) || isinf(val) || !in_region) continue;
             integral_result += val * dx * dy;
         }
         middle_height = data[g.grid_res * (g.grid_res / 2) + (g.grid_res / 2)];
         delete[] data;
+
+        graphs[integrand_index].upload_definition(sliders, regionBool);
+        return true;
     }
 public:
     void mainloop() {
@@ -771,6 +887,7 @@ public:
                     if (i == integrand_index) {
                         glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
                         integral = show_integral_result = apply_integral = second_corner = false;
+                        if (integrand_index != -1) graphs[integrand_index].upload_definition(sliders);
                     }
                 }
                 ImGui::SameLine();
@@ -782,6 +899,7 @@ public:
                     if (i == integrand_index) {
                         glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
                         integral = show_integral_result = apply_integral = second_corner = false;
+                        if (integrand_index != -1) graphs[integrand_index].upload_definition(sliders);
                     }
                     graphs.erase(graphs.begin() + i);
                     for (Slider& s : sliders) {
@@ -855,6 +973,7 @@ public:
                         if (sliders[i].used_in[j] && (integral && second_corner || show_integral_result) && j == integrand_index) {
                             glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
                             integral = show_integral_result = apply_integral = second_corner = false;
+                            if (integrand_index != -1) graphs[integrand_index].upload_definition(sliders);
                         }
                     }
                 }
@@ -948,6 +1067,7 @@ public:
                 tangent_plane = false;
                 glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
                 integral = show_integral_result = apply_integral = second_corner = false;
+                if (integrand_index != -1) graphs[integrand_index].upload_definition(sliders);
                 if (!gradient_vector) ImGui::PopStyleColor();
             }
             else if (gradient_vector) ImGui::PopStyleColor();
@@ -961,6 +1081,7 @@ public:
                 gradient_vector = false;
                 glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
                 integral = show_integral_result = apply_integral = second_corner = false;
+                if (integrand_index != -1) graphs[integrand_index].upload_definition(sliders);
                 if (!tangent_plane) ImGui::PopStyleColor();
             }
             else if (tangent_plane) ImGui::PopStyleColor();
@@ -980,6 +1101,7 @@ public:
                 if (!integral) {
                     glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
                     integral = show_integral_result = apply_integral = second_corner = false;
+                    if (integrand_index != -1) graphs[integrand_index].upload_definition(sliders);
                 }
                 integral ^= 1;
                 if (second_corner) {
@@ -1066,7 +1188,14 @@ public:
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                     ImGui::SetTooltip("Precision, higher the better", ImGui::GetStyle().HoverDelayNormal);
                 if (ImGui::Button("Compute", ImVec2(vMax.x - vMin.x, 0.f))) {
-
+                    integrand_index = 1;
+                    glUniform1i(glGetUniformLocation(shaderProgram, "integral"), true);
+                    glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), 1);
+                    glUniform1i(glGetUniformLocation(shaderProgram, "region_type"), region_type);
+                    bool successful = compute_integral(integral_infoLog);
+                    std::cout << successful << std::endl;
+                    std::cerr << integral_infoLog << std::endl;
+                    show_integral_result = true;
                 }
                 ImGui::EndDisabled();
                 ImGui::EndChild();
@@ -1177,6 +1306,7 @@ public:
                         integrand_index = index;
                         glUniform1i(glGetUniformLocation(shaderProgram, "integral"), true);
                         glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), index);
+                        glUniform1i(glGetUniformLocation(shaderProgram, "region_type"), -1);
                         glUniform2f(glGetUniformLocation(shaderProgram, "corner1"), fragPos.x, fragPos.y);
                         glUniform2f(glGetUniformLocation(shaderProgram, "corner2"), fragPos.x, fragPos.y);
                         second_corner = true;
@@ -1186,11 +1316,11 @@ public:
                         integral_limits.second = vec3(fragPos.x, fragPos.y, fragPos.z);
                         integral = false;
                         second_corner = false;
-                        compute_integral();
                         x_min = min(integral_limits.first.x, integral_limits.second.x);
                         x_max = max(integral_limits.first.x, integral_limits.second.x);
                         y_min = min(integral_limits.first.y, integral_limits.second.y);
                         y_max = max(integral_limits.first.y, integral_limits.second.y);
+                        compute_integral(integral_infoLog);
                         show_integral_result = true;
                     }
                     apply_integral = false;
@@ -1209,7 +1339,7 @@ public:
             }
 
             if (show_integral_result) {
-                vec3 v = (integral_limits.first + integral_limits.second) / 2.f - centerPos;
+                vec3 v = center_of_region - centerPos;
                 const float gridres = graphs[integrand_index].grid_res + 2;
                 const float halfres = gridres / 2.f;
                 vec4 ndc = proj * view * vec4(graph_size * v.x / zoom, (middle_height - centerPos.z) / zoom * graph_size, graph_size * v.y / zoom, 1.f);
@@ -1219,17 +1349,28 @@ public:
                 ImGui::Begin("Volume under surface", &result_window,
                     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
                     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove);
-                ImGui::Text(u8"%.4g \u2264 x \u2264 %.4g, %.4g \u2264 y \u2264 %.4g",
-                    min(integral_limits.first.x, integral_limits.second.x), max(integral_limits.first.x, integral_limits.second.x),
-                    min(integral_limits.first.y, integral_limits.second.y), max(integral_limits.first.y, integral_limits.second.y));
+                switch (region_type) {
+                case CartesianRectangle:
+                    ImGui::Text(u8"%.4g \u2264 x \u2264 %.4g, %.4g \u2264 y \u2264 %.4g", x_min, x_max, y_min, y_max);
+                    break;
+                case Type1:
+                    ImGui::Text(u8"%.4g \u2264 x \u2264 %.4g, %s \u2264 y \u2264 %s", x_min, x_max, y_min_eq, y_max_eq);
+                    break;
+                case Type2:
+                    ImGui::Text(u8"%.4g \u2264 y \u2264 %.4g, %s \u2264 x \u2264 %s", y_min, y_max, x_min_eq, x_max_eq);
+                    break;
+                case Polar:
+                    ImGui::Text(u8"%.4g \u2264 \u03b8 \u2264 %.4g, %s \u2264 r \u2264 %s", theta_min, theta_max, r_min_eq, r_max_eq);
+                }
                 ImGui::Text("Signed volume \u2248 %.9f", integral_result);
                 ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(120, 120, 120, 255));
                 ImGui::Text(u8"\u2206x = %.3e, \u2206y = %.3e", dx, dy);
                 ImGui::PopStyleColor();
                 ImGui::End();
                 if (result_window == false) {
-                    show_integral_result = false;
+                    show_integral_result = apply_integral = second_corner = false;
                     glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
+                    if (integrand_index != -1) graphs[integrand_index].upload_definition(sliders);
                     result_window = true;
                 }
             }

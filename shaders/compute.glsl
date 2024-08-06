@@ -23,5 +23,7 @@ void main() {
 	float x = zoomx * ((gl_GlobalInvocationID.x - grid_res / 2.f) / grid_res) + centerPos.x;
     float y = zoomy * ((gl_GlobalInvocationID.y - grid_res / 2.f) / grid_res) + centerPos.y;
 	float val = (%s) / zoomz;
-    grid[gl_GlobalInvocationID.y * grid_res + gl_GlobalInvocationID.x] = val;
+	bool in_region = (%s);
+    grid[2 * (gl_GlobalInvocationID.y * grid_res + gl_GlobalInvocationID.x)] = val;
+	grid[2 * (gl_GlobalInvocationID.y * grid_res + gl_GlobalInvocationID.x) + 1] = float(in_region);
 }
