@@ -1,7 +1,5 @@
 #version 460 core
 
-layout(early_fragment_tests) in;
-
 out vec4 fragColor;
 
 layout(std430, binding = 1) volatile buffer posbuffer {
@@ -21,7 +19,9 @@ uniform float ambientStrength;
 uniform vec3 lightPos;
 uniform vec3 cameraPos;
 uniform float shininess;
-uniform float zoom;
+uniform float zoomx;
+uniform float zoomy;
+uniform float zoomz;
 uniform float gridLineDensity;
 uniform vec4 color;
 uniform int index;
@@ -39,6 +39,7 @@ uniform int integrand_idx;
 
 uniform bool quad;
 layout(binding = 0) uniform sampler2D frameTex;
+layout(binding = 0) uniform sampler2D prevZBuffer;
 
 void main() {
 	if (quad) {
@@ -57,6 +58,7 @@ void main() {
 		}
 		return;
 	}
+	if (abs(fragPos.y * zoomz / graph_size) > zoomz / 2.f) discard;
 	vec3 normalvec = normal * (int(gl_FrontFacing) * 2 - 1);
 	vec3 diffuse = vec3(max(dot(normalvec, normalize(fragPos - lightPos)), 0.f)) * 0.7f;
 	vec3 specular = vec3(pow(max(dot(normalvec, normalize(-normalize(lightPos + fragPos) - normalize(cameraPos + fragPos))), 0.0), shininess)) * (shininess / 20.f) * 0.8f;
@@ -83,7 +85,7 @@ void main() {
 		float ryp = ry * hyp / hy;
 		float Ryp = sqrt(hyp * hyp - ryp * ryp);
 
-		float gridLines = pow(2.f, floor(log2(zoom)) - gridLineDensity);
+		float gridLines = pow(2.f, floor(log2((zoomx + zoomy) / 2.f)) - gridLineDensity);
 		if (abs(gridCoord.x / gridLines - floor(gridCoord.x / gridLines)) < Rx - Rxp ||
 			abs(gridCoord.y / gridLines - floor(gridCoord.y / gridLines)) < Ry - Ryp) {
 			fragColor = vec4(fragColor.rgb * 0.4f, fragColor.w);
@@ -103,13 +105,13 @@ void main() {
 
 	if (!tangent_plane && int(gl_FragCoord.x) % radius == 0 && int(gl_FragCoord.y) % radius == 0) {
 		if (integral && index != integrand_idx) return;
-		float x = floor(gl_FragCoord.x / radius - (windowSize.x - regionSize.x) / radius);
+		float x = floor((gl_FragCoord.x - windowSize.x + regionSize.x) / radius);
 		float y = floor(gl_FragCoord.y / radius);
 		float h = floor(regionSize.y / radius);
 		y = h - y;
 		posbuf[6 * int(h * y + x) + 0] = gridCoord.x;
 		posbuf[6 * int(h * y + x) + 1] = gridCoord.y;
-		posbuf[6 * int(h * y + x) + 2] = fragPos.y * zoom / graph_size;
+		posbuf[6 * int(h * y + x) + 2] = fragPos.y * zoomz / graph_size;
 		posbuf[6 * int(h * y + x) + 3] = float(index);
 		posbuf[6 * int(h * y + x) + 4] = partialx;
 		posbuf[6 * int(h * y + x) + 5] = partialy;
