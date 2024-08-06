@@ -39,7 +39,7 @@ uniform int integrand_idx;
 
 uniform bool quad;
 layout(binding = 0) uniform sampler2D frameTex;
-layout(binding = 0) uniform sampler2D prevZBuffer;
+layout(binding = 1) uniform sampler2D prevZBuffer;
 
 void main() {
 	if (quad) {
@@ -58,7 +58,7 @@ void main() {
 		}
 		return;
 	}
-	if (abs(fragPos.y * zoomz / graph_size) > zoomz / 2.f) discard;
+	if (abs(fragPos.y * zoomz / graph_size) > zoomz / 2.f && index != 0) discard;
 	vec3 normalvec = normal * (int(gl_FrontFacing) * 2 - 1);
 	vec3 diffuse = vec3(max(dot(normalvec, normalize(fragPos - lightPos)), 0.f)) * 0.7f;
 	vec3 specular = vec3(pow(max(dot(normalvec, normalize(-normalize(lightPos + fragPos) - normalize(cameraPos + fragPos))), 0.0), shininess)) * (shininess / 20.f) * 0.8f;
@@ -103,7 +103,8 @@ void main() {
 		}
 	}
 
-	if (!tangent_plane && int(gl_FragCoord.x) % radius == 0 && int(gl_FragCoord.y) % radius == 0) {
+	float prevDepth = texture(prevZBuffer, (gl_FragCoord.xy) / windowSize).r;
+	if (!tangent_plane && int(gl_FragCoord.x) % radius == 0 && int(gl_FragCoord.y) % radius == 0 && abs(gl_FragCoord.z - prevDepth) < 0.001f) {
 		if (integral && index != integrand_idx) return;
 		float x = floor((gl_FragCoord.x - windowSize.x + regionSize.x) / radius);
 		float y = floor(gl_FragCoord.y / radius);
