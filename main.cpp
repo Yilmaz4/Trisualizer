@@ -229,11 +229,11 @@ public:
         valid = true;
     }
 
-    void use_compute(float zoom, vec3 centerPos) const {
+    void use_compute(float zoomx, float zoomy, float zoomz, vec3 centerPos) const {
         glUseProgram(computeProgram);
-        glUniform1f(glGetUniformLocation(computeProgram, "zoomx"), zoom);
-        glUniform1f(glGetUniformLocation(computeProgram, "zoomy"), zoom);
-        glUniform1f(glGetUniformLocation(computeProgram, "zoomz"), zoom);
+        glUniform1f(glGetUniformLocation(computeProgram, "zoomx"), zoomx);
+        glUniform1f(glGetUniformLocation(computeProgram, "zoomy"), zoomy);
+        glUniform1f(glGetUniformLocation(computeProgram, "zoomz"), zoomz);
         glUniform1i(glGetUniformLocation(computeProgram, "grid_res"), grid_res + 2);
         glUniform3fv(glGetUniformLocation(computeProgram, "centerPos"), 1, value_ptr(centerPos));
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBO);
@@ -262,7 +262,9 @@ public:
     float theta = 45, phi = 45;
     double zoomTimestamp = 0.f;
     float zoomSpeed = 1.f;
-    float zoom = 8.f;
+    float zoomx = 8.f;
+    float zoomy = 8.f;
+    float zoomz = 8.f;
     float graph_size = 1.3f;
     bool gridLines = true;
     float gridLineDensity = 3.f;
@@ -270,9 +272,10 @@ public:
     bool trace = true;
     bool tangent_plane = false, apply_tangent_plane = false;
     bool gradient_vector = false;
+    vec2 xrange, yrange, zrange;
 
     bool integral = false, second_corner = false, apply_integral = false, show_integral_result = false;
-    int integrand_index = -1, region_type = CartesianRectangle, integral_precision = 2000;
+    int integrand_index = -1, region_type = CartesianRectangle, integral_precision = 2000, erroring_eq;
     float x_min, x_max, y_min, y_max, theta_min, theta_max;
     char x_min_eq[32], x_max_eq[32], y_min_eq[32], y_max_eq[32], r_min_eq[32], r_max_eq[32], integral_infoLog[512];
     float x_min_eq_min, x_max_eq_max, y_min_eq_min, y_max_eq_max;
@@ -433,7 +436,9 @@ public:
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, sliderBuffer);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, sliderBuffer);
 
-        glUniform1f(glGetUniformLocation(shaderProgram, "zoom"), zoom);
+        glUniform1f(glGetUniformLocation(shaderProgram, "zoomx"), zoomx);
+        glUniform1f(glGetUniformLocation(shaderProgram, "zoomy"), zoomy);
+        glUniform1f(glGetUniformLocation(shaderProgram, "zoomz"), zoomz);
         glUniform1f(glGetUniformLocation(shaderProgram, "graph_size"), graph_size);
         glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
         glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLineDensity);
@@ -475,7 +480,7 @@ public:
         graphs.push_back(Graph(0, TangentPlane, "plane_params[0]+plane_params[1]*(x-plane_params[2])+plane_params[3]*(y-plane_params[4])", 100, vec4(0.f), false, gridSSBO, EBO));
         graphs[0].setup();
         graphs[0].upload_definition(sliders);
-        graphs.push_back(Graph(1, UserDefined, "sin(x * y)", 250, colors[0], true, gridSSBO, EBO));
+        graphs.push_back(Graph(1, UserDefined, "sin(x * y)", 500, colors[0], true, gridSSBO, EBO));
         graphs[1].setup();
         graphs[1].upload_definition(sliders);
 
@@ -624,7 +629,7 @@ void main() {
         return std::pair(min, max);
     }
 
-    bool compute_integral(char* infoLog) {
+    int compute_integral(char* infoLog) {
         Graph g = graphs[integrand_index];
         g.grid_res = integral_precision;
         float xmin, xmax, ymin, ymax;
@@ -638,9 +643,8 @@ void main() {
             xmin = x_min, xmax = x_max;
             std::pair<float, float> yminbounds = min_max('x', y_min_eq, xmin, xmax, g.grid_res, infoLog);
             std::pair<float, float> ymaxbounds = min_max('x', y_max_eq, xmin, xmax, g.grid_res, infoLog);
-            if (isnan(yminbounds.first) || isnan(ymaxbounds.first)) {
-                return false;
-            }
+            if (isnan(yminbounds.first)) return 0;
+            if (isnan(ymaxbounds.first)) return 1;
             ymin = y_min_eq_min = yminbounds.first, ymax = y_max_eq_max = ymaxbounds.second;
             sprintf_s(regionBool, "float(%s) <= y && y <= float(%s) && float(%.9f) <= x && x <= float(%.9f)", y_min_eq, y_max_eq, xmin, xmax);
             break;
@@ -649,9 +653,8 @@ void main() {
             ymin = y_min, ymax = y_max;
             std::pair<float, float> xminbounds = min_max('y', x_min_eq, ymin, ymax, g.grid_res, infoLog);
             std::pair<float, float> xmaxbounds = min_max('y', x_max_eq, ymin, ymax, g.grid_res, infoLog);
-            if (isnan(xminbounds.first) || isnan(xmaxbounds.first)) {
-                return false;
-            }
+            if (isnan(xminbounds.first)) return 0;
+            if (isnan(xmaxbounds.first)) return 1;
             xmin = x_min_eq_min = xminbounds.first, xmax = x_max_eq_max = xmaxbounds.second;
             sprintf_s(regionBool, "float(%s) <= x && x <= float(%s) && float(%.9f) <= y && y <= float(%.9f)", x_min_eq, x_max_eq, ymin, ymax);
             break;
@@ -659,9 +662,8 @@ void main() {
         case Polar: {
             std::pair<float, float> rminbounds = min_max('t', r_min_eq, theta_min, theta_max, g.grid_res, infoLog);
             std::pair<float, float> rmaxbounds = min_max('t', r_max_eq, theta_min, theta_max, g.grid_res, infoLog);
-            if (isnan(rminbounds.first) || isnan(rmaxbounds.first)) {
-                return false;
-            }
+            if (isnan(rminbounds.first)) return 0;
+            if (isnan(rmaxbounds.first)) return 1;
             // todo
         }}
         g.upload_definition(sliders, regionBool);
@@ -691,7 +693,7 @@ void main() {
         delete[] data;
 
         graphs[integrand_index].upload_definition(sliders, regionBool);
-        return true;
+        return -1;
     }
 public:
     void mainloop() {
@@ -745,8 +747,15 @@ public:
             double timeStep = currentTime - prevTime;
             prevTime = currentTime;
 
-            zoom *= zoomSpeed;
-            glUniform1f(glGetUniformLocation(shaderProgram, "zoom"), zoom);
+            zoomx *= zoomSpeed;
+            zoomy *= zoomSpeed;
+            zoomz *= zoomSpeed;
+            xrange = vec2(zoomx / 2.f, -zoomx / 2.f) + centerPos.x;
+            yrange = vec2(zoomy / 2.f, -zoomy / 2.f) + centerPos.y;
+            zrange = vec2(zoomz / 2.f, -zoomz / 2.f) + centerPos.z;
+            glUniform1f(glGetUniformLocation(shaderProgram, "zoomx"), zoomx);
+            glUniform1f(glGetUniformLocation(shaderProgram, "zoomy"), zoomy);
+            glUniform1f(glGetUniformLocation(shaderProgram, "zoomz"), zoomz);
             zoomSpeed -= (zoomSpeed - 1.f) * min(timeStep * 10.f, 1.0);
             if (currentTime - zoomTimestamp > 1.0) zoomSpeed = 1.f; 
 
@@ -854,7 +863,7 @@ public:
             bool set_focus = false;
             if (ImGui::Button("New function", ImVec2(100, 0))) {
                 size_t i = graphs.size() - 1;
-                graphs.push_back(Graph(graphs.size(), UserDefined, "", 250, colors[i % colors.size()], false, gridSSBO, EBO));
+                graphs.push_back(Graph(graphs.size(), UserDefined, "", 500, colors[i % colors.size()], false, gridSSBO, EBO));
                 graphs[graphs.size() - 1].setup();
                 for (Slider& s : sliders) {
                     s.used_in.push_back(false);
@@ -1036,7 +1045,7 @@ public:
                     ImGui::PopItemWidth();
                 }
                 if (!s.valid && strlen(s.infoLog) > 0) {
-                    ImGui::InputTextMultiline("##errorlist", s.infoLog, 128, ImVec2((vMax.x - vMin.x), 17), ImGuiInputTextFlags_ReadOnly);
+                    ImGui::InputTextMultiline("##errorlist", s.infoLog, 512, ImVec2((vMax.x - vMin.x), 17), ImGuiInputTextFlags_ReadOnly);
                 }
                 ImGui::EndChild();
             }
@@ -1052,14 +1061,54 @@ public:
             ImGui::Begin("Tools", nullptr, ImGuiWindowFlags_NoMove);
             vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
             vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
-            static vec3 gotoLocation;
-            ImGui::InputFloat3("##goto", value_ptr(gotoLocation));
+            ImGui::SetNextItemWidth(vMax.x - vMin.x);
+            if (ImGui::InputFloat3("##goto", value_ptr(centerPos)))
+                glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                ImGui::SetTooltip("Center position", ImGui::GetStyle().HoverDelayNormal);
+            buttonWidth = (vMax.x - vMin.x - 61.f) / 4.f + 0.7f;
+
+            bool update_zoom = false;
+            ImGui::BeginChild(ImGui::GetID("xrange"), ImVec2((vMax.x - vMin.x) / 3.f - 4.f, 0), ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+            float inputWidth = (ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos() - ImGui::GetWindowContentRegionMin() - ImGui::GetWindowPos()).x;
+            ImGui::PushItemWidth(inputWidth);
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (inputWidth - 38.f) / 2.f);
+            ImGui::Text("x-range");
+            update_zoom |= ImGui::InputFloat("##xrange0", &xrange[0], 0.f, 0.f, "% 06.4f");
+            update_zoom |= ImGui::InputFloat("##xrange1", &xrange[1], 0.f, 0.f, "% 06.4f");
+            ImGui::PopItemWidth();
+            ImGui::EndChild();
             ImGui::SameLine();
-            if (ImGui::Button("Jump", ImVec2(vMax.x - vMin.x - ImGui::GetCursorPosX() + 8, 0))) {
-                centerPos = gotoLocation;
+            ImGui::BeginChild(ImGui::GetID("yrange"), ImVec2((vMax.x - vMin.x) / 3.f - 4.f, 0), ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+            ImGui::PushItemWidth(inputWidth);
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (inputWidth - 38.f) / 2.f);
+            ImGui::Text("y-range");
+            update_zoom |= ImGui::InputFloat("##yrange0", &yrange[0], 0.f, 0.f, "% 06.4f");
+            update_zoom |= ImGui::InputFloat("##yrange1", &yrange[1], 0.f, 0.f, "% 06.4f");
+            ImGui::PopItemWidth();
+            ImGui::EndChild();
+            ImGui::SameLine();
+            ImGui::BeginChild(ImGui::GetID("zrange"), ImVec2((vMax.x - vMin.x) / 3.f - 4.f, 0), ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+            ImGui::PushItemWidth(inputWidth);
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (inputWidth - 38.f) / 2.f);
+            ImGui::Text("z-range");
+            update_zoom |= ImGui::InputFloat("##zrange0", &zrange[0], 0.f, 0.f, "% 06.4f");
+            update_zoom |= ImGui::InputFloat("##zrange1", &zrange[1], 0.f, 0.f, "% 06.4f");
+            ImGui::PopItemWidth();
+            ImGui::EndChild();
+            
+            if (update_zoom) {
+                if (xrange[0] <= xrange[1]) xrange[0] = xrange[1] + 0.0001f;
+                if (yrange[0] <= yrange[1]) yrange[0] = yrange[1] + 0.0001f;
+                if (zrange[0] <= zrange[1]) zrange[0] = zrange[1] + 0.0001f;
+                zoomx = abs(xrange[0] - xrange[1]);
+                centerPos.x = (xrange[0] + xrange[1]) / 2.f;
+                zoomy = abs(yrange[0] - yrange[1]);
+                centerPos.y = (yrange[0] + yrange[1]) / 2.f;
+                zoomz = abs(zrange[0] - zrange[1]);
+                centerPos.z = (zrange[0] + zrange[1]) / 2.f;
                 glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
             }
-            buttonWidth = (vMax.x - vMin.x - 61.f) / 4.f + 0.7f;
 
             if (gradient_vector) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
             if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)gradVec_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
@@ -1137,6 +1186,7 @@ public:
                 vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
                 vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
                 ImGui::PushItemWidth((vMax.x - vMin.x - 42.f) / 2.f);
+                bool ready = true;
                 switch (region_type) {
                 case CartesianRectangle:
                     ImGui::InputFloat(u8"\u2264 x \u2264", &x_min, 0.f, 0.f, "%g");
@@ -1159,6 +1209,7 @@ public:
                     ImGui::InputText("##y_max", y_max_eq, 32);
                     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                         ImGui::SetTooltip("Enter a function of x", ImGui::GetStyle().HoverDelayNormal);
+                    if (strlen(y_min_eq) == 0 || strlen(y_max_eq) == 0) ready = false;
                     break;
                 case Type2:
                     ImGui::InputText(u8"\u2264 x \u2264", x_min_eq, 32);
@@ -1168,6 +1219,7 @@ public:
                     ImGui::InputText("##x_max", x_max_eq, 32);
                     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                         ImGui::SetTooltip("Enter a function of y", ImGui::GetStyle().HoverDelayNormal);
+                    if (strlen(x_min_eq) == 0 || strlen(x_max_eq) == 0) ready = false;
 
                     ImGui::InputFloat(u8"\u2264 y \u2264", &y_min, 0.f, 0.f, "%g");
                     ImGui::SameLine();
@@ -1185,23 +1237,28 @@ public:
                     ImGui::InputText("##r_max", r_max_eq, 32);
                     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                         ImGui::SetTooltip(u8"Enter a function of \u03b8", ImGui::GetStyle().HoverDelayNormal);
+                    if (strlen(r_min_eq) == 0 || strlen(r_max_eq) == 0) ready = false;
                     break;
                 }
                 ImGui::PopItemWidth();
                 ImGui::SetNextItemWidth(vMax.x - vMin.x - 62.f);
                 if (ImGui::InputInt("Precision", &integral_precision, 50, 100))
-                    if (integral_precision < 0) integral_precision = 0;
+                    if (integral_precision < 50) integral_precision = 50;
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                     ImGui::SetTooltip("Precision, higher the better", ImGui::GetStyle().HoverDelayNormal);
+                ImGui::EndDisabled();
+                ImGui::BeginDisabled(!ready || show_integral_result || second_corner);
                 if (ImGui::Button("Compute", ImVec2(vMax.x - vMin.x, 0.f))) {
                     integrand_index = 1;
                     glUniform1i(glGetUniformLocation(shaderProgram, "integral"), true);
                     glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), 1);
                     glUniform1i(glGetUniformLocation(shaderProgram, "region_type"), region_type);
-                    bool successful = compute_integral(integral_infoLog);
-                    std::cout << successful << std::endl;
-                    std::cerr << integral_infoLog << std::endl;
-                    show_integral_result = true;
+                    int error = compute_integral(integral_infoLog);
+                    if (error != -1) {
+                        erroring_eq = error;
+                        ImGui::OpenPopup("Error");
+                    }
+                    else show_integral_result = true;
                 }
                 ImGui::EndDisabled();
                 ImGui::EndChild();
@@ -1241,10 +1298,10 @@ public:
                 ImGui::ColorEdit4("##infocolor", value_ptr(c), ImGuiColorEditFlags_NoInputs);
                 ImGui::SameLine();
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 11.f);
-                ImGui::Text(u8"X=%6.3f\nY=%6.3f\nZ=%6.3f", fragPos.x, fragPos.y, fragPos.z);
+                ImGui::Text(u8"X=% 06.4f\nY=% 06.4f\nZ=% 06.4f", fragPos.x, fragPos.y, fragPos.z);
                 ImGui::SameLine();
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5.f);
-                ImGui::Text(u8"\u2202z/\u2202x=%6.3f\n\u2202z/\u2202y=%6.3f", gradvec.x, gradvec.y);
+                ImGui::Text(u8"\u2202z/\u2202x=% 06.4f\n\u2202z/\u2202y=% 06.4f", gradvec.x, gradvec.y);
                 ImVec2 prevWindowSize = ImGui::GetWindowSize();
                 ImGui::End();
 
@@ -1348,7 +1405,7 @@ public:
                 vec3 v = center_of_region - centerPos;
                 const float gridres = graphs[integrand_index].grid_res + 2;
                 const float halfres = gridres / 2.f;
-                vec4 ndc = proj * view * vec4(graph_size * v.x / zoom, (middle_height - centerPos.z) / zoom * graph_size, graph_size * v.y / zoom, 1.f);
+                vec4 ndc = proj * view * vec4(graph_size * v.x / zoomx, (middle_height - centerPos.z) / zoomz * graph_size, graph_size * v.y / zoomy, 1.f);
                 ndc = ndc / ndc.w;
                 ImGui::SetNextWindowPos(ImVec2((ndc.x + 1.f) * (wWidth - sidebarWidth) / 2.f + sidebarWidth, (wHeight - (ndc.y + 1.f) * wHeight / 2.f)));
                 static bool result_window = true;
@@ -1394,6 +1451,14 @@ public:
                 ImGui::EndPopup();
             }
 
+            if (ImGui::BeginPopupModal("Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+                ImGui::Text("Shader compilation failed for %s bound equation! Generated errors are shown below.", erroring_eq == 0 ? "lower" : "upper");
+                ImGui::InputTextMultiline("##errorlist", integral_infoLog, 512, ImVec2(200.f, 0.f), ImGuiInputTextFlags_ReadOnly);
+                if (ImGui::Button("Close"))
+                    ImGui::CloseCurrentPopup();
+                ImGui::EndPopup();
+            }
+
             //ImGui::ShowDemoWindow();
 
             ImGui::PopFont();
@@ -1412,7 +1477,7 @@ public:
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
             glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32F, GL_RED, GL_FLOAT, nullptr);
 
-            glClearColor(0.05f, 0.05f, 0.05f, 1.f);
+            glClearColor(0.f, 0.f, 0.f, 1.f);
             glBindFramebuffer(GL_FRAMEBUFFER, NULL);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glBindFramebuffer(GL_FRAMEBUFFER, FBO);
@@ -1430,7 +1495,7 @@ public:
 
             auto render_graph = [&](int i) {
                 const Graph& g = graphs[i];
-                g.use_compute(zoom, centerPos);
+                g.use_compute(zoomx, zoomy, zoomz, centerPos);
                 glDispatchCompute(g.grid_res + 2, g.grid_res + 2, 1);
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                 glUseProgram(shaderProgram);
