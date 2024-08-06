@@ -9,7 +9,8 @@ layout(std430, binding = 1) readonly buffer sliderbuffer {
 	float sliders[];
 };
 
-const float PI = 3.141592;
+const float PI = 3.1415926535897932384626433f;
+const float e = 2.7182818284590452353602874f;
 
 uniform int grid_res;
 uniform float zoomx;
