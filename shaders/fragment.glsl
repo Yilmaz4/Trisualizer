@@ -92,12 +92,12 @@ void main() {
 
 	if (integral) {
 		if (index != integrand_idx) {
-			fragColor = vec4(fragColor.rgb, fragColor.w * 0.1f);
+			fragColor = vec4(fragColor.rgb * 0.1f, fragColor.w);
 		} else if (region_type == -1) {
 			vec2 s = step(min(corner1, corner2), gridCoord) * step(gridCoord, max(corner1, corner2));
-			fragColor = vec4(fragColor.rgb, fragColor.w * (1.f - (1.f - s.x * s.y) * 0.8f));
+			fragColor = vec4(fragColor.rgb * (1.f - (1.f - s.x * s.y) * 0.8f), fragColor.w);
 		} else {
-			fragColor = vec4(fragColor.rgb, fragColor.w * (inRegion * 0.8f + 0.2f));
+			fragColor = vec4(fragColor.rgb * (inRegion * 0.8f + 0.2f), fragColor.w);
 		}
 	}
 
