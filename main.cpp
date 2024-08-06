@@ -502,6 +502,8 @@ private:
         glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width * app->ssaa_factor, height * app->ssaa_factor, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glBindTexture(GL_TEXTURE_2D, app->frameTex);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width * app->ssaa_factor, height * app->ssaa_factor, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glBindTexture(GL_TEXTURE_2D, app->prevZBuffer);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width * app->ssaa_factor, height * app->ssaa_factor, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
         glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
     }
@@ -728,6 +730,17 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, gradVec_icon.bmWidth, gradVec_icon.bmHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)gradVec_icon.bmBits);
+
+        BITMAP normVec_icon = loadImageFromResource(NORMVEC_ICON);
+        GLuint normVec_texture = 0;
+        glGenTextures(1, &normVec_texture);
+        glBindTexture(GL_TEXTURE_2D, normVec_texture);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, normVec_icon.bmWidth, normVec_icon.bmHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)normVec_icon.bmBits);
         
         BITMAP integral_icon = loadImageFromResource(INTEGRAL_ICON);
         GLuint integral_texture = 0;
@@ -1087,7 +1100,9 @@ public:
             float inputWidth = (ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos() - ImGui::GetWindowContentRegionMin() - ImGui::GetWindowPos()).x;
             ImGui::PushItemWidth(inputWidth);
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (inputWidth - 38.f) / 2.f);
-            ImGui::Text("x-range");
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(150, 150, 150, 255));
+            ImGui::Text("X-Range");
+            ImGui::PopStyleColor();
             update_zoom |= ImGui::InputFloat("##xrange0", &xrange[0], 0.f, 0.f, "% 06.4f");
             update_zoom |= ImGui::InputFloat("##xrange1", &xrange[1], 0.f, 0.f, "% 06.4f");
             ImGui::PopItemWidth();
@@ -1096,7 +1111,9 @@ public:
             ImGui::BeginChild(ImGui::GetID("yrange"), ImVec2((vMax.x - vMin.x) / 3.f - 4.f, 0), ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
             ImGui::PushItemWidth(inputWidth);
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (inputWidth - 38.f) / 2.f);
-            ImGui::Text("y-range");
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(150, 150, 150, 255));
+            ImGui::Text("Y-Range");
+            ImGui::PopStyleColor();
             update_zoom |= ImGui::InputFloat("##yrange0", &yrange[0], 0.f, 0.f, "% 06.4f");
             update_zoom |= ImGui::InputFloat("##yrange1", &yrange[1], 0.f, 0.f, "% 06.4f");
             ImGui::PopItemWidth();
@@ -1105,7 +1122,9 @@ public:
             ImGui::BeginChild(ImGui::GetID("zrange"), ImVec2((vMax.x - vMin.x) / 3.f - 4.f, 0), ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
             ImGui::PushItemWidth(inputWidth);
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (inputWidth - 38.f) / 2.f);
-            ImGui::Text("z-range");
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(150, 150, 150, 255));
+            ImGui::Text("Z-Range");
+            ImGui::PopStyleColor();
             update_zoom |= ImGui::InputFloat("##zrange0", &zrange[0], 0.f, 0.f, "% 06.4f");
             update_zoom |= ImGui::InputFloat("##zrange1", &zrange[1], 0.f, 0.f, "% 06.4f");
             ImGui::PopItemWidth();
@@ -1152,11 +1171,11 @@ public:
                 ImGui::SetTooltip("Tangent Plane", ImGui::GetStyle().HoverDelayNormal);
 
             ImGui::SameLine();
-            if (ImGui::ImageButton("min_max", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+            if (ImGui::ImageButton("normal_vector", (void*)(intptr_t)normVec_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 
             }
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                ImGui::SetTooltip("Local Minima/Maxima", ImGui::GetStyle().HoverDelayNormal);
+                ImGui::SetTooltip("Normal Vector", ImGui::GetStyle().HoverDelayNormal);
 
             ImGui::SameLine();
             if (integral) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
