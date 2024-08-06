@@ -8,7 +8,9 @@ in vec3 aPos;
 
 uniform mat4 vpmat;
 uniform int grid_res;
-uniform float zoom;
+uniform float zoomx;
+uniform float zoomy;
+uniform float zoomz;
 uniform float graph_size;
 uniform vec3 centerPos;
 
@@ -30,7 +32,7 @@ void main() {
 	float y = floor(gl_VertexID / grid_res) + 1;
 
 	fragPos = vec3((graph_size / gridres) * (x - halfres), graph_size * grid[2 * int(y * gridres + x)], (graph_size / gridres) * (y - halfres));
-	gridCoord = vec2(zoom * (x - halfres) / gridres, zoom * (y - halfres) / gridres) + centerPos.xy;
+	gridCoord = vec2(zoomx * (x - halfres) / gridres, zoomy * (y - halfres) / gridres) + centerPos.xy;
 	inRegion = grid[2 * int(y * gridres + x) + 1];
 	
 	vec3 v1 = vec3((graph_size / gridres) * (x + 1 - halfres), graph_size * grid[2 * int(y * gridres + (x + 1.f))], (graph_size / gridres) * (y - halfres));
@@ -41,5 +43,5 @@ void main() {
 
 	normal = normalize(cross(v1 - fragPos, v2 - fragPos) + cross(v3 - fragPos, v4 - fragPos));
 
-	gl_Position = vpmat * vec4(fragPos.x, fragPos.y - centerPos.z / zoom * graph_size, fragPos.z, 1.f);
+	gl_Position = vpmat * vec4(fragPos.x, fragPos.y - centerPos.z / zoomz * graph_size, fragPos.z, 1.f);
 }
