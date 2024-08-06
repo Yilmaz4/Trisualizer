@@ -1103,6 +1103,11 @@ public:
                     integral = show_integral_result = apply_integral = second_corner = false;
                     if (integrand_index != -1) graphs[integrand_index].upload_definition(sliders);
                 }
+                if (show_integral_result) {
+                    show_integral_result = false;
+                    ImGui::PopStyleColor();
+                    goto skip;
+                }
                 integral ^= 1;
                 if (second_corner) {
                     second_corner = false;
@@ -1113,6 +1118,7 @@ public:
                 if (!integral) ImGui::PopStyleColor();
             }
             else if (integral) ImGui::PopStyleColor();
+        skip:
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                 ImGui::SetTooltip("Double Integral", ImGui::GetStyle().HoverDelayNormal);
 
@@ -1280,7 +1286,7 @@ public:
                         s.used_in.push_back(false);
                     }
                 }
-                if (integral) {
+                if (integral && !show_integral_result) {
                     ImGui::Begin("tooltip", nullptr,
                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
