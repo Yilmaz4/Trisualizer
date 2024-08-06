@@ -295,7 +295,7 @@ public:
     GLuint shaderProgram;
     GLuint VAO, VBO, EBO;
     GLuint FBO, gridSSBO;
-    GLuint depthMap, frameTex, posBuffer, kernelBuffer, sliderBuffer;
+    GLuint depthMap, frameTex, prevZBuffer, posBuffer, kernelBuffer, sliderBuffer;
 
     Trisualizer() {
         glfwInit();
@@ -476,6 +476,14 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameTex, 0);
+
+        glGenTextures(1, &prevZBuffer);
+        glBindTexture(GL_TEXTURE_2D, prevZBuffer);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 1000 * ssaa_factor, 600 * ssaa_factor, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
         graphs.push_back(Graph(0, TangentPlane, "plane_params[0]+plane_params[1]*(x-plane_params[2])+plane_params[3]*(y-plane_params[4])", 100, vec4(0.f), false, gridSSBO, EBO));
         graphs[0].setup();
@@ -701,7 +709,7 @@ public:
         mat4 view, proj;
 
         BITMAP tangentPlane_icon = loadImageFromResource(TNGTPLANE_ICON);
-        unsigned int tangentPlane_texture = 0;
+        GLuint tangentPlane_texture = 0;
         glGenTextures(1, &tangentPlane_texture);
         glBindTexture(GL_TEXTURE_2D, tangentPlane_texture);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
@@ -712,7 +720,7 @@ public:
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tangentPlane_icon.bmWidth, tangentPlane_icon.bmHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)tangentPlane_icon.bmBits);
 
         BITMAP gradVec_icon = loadImageFromResource(GRADVEC_ICON);
-        unsigned int gradVec_texture = 0;
+        GLuint gradVec_texture = 0;
         glGenTextures(1, &gradVec_texture);
         glBindTexture(GL_TEXTURE_2D, gradVec_texture);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
@@ -721,10 +729,9 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, gradVec_icon.bmWidth, gradVec_icon.bmHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)gradVec_icon.bmBits);
-
         
         BITMAP integral_icon = loadImageFromResource(INTEGRAL_ICON);
-        unsigned int integral_texture = 0;
+        GLuint integral_texture = 0;
         glGenTextures(1, &integral_texture);
         glBindTexture(GL_TEXTURE_2D, integral_texture);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
@@ -733,6 +740,14 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, integral_icon.bmWidth, integral_icon.bmHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)integral_icon.bmBits);
+
+        GLuint srcFBO, dstFBO;
+        glGenFramebuffers(1, &srcFBO);
+        glGenFramebuffers(1, &dstFBO);
+        glBindFramebuffer(GL_FRAMEBUFFER, srcFBO);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, dstFBO);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, prevZBuffer, 0);
 
         do {
             glfwPollEvents();
@@ -1269,6 +1284,13 @@ public:
             double x, y;
             glfwGetCursorPos(window, &x, &y);
             if (graphs.size() > 0 && x - sidebarWidth > 0. && x - sidebarWidth < (wWidth - sidebarWidth) && y > 0. && y < wHeight) {
+                float depth[1];
+                glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+                glBindTexture(GL_TEXTURE_2D, prevZBuffer);
+                glReadPixels(ssaa_factor * x, ssaa_factor * (wHeight - y), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, depth);
+                std::cout << depth[0] << std::endl;
+                if (depth[0] == 1.f) goto mouse_not_on_graph;
+
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                 float data[6];
@@ -1509,6 +1531,8 @@ public:
                     glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), g.grid_lines ? gridLineDensity : 0.f);
                 glBindVertexArray(VAO);
                 glUniform1i(glGetUniformLocation(shaderProgram, "quad"), false);
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, prevZBuffer);
                 glDrawElements(GL_TRIANGLE_STRIP, (GLsizei)g.indices.size(), GL_UNSIGNED_INT, 0);
             };
             
@@ -1520,6 +1544,14 @@ public:
                 if (i == integrand_index && (integral && second_corner || show_integral_result)) continue;
                 render_graph(i);
             }
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, srcFBO);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dstFBO);
+            glBlitFramebuffer(
+                0, 0, ssaa_factor* wWidth, ssaa_factor* wHeight,
+                0, 0, ssaa_factor* wWidth, ssaa_factor* wHeight,
+                GL_DEPTH_BUFFER_BIT, GL_NEAREST
+            );
+            glBindFramebuffer(GL_FRAMEBUFFER, FBO);
             if (graphs[0].enabled) render_graph(0);
 
             glViewport(sidebarWidth, 0, wWidth - sidebarWidth, wHeight);
