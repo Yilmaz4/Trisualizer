@@ -23,13 +23,16 @@ uniform float zoomx;
 uniform float zoomy;
 uniform float zoomz;
 uniform float gridLineDensity;
+uniform int coloring;
 uniform vec4 color;
+uniform vec4 secondary_color;
 uniform int index;
 uniform float graph_size;
 uniform ivec2 regionSize;
 uniform ivec2 windowSize;
 uniform vec3 centerPos;
 uniform bool tangent_plane;
+uniform bool shading;
 
 uniform bool integral;
 uniform int region_type;
@@ -58,17 +61,35 @@ void main() {
 		}
 		return;
 	}
-	if (abs(fragPos.y * zoomz / graph_size - centerPos.z) > zoomz / 2.f && index != 0) discard;
+	float z = fragPos.y * zoomz / graph_size;
 	vec3 normalvec = normal * (int(gl_FrontFacing) * 2 - 1);
-	vec3 diffuse = vec3(max(dot(normalvec, normalize(fragPos - lightPos)), 0.f)) * 0.7f;
-	vec3 specular = vec3(pow(max(dot(normalvec, normalize(-normalize(lightPos + fragPos) - normalize(cameraPos + fragPos))), 0.0), shininess)) * (shininess / 20.f) * 0.8f;
-
-	if (tangent_plane) fragColor = color;
-	else fragColor = vec4((ambientStrength + diffuse + specular) * color.rgb, color.w);
-
-	float partialx = 1.f / tan(acos(dot(vec3(1,0,0), normalize(dot(normal, vec3(1,0,0)) * vec3(1,0,0) + dot(normal, vec3(0,1,0)) * vec3(0,1,0)))));
-	float partialy = 1.f / tan(acos(dot(vec3(0,0,1), normalize(dot(normal, vec3(0,0,1)) * vec3(0,0,1) + dot(normal, vec3(0,1,0)) * vec3(0,1,0)))));
+	float partialx = 1.f / tan(acos(dot(vec3(1, 0, 0), normalize(dot(normal, vec3(1, 0, 0)) * vec3(1, 0, 0) + dot(normal, vec3(0, 1, 0)) * vec3(0, 1, 0)))));
+	float partialy = 1.f / tan(acos(dot(vec3(0, 0, 1), normalize(dot(normal, vec3(0, 0, 1)) * vec3(0, 0, 1) + dot(normal, vec3(0, 1, 0)) * vec3(0, 1, 0)))));
 	vec2 gradient = vec2(partialx, partialy);
+
+	vec2 zrange = vec2(zoomz / 2.f, -zoomz / 2.f) + centerPos.z;
+	vec3 grad3d = vec3(gradient, partialx * partialx + partialy * partialy);
+	float angle = acos(length(gradient) / length(grad3d));
+	
+	switch (coloring) {
+	case 0:
+		fragColor = color;
+		break;
+	case 1:
+		fragColor = mix(color, secondary_color, float(!gl_FrontFacing));
+		break;
+	case 2:
+		fragColor = mix(color, secondary_color, (z - zrange.x) / (zrange.y - zrange.x));
+		break;
+	case 3:
+		fragColor = mix(color, secondary_color, angle / 1.57079632f);
+	}
+
+	if (abs(z - centerPos.z) > zoomz / 2.f && index != 0) discard;
+	
+	vec3 diffuse = vec3(max(dot(normalvec, normalize(fragPos - lightPos)), 0.f)) * 0.7f;
+	vec3 specular = vec3(pow(max(dot(normalvec, normalize(-normalize(lightPos + fragPos) - normalize(cameraPos + fragPos))), 0.0), shininess)) * (shininess / 20.f) * 0.4f;
+	if (!tangent_plane && shading) fragColor = vec4((ambientStrength + diffuse) * fragColor.rgb + specular * vec3(1.f), fragColor.w);
 
 	if (gridLineDensity != 0.f) {
 		float Rx = gridLineDensity / 100.f;
@@ -112,7 +133,7 @@ void main() {
 		y = h - y;
 		posbuf[6 * int(h * y + x) + 0] = gridCoord.x;
 		posbuf[6 * int(h * y + x) + 1] = gridCoord.y;
-		posbuf[6 * int(h * y + x) + 2] = fragPos.y * zoomz / graph_size;
+		posbuf[6 * int(h * y + x) + 2] = z;
 		posbuf[6 * int(h * y + x) + 3] = float(index);
 		posbuf[6 * int(h * y + x) + 4] = partialx;
 		posbuf[6 * int(h * y + x) + 5] = partialy;

@@ -157,9 +157,10 @@ public:
 
     char defn[256]{};
     vec4 color;
+    vec4 secondary_color;
 
-    Graph(size_t idx, int type, const char* definition, int res, vec4 color, bool enabled, GLuint SSBO, GLuint EBO)
-        : type(type), idx(idx), grid_res(res), color(color), enabled(enabled), SSBO(SSBO), EBO(EBO) {
+    Graph(size_t idx, int type, const char* definition, int res, vec4 color, vec4 color2, bool enabled, GLuint SSBO, GLuint EBO)
+        : type(type), idx(idx), grid_res(res), color(color), secondary_color(color2), enabled(enabled), SSBO(SSBO), EBO(EBO) {
         strcpy_s(defn, definition);
     }
 
@@ -252,6 +253,13 @@ enum RegionType {
     Polar,
 };
 
+enum ColoringStyle {
+    SingleColor,
+    TopBottom,
+    Elevation,
+    Slope,
+};
+
 class Trisualizer {
     GLFWwindow* window = nullptr;
     ImFont* font_title = nullptr;
@@ -268,6 +276,8 @@ public:
     float graph_size = 1.3f;
     bool gridLines = true;
     float gridLineDensity = 3.f;
+    bool shading = true;
+    int coloring = SingleColor;
     bool autoRotate = false;
     bool trace = true;
     bool tangent_plane = false, apply_tangent_plane = false;
@@ -442,8 +452,10 @@ public:
         glUniform1f(glGetUniformLocation(shaderProgram, "graph_size"), graph_size);
         glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
         glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLineDensity);
+        glUniform1i(glGetUniformLocation(shaderProgram, "shading"), shading);
         glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), 0.f, 50.f, 0.f);
         glUniform3f(glGetUniformLocation(shaderProgram, "centerPos"), 0.f, 0.f, 0.f);
+        glUniform1i(glGetUniformLocation(shaderProgram, "coloring"), SingleColor);
 
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
@@ -485,10 +497,10 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-        graphs.push_back(Graph(0, TangentPlane, "plane_params[0]+plane_params[1]*(x-plane_params[2])+plane_params[3]*(y-plane_params[4])", 100, vec4(0.f), false, gridSSBO, EBO));
+        graphs.push_back(Graph(0, TangentPlane, "plane_params[0]+plane_params[1]*(x-plane_params[2])+plane_params[3]*(y-plane_params[4])", 100, vec4(0.f), vec4(0.f), false, gridSSBO, EBO));
         graphs[0].setup();
         graphs[0].upload_definition(sliders);
-        graphs.push_back(Graph(1, UserDefined, "sin(x * y)", 500, colors[0], true, gridSSBO, EBO));
+        graphs.push_back(Graph(1, UserDefined, "sin(x * y)", 500, colors[0], colors[1], true, gridSSBO, EBO));
         graphs[1].setup();
         graphs[1].upload_definition(sliders);
 
@@ -809,12 +821,32 @@ public:
                         glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLines ? gridLineDensity : 0.f);
                     }
                     ImGui::MenuItem("Auto-rotate", nullptr, &autoRotate);
-                    ImGui::SeparatorText("Graphics");
+                    ImGui::SeparatorText("Graphing");
+                    if (ImGui::MenuItem("Single Color", nullptr, coloring == SingleColor)) {
+                        coloring = SingleColor;
+                        glUniform1i(glGetUniformLocation(shaderProgram, "coloring"), coloring);
+                    }
+                    if (ImGui::MenuItem("Top/Bottom", nullptr, coloring == TopBottom)) {
+                        coloring = TopBottom;
+                        glUniform1i(glGetUniformLocation(shaderProgram, "coloring"), coloring);
+                    }
+                    if (ImGui::MenuItem("Elevation", nullptr, coloring == Elevation)) {
+                        coloring = Elevation;
+                        glUniform1i(glGetUniformLocation(shaderProgram, "coloring"), coloring);
+                    }
+                    if (ImGui::MenuItem("Slope", nullptr, coloring == Slope)) {
+                        coloring = Slope;
+                        glUniform1i(glGetUniformLocation(shaderProgram, "coloring"), coloring);
+                    }
+                    ImGui::Separator();
                     if (ImGui::MenuItem("Anti-aliasing", nullptr, &ssaa)) {
                         if (ssaa) ssaa_factor = 3.f;
                         else ssaa_factor = 1.f;
                         on_windowResize(window, wWidth, wHeight);
                         glUniform1i(glGetUniformLocation(shaderProgram, "radius"), ssaa_factor);
+                    }
+                    if (ImGui::MenuItem("Shading", nullptr, &shading)) {
+                        glUniform1i(glGetUniformLocation(shaderProgram, "shading"), shading);
                     }
                     ImGui::EndMenu();
                 }
@@ -890,7 +922,7 @@ public:
             bool set_focus = false;
             if (ImGui::Button("New function", ImVec2(100, 0))) {
                 size_t i = graphs.size() - 1;
-                graphs.push_back(Graph(graphs.size(), UserDefined, "", 500, colors[i % colors.size()], false, gridSSBO, EBO));
+                graphs.push_back(Graph(graphs.size(), UserDefined, "", 500, colors[i % colors.size()], colors[i % colors.size() + 1], false, gridSSBO, EBO));
                 graphs[graphs.size() - 1].setup();
                 for (Slider& s : sliders) {
                     s.used_in.push_back(false);
@@ -913,7 +945,11 @@ public:
                 ImGui::SameLine();
                 ImGui::ColorEdit4(std::format("##color{}", i).c_str(), value_ptr(g.color), ImGuiColorEditFlags_NoInputs);
                 ImGui::SameLine();
-                ImGui::PushItemWidth((vMax.x - vMin.x) - 86);
+                if (coloring != SingleColor) {
+                    ImGui::ColorEdit4(std::format("##color2{}", i).c_str(), value_ptr(g.secondary_color), ImGuiColorEditFlags_NoInputs);
+                    ImGui::SameLine();
+                }
+                ImGui::PushItemWidth((vMax.x - vMin.x) - 86 - (coloring != SingleColor ? 21 : 0));
                 if (i == graphs.size() - 1 && set_focus) {
                     ImGui::SetKeyboardFocusHere(0);
                 }
@@ -1303,7 +1339,8 @@ public:
 
             double x, y;
             glfwGetCursorPos(window, &x, &y);
-            if (graphs.size() > 0 && x - sidebarWidth > 0. && x - sidebarWidth < (wWidth - sidebarWidth) && y > 0. && y < wHeight && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE) {
+            if (graphs.size() > 0 && x - sidebarWidth > 0. && x - sidebarWidth < (wWidth - sidebarWidth) && y > 0. && y < wHeight &&
+                glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE && zoomSpeed == 1.f) {
                 float depth[1];
                 glBindFramebuffer(GL_FRAMEBUFFER, FBO);
                 glBindTexture(GL_TEXTURE_2D, prevZBuffer);
@@ -1374,7 +1411,7 @@ public:
                     const char* eq = "%.6f%+.6f*(x%+.6f)%+.6f*(y%+.6f)";
                     char eqf[88]{};
                     sprintf_s(eqf, eq, params[0], params[1], -params[2], params[3], -params[4]);
-                    graphs.push_back(Graph(graphs.size(), UserDefined, eqf, 100, colors[(graphs.size() - 1) % colors.size()], true, gridSSBO, EBO));
+                    graphs.push_back(Graph(graphs.size(), UserDefined, eqf, 100, colors[(graphs.size() - 1) % colors.size()], colors[(graphs.size() - 1) % colors.size() + 1], true, gridSSBO, EBO));
                     graphs[graphs.size() - 1].setup();
                     graphs[graphs.size() - 1].upload_definition(sliders);
                     apply_tangent_plane = false;
@@ -1542,7 +1579,8 @@ public:
                 glUseProgram(shaderProgram);
                 g.use_shader();
                 glUniform1i(glGetUniformLocation(shaderProgram, "index"), i);
-                glUniform4f(glGetUniformLocation(shaderProgram, "color"), g.color.r, g.color.g, g.color.b, g.color.w);
+                glUniform4fv(glGetUniformLocation(shaderProgram, "color"), 1, value_ptr(g.color));
+                glUniform4fv(glGetUniformLocation(shaderProgram, "secondary_color"), 1, value_ptr(g.secondary_color));
                 glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), g.grid_res);
                 glUniform1i(glGetUniformLocation(shaderProgram, "tangent_plane"), g.type == TangentPlane);
                 glUniform1f(glGetUniformLocation(shaderProgram, "shininess"), g.shininess);
