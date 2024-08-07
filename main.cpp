@@ -865,7 +865,7 @@ public:
 
                     auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.3f, nullptr, &dockspace_id);
                     auto dock_id_middle = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 0.6f, nullptr, &dock_id_left);
-                    auto dock_id_down = ImGui::DockBuilderSplitNode(dock_id_middle, ImGuiDir_Down, 0.5f, nullptr, &dock_id_middle);
+                    auto dock_id_down = ImGui::DockBuilderSplitNode(dock_id_middle, ImGuiDir_Down, 0.75f, nullptr, &dock_id_middle);
 
                     ImGui::DockBuilderDockWindow("Symbolic View", dock_id_left);
                     ImGui::DockBuilderDockWindow("Variables", dock_id_middle);
@@ -1093,6 +1093,7 @@ public:
                 glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                 ImGui::SetTooltip("Center position", ImGui::GetStyle().HoverDelayNormal);
+            ImGui::Separator();
             buttonWidth = (vMax.x - vMin.x - 61.f) / 4.f + 0.7f;
 
             bool update_zoom = false;
@@ -1129,6 +1130,7 @@ public:
             update_zoom |= ImGui::InputFloat("##zrange1", &zrange[1], 0.f, 0.f, "% 06.4f");
             ImGui::PopItemWidth();
             ImGui::EndChild();
+            ImGui::SeparatorText("Calculus Tools");
             
             if (update_zoom) {
                 if (xrange[0] <= xrange[1]) xrange[0] = xrange[1] + 0.0001f;
@@ -1301,7 +1303,7 @@ public:
 
             double x, y;
             glfwGetCursorPos(window, &x, &y);
-            if (graphs.size() > 0 && x - sidebarWidth > 0. && x - sidebarWidth < (wWidth - sidebarWidth) && y > 0. && y < wHeight) {
+            if (graphs.size() > 0 && x - sidebarWidth > 0. && x - sidebarWidth < (wWidth - sidebarWidth) && y > 0. && y < wHeight && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE) {
                 float depth[1];
                 glBindFramebuffer(GL_FRAMEBUFFER, FBO);
                 glBindTexture(GL_TEXTURE_2D, prevZBuffer);

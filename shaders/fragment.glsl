@@ -104,7 +104,7 @@ void main() {
 	}
 
 	float prevDepth = texture(prevZBuffer, (gl_FragCoord.xy) / windowSize).r;
-	if (!tangent_plane && int(gl_FragCoord.x) % radius == 0 && int(gl_FragCoord.y) % radius == 0 && abs(gl_FragCoord.z - prevDepth) < 0.001f) {
+	if (!tangent_plane && int(gl_FragCoord.x) % radius == 0 && int(gl_FragCoord.y) % radius == 0 && abs(gl_FragCoord.z - prevDepth) == 0.f) {
 		if (integral && index != integrand_idx) return;
 		float x = floor((gl_FragCoord.x - windowSize.x + regionSize.x) / radius);
 		float y = floor(gl_FragCoord.y / radius);
