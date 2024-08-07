@@ -58,7 +58,7 @@ void main() {
 		}
 		return;
 	}
-	if (abs(fragPos.y * zoomz / graph_size) > zoomz / 2.f && index != 0) discard;
+	if (abs(fragPos.y * zoomz / graph_size - centerPos.z) > zoomz / 2.f && index != 0) discard;
 	vec3 normalvec = normal * (int(gl_FrontFacing) * 2 - 1);
 	vec3 diffuse = vec3(max(dot(normalvec, normalize(fragPos - lightPos)), 0.f)) * 0.7f;
 	vec3 specular = vec3(pow(max(dot(normalvec, normalize(-normalize(lightPos + fragPos) - normalize(cameraPos + fragPos))), 0.0), shininess)) * (shininess / 20.f) * 0.8f;
