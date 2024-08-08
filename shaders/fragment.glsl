@@ -106,9 +106,9 @@ void main() {
 		float ryp = ry * hyp / hy;
 		float Ryp = sqrt(hyp * hyp - ryp * ryp);
 
-		float gridLines = pow(2.f, floor(log2((zoomx + zoomy) / 2.f)) - gridLineDensity);
-		if (abs(gridCoord.x / gridLines - floor(gridCoord.x / gridLines)) < Rx - Rxp ||
-			abs(gridCoord.y / gridLines - floor(gridCoord.y / gridLines)) < Ry - Ryp) {
+		float spacing = pow(2.f, floor(log2((zoomx + zoomy) / 2.f)) - gridLineDensity);
+		if (abs(gridCoord.x / spacing - floor(gridCoord.x / spacing)) < Rx - Rxp ||
+			abs(gridCoord.y / spacing - floor(gridCoord.y / spacing)) < Ry - Ryp) {
 			fragColor = vec4(fragColor.rgb * 0.4f, fragColor.w);
 		}
 	}

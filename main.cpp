@@ -181,7 +181,7 @@ public:
         }
     }
     
-    void upload_definition(std::vector<Slider>& sliders, const char* regionBool = "true") {
+    void upload_definition(std::vector<Slider>& sliders, const char* regionBool = "true", bool polar = false) {
         int success;
 
         std::string pdefn = defn;
@@ -199,7 +199,7 @@ public:
         char* computeSource = read_resource(IDR_CMPT);
         size_t size = strlen(computeSource) + 512;
         char* modifiedSource = new char[size];
-        sprintf_s(modifiedSource, size, computeSource, pdefn.c_str(), regionBool);
+        sprintf_s(modifiedSource, size, computeSource, polar ? "" : "//", pdefn.c_str(), regionBool);
         glShaderSource(computeShader, 1, &modifiedSource, NULL);
         glCompileShader(computeShader);
         glGetShaderiv(computeShader, GL_COMPILE_STATUS, &success);
@@ -685,9 +685,11 @@ void main() {
             std::pair<float, float> rmaxbounds = min_max('t', r_max_eq, theta_min, theta_max, g.grid_res, infoLog);
             if (isnan(rminbounds.first)) return 0;
             if (isnan(rmaxbounds.first)) return 1;
-            // todo
+            xmax = ymax = rmaxbounds.second;
+            xmin = ymin = -rmaxbounds.second;
+            sprintf_s(regionBool, "float(%s) <= sqrt(x*x+y*y) && sqrt(x*x+y*y) <= float(%s) && float(%.9f) <= t && t <= float(%.9f)", r_min_eq, r_max_eq, theta_min, theta_max);
         }}
-        g.upload_definition(sliders, regionBool);
+        g.upload_definition(sliders, regionBool, region_type == Polar);
 
         center_of_region = vec3((xmax + xmin) / 2.f, (ymax + ymin) / 2.f, 0.f);
         glUniform1f(glGetUniformLocation(g.computeProgram, "zoomx"), abs(xmax - xmin));
@@ -713,7 +715,7 @@ void main() {
         middle_height = data[g.grid_res * (g.grid_res / 2) + (g.grid_res / 2)];
         delete[] data;
 
-        graphs[integrand_index].upload_definition(sliders, regionBool);
+        graphs[integrand_index].upload_definition(sliders, regionBool, region_type == Polar);
         return -1;
     }
 public:

@@ -23,6 +23,7 @@ uniform float plane_params[5];
 void main() {
 	float x = zoomx * ((gl_GlobalInvocationID.x - grid_res / 2.f) / grid_res) + centerPos.x;
     float y = zoomy * ((gl_GlobalInvocationID.y - grid_res / 2.f) / grid_res) + centerPos.y;
+	%s float t = atan(y, x) + PI;
 	float val = (%s) / zoomz;
 	bool in_region = (%s);
     grid[2 * (gl_GlobalInvocationID.y * grid_res + gl_GlobalInvocationID.x)] = val;
