@@ -1396,8 +1396,10 @@ public:
                     glUseProgram(graphs[0].computeProgram);
                     glUniform1fv(glGetUniformLocation(graphs[0].computeProgram, "plane_params"), 5, params);
                     graphs[0].enabled = true;
-                    vec4 nc = colors[(graphs.size() - 1) % colors.size()];
-                    graphs[0].color = vec4(nc.r, nc.g, nc.b, 0.4f);
+                    vec4 nc1 = colors[(graphs.size() - 1) % colors.size()];
+                    vec4 nc2 = colors[(graphs.size() - 1) % colors.size() + 1];
+                    graphs[0].color = vec4(nc1.r, nc1.g, nc1.b, 0.4f);
+                    graphs[0].secondary_color = vec4(nc2.r, nc2.g, nc2.b, 0.4f);
                     glUseProgram(shaderProgram);
                     ImGui::Begin("tooltip", nullptr,
                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
