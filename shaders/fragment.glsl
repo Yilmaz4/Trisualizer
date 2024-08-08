@@ -82,14 +82,17 @@ void main() {
 		fragColor = mix(color, secondary_color, (z - zrange.x) / (zrange.y - zrange.x));
 		break;
 	case 3:
+		if (isnan(angle) || isinf(angle)) angle = 0.f;
 		fragColor = mix(color, secondary_color, angle / 1.57079632f);
 	}
 
 	if (abs(z - centerPos.z) > zoomz / 2.f && index != 0) discard;
 	
-	vec3 diffuse = vec3(max(dot(normalvec, normalize(fragPos - lightPos)), 0.f)) * 0.7f;
-	vec3 specular = vec3(pow(max(dot(normalvec, normalize(-normalize(lightPos + fragPos) - normalize(cameraPos + fragPos))), 0.0), shininess)) * (shininess / 20.f) * 0.4f;
-	if (!tangent_plane && shading) fragColor = vec4((ambientStrength + diffuse) * fragColor.rgb + specular * vec3(1.f), fragColor.w);
+	if (!tangent_plane && shading) {
+		vec3 diffuse = vec3(max(dot(normalvec, normalize(fragPos - lightPos)), 0.f)) * 0.7f;
+		vec3 specular = vec3(pow(max(dot(normalvec, normalize(-normalize(lightPos + fragPos) - normalize(cameraPos + fragPos))), 0.0), shininess)) * (shininess / 20.f) * 0.4f;
+		fragColor = vec4((ambientStrength + diffuse) * fragColor.rgb + specular * vec3(1.f), fragColor.w);
+	}
 
 	if (gridLineDensity != 0.f) {
 		float Rx = gridLineDensity / 100.f;
