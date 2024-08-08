@@ -650,6 +650,12 @@ void main() {
         return std::pair(min, max);
     }
 
+    float coterminal_angle(float angle) {
+        if (angle < 0.f) while (angle < 0.f) angle += 2 * M_PI;
+        else if (angle > 2 * M_PI) while (angle > 2 * M_PI) angle -= 2 * M_PI;
+        return angle;
+    }
+
     int compute_integral(char* infoLog) {
         Graph g = graphs[integrand_index];
         g.grid_res = integral_precision;
@@ -1414,14 +1420,14 @@ public:
                     char eqf[88]{};
                     sprintf_s(eqf, eq, params[0], params[1], -params[2], params[3], -params[4]);
                     graphs.push_back(Graph(graphs.size(), UserDefined, eqf, 100, colors[(graphs.size() - 1) % colors.size()], colors[(graphs.size() - 1) % colors.size() + 1], true, gridSSBO, EBO));
+                    for (Slider& s : sliders) {
+                        s.used_in.push_back(false);
+                    }
                     graphs[graphs.size() - 1].setup();
                     graphs[graphs.size() - 1].upload_definition(sliders);
                     apply_tangent_plane = false;
                     tangent_plane = false;
                     graphs[0].enabled = false;
-                    for (Slider& s : sliders) {
-                        s.used_in.push_back(false);
-                    }
                 }
                 if (integral && !show_integral_result) {
                     ImGui::Begin("tooltip", nullptr,
