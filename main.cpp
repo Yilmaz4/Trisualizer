@@ -1373,7 +1373,7 @@ public:
             double x, y;
             glfwGetCursorPos(window, &x, &y);
             if (graphs.size() > 0 && x - sidebarWidth > 0. && x - sidebarWidth < (wWidth - sidebarWidth) && y > 0. && y < wHeight &&
-                glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE && zoomSpeed == 1.f) {
+                glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE && zoomSpeed == 1.f && !ImGui::GetIO().WantCaptureMouse) {
                 float depth[1];
                 glBindFramebuffer(GL_FRAMEBUFFER, FBO);
                 glBindTexture(GL_TEXTURE_2D, prevZBuffer);
@@ -1617,23 +1617,31 @@ public:
                 glBindTexture(GL_TEXTURE_2D, prevZBuffer);
                 glDrawElements(GL_TRIANGLE_STRIP, (GLsizei)g.indices.size(), GL_UNSIGNED_INT, 0);
             };
+
+            auto write_to_prevzbuf = [&]() {
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, srcFBO);
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dstFBO);
+                glBlitFramebuffer(
+                    0, 0, ssaa_factor* wWidth, ssaa_factor* wHeight,
+                    0, 0, ssaa_factor* wWidth, ssaa_factor* wHeight,
+                    GL_DEPTH_BUFFER_BIT, GL_NEAREST
+                );
+                glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+            };
             
-            if (integral && second_corner || show_integral_result)
+            if (integral && second_corner || show_integral_result) {
                 render_graph(integrand_index);
+                write_to_prevzbuf();
+            } 
             for (int i = 1; i < graphs.size(); i++) {
                 const Graph& g = graphs[i];
                 if (!g.enabled) continue;
                 if (i == integrand_index && (integral && second_corner || show_integral_result)) continue;
                 render_graph(i);
             }
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, srcFBO);
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dstFBO);
-            glBlitFramebuffer(
-                0, 0, ssaa_factor* wWidth, ssaa_factor* wHeight,
-                0, 0, ssaa_factor* wWidth, ssaa_factor* wHeight,
-                GL_DEPTH_BUFFER_BIT, GL_NEAREST
-            );
-            glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+            if (!integral || !second_corner && !show_integral_result) {
+                write_to_prevzbuf();
+            }
             if (graphs[0].enabled) render_graph(0);
 
             glViewport(sidebarWidth, 0, wWidth - sidebarWidth, wHeight);
