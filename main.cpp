@@ -60,9 +60,10 @@ float quad[12] = {
 std::vector<vec4> colors = {
     vec4(0.000f, 0.500f, 1.000f, 1.f),
     vec4(0.924f, 0.395f, 0.000f, 1.f),
-    vec4(0.823f, 0.000f, 0.000f, 1.f),
     vec4(0.058f, 0.570f, 0.000f, 1.f),
+    vec4(0.906f ,0.757f, 0.000f, 1.f),
     vec4(0.496f, 0.000f, 0.652f, 1.f),
+    vec4(0.823f, 0.000f, 0.000f, 1.f),
 };
 
 namespace ImGui {
@@ -1267,6 +1268,8 @@ public:
                 if (ImGui::Begin("##doubleintegral", nullptr,
                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav)) {
 
+                    vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
+                    vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
                     ImGui::BeginChild(ImGui::GetID("region_type"), ImVec2(100, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
                     ImGui::BeginDisabled(show_integral_result || second_corner);
                     if (ImGui::RadioButton("Rectangle", region_type == CartesianRectangle)) region_type = CartesianRectangle;
@@ -1366,6 +1369,37 @@ public:
                     for (int j = 0; j < logLength; j++) if (integral_infoLog[j] == '\n') nLines++;
                     if (integral_infoLog[logLength - 1] == '\n') integral_infoLog[logLength - 1] = '\0';
                     ImGui::InputTextMultiline("##integralerrorlist", integral_infoLog, 512, ImVec2((vMax.x - vMin.x), 11 * nLines + 6), ImGuiInputTextFlags_ReadOnly);
+                }
+                ImGui::End();
+            }
+
+            if (coloring == Elevation) {
+                ImGui::SetNextWindowBgAlpha(0.5f);
+                ImGui::SetNextWindowPos(ImVec2(sidebarWidth + 10.f, wHeight - 120.f - 10.f));
+                ImGui::SetNextWindowSize(ImVec2(0.f, 120.f));
+                if (ImGui::Begin("##scale", nullptr,
+                    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav)) {
+
+                    auto to_imu32 = [](glm::vec4 v) -> ImU32 {
+                        ImU32 r = static_cast<ImU32>(v.r * 255.0f);
+                        ImU32 g = static_cast<ImU32>(v.g * 255.0f);
+                        ImU32 b = static_cast<ImU32>(v.b * 255.0f);
+                        ImU32 a = static_cast<ImU32>(v.a * 255.0f);
+                        return (a << 24) | (b << 16) | (g << 8) | r;
+                    };
+                    ImVec2 corner = { ImGui::GetWindowPos().x , ImGui::GetWindowPos().y };
+                    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                    int nActive = 0;
+                    for (int i = 1; i < graphs.size(); i++) {
+                        Graph g = graphs[i];
+                        if (!g.enabled) continue;
+                        draw_list->AddRectFilledMultiColor(corner + ImVec2(8 + (i-1) * 12, 6), corner + ImVec2(2 + i * 12, 114), to_imu32(g.color), to_imu32(g.color), to_imu32(g.secondary_color), to_imu32(g.secondary_color));
+                        nActive += 1;
+                    }
+                    ImGui::SetCursorPos(ImVec2(nActive * 12 + 4, 5));
+                    ImGui::Text("% 04.3f", zrange[0]);
+                    ImGui::SetCursorPos(ImVec2(nActive * 12 + 4, 104));
+                    ImGui::Text("% 04.3f", zrange[1]);
                 }
                 ImGui::End();
             }
@@ -1580,7 +1614,7 @@ public:
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
             glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32F, GL_RED, GL_FLOAT, nullptr);
 
-            glClearColor(0.f, 0.f, 0.f, 1.f);
+            glClearColor(0.0f, 0.0f, 0.0f, 1.f);
             glBindFramebuffer(GL_FRAMEBUFFER, NULL);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glBindFramebuffer(GL_FRAMEBUFFER, FBO);
