@@ -293,6 +293,11 @@ public:
     vec3 center_of_region;
     float integral_result, middle_height, dx, dy;
 
+    bool cursor_on_point;
+    int graph_index;
+    vec3 fragPos;
+    vec2 gradient;
+
     std::pair<vec3, vec3> integral_limits;
     vec3 centerPos = vec3(0.f);
     vec2 mousePos = vec2(0.f);
@@ -1400,6 +1405,11 @@ public:
                     ImGui::Text("% 04.3f", zrange[0]);
                     ImGui::SetCursorPos(ImVec2(nActive * 12 + 4, 104));
                     ImGui::Text("% 04.3f", zrange[1]);
+                    if (cursor_on_point) {
+                        float t = (fragPos.z - zrange.x) / (zrange.y - zrange.x);
+                        ImVec2 point = corner + ImVec2(10 + nActive * 12, 6) + ImVec2(0, 108 * t);
+                        draw_list->AddTriangleFilled(point, point + ImVec2(7, -5), point + ImVec2(7, 5), to_imu32(vec4(0.8f)));
+                    }
                 }
                 ImGui::End();
             }
@@ -1418,13 +1428,14 @@ public:
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                 float data[6];
                 glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * y + x - sidebarWidth)) * sizeof(float), 6 * sizeof(float), data);
-                vec3 fragPos = { data[0], data[1], data[2] };
-                int index = static_cast<int>(data[3]);
-                vec2 gradvec = { data[4], data[5] };
+                fragPos = { data[0], data[1], data[2] };
+                graph_index = static_cast<int>(data[3]);
+                gradient = { data[4], data[5] };
 
-                if (index >= graphs.size() || index == 0) {
+                if (graph_index >= graphs.size() || graph_index == 0) {
                     goto mouse_not_on_graph;
                 }
+                cursor_on_point = true;
                 ImGui::Begin("info", nullptr,
                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                     ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
@@ -1438,7 +1449,7 @@ public:
                 if (pos.x < 5) pos.x = 5;
                 if (pos.y < 5) pos.y = 5;
                 ImGui::SetWindowPos(pos);
-                vec4 c = graphs[index].color * 1.3f;
+                vec4 c = graphs[graph_index].color * 1.3f;
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 9.f);
                 ImGui::ColorEdit4("##infocolor", value_ptr(c), ImGuiColorEditFlags_NoInputs);
                 ImGui::SameLine();
@@ -1446,11 +1457,11 @@ public:
                 ImGui::Text(u8"X=% 06.4f\nY=% 06.4f\nZ=% 06.4f", fragPos.x, fragPos.y, fragPos.z);
                 ImGui::SameLine();
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5.f);
-                ImGui::Text(u8"\u2202z/\u2202x=% 06.4f\n\u2202z/\u2202y=% 06.4f", gradvec.x, gradvec.y);
+                ImGui::Text(u8"\u2202z/\u2202x=% 06.4f\n\u2202z/\u2202y=% 06.4f", gradient.x, gradient.y);
                 ImVec2 prevWindowSize = ImGui::GetWindowSize();
                 ImGui::End();
 
-                GLfloat params[5] = { fragPos.z, gradvec.x, fragPos.x, gradvec.y, fragPos.y };
+                GLfloat params[5] = { fragPos.z, gradient.x, fragPos.x, gradient.y, fragPos.y };
                 if (tangent_plane) {
                     glUseProgram(graphs[0].computeProgram);
                     glUniform1fv(glGetUniformLocation(graphs[0].computeProgram, "plane_params"), 5, params);
@@ -1513,9 +1524,9 @@ public:
                 if (apply_integral) {
                     if (!second_corner) {
                         integral_limits.first = vec3(fragPos.x, fragPos.y, fragPos.z);
-                        integrand_index = index;
+                        integrand_index = graph_index;
                         glUniform1i(glGetUniformLocation(shaderProgram, "integral"), true);
-                        glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), index);
+                        glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), graph_index);
                         glUniform1i(glGetUniformLocation(shaderProgram, "region_type"), -1);
                         glUniform2f(glGetUniformLocation(shaderProgram, "corner1"), fragPos.x, fragPos.y);
                         glUniform2f(glGetUniformLocation(shaderProgram, "corner2"), fragPos.x, fragPos.y);
@@ -1546,6 +1557,7 @@ public:
                 apply_tangent_plane = false;
                 apply_integral = false;
                 doubleClickPressed = false;
+                cursor_on_point = false;
             }
 
             if (show_integral_result) {
