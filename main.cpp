@@ -1417,7 +1417,7 @@ public:
             double x, y;
             glfwGetCursorPos(window, &x, &y);
             if (graphs.size() > 0 && x - sidebarWidth > 0. && x - sidebarWidth < (wWidth - sidebarWidth) && y > 0. && y < wHeight &&
-                glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE && zoomSpeed == 1.f && !ImGui::GetIO().WantCaptureMouse) {
+                glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE && zoomSpeed == 1.f && !ImGui::GetIO().WantCaptureMouse && !autoRotate) {
                 float depth[1];
                 glBindFramebuffer(GL_FRAMEBUFFER, FBO);
                 glBindTexture(GL_TEXTURE_2D, prevZBuffer);
@@ -1668,8 +1668,8 @@ public:
                 glBindFramebuffer(GL_READ_FRAMEBUFFER, srcFBO);
                 glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dstFBO);
                 glBlitFramebuffer(
-                    0, 0, ssaa_factor* wWidth, ssaa_factor* wHeight,
-                    0, 0, ssaa_factor* wWidth, ssaa_factor* wHeight,
+                    0, 0, ssaa_factor * wWidth, ssaa_factor * wHeight,
+                    0, 0, ssaa_factor * wWidth, ssaa_factor * wHeight,
                     GL_DEPTH_BUFFER_BIT, GL_NEAREST
                 );
                 glBindFramebuffer(GL_FRAMEBUFFER, FBO);
