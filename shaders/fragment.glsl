@@ -141,6 +141,4 @@ void main() {
 		posbuf[6 * int(h * y + x) + 4] = partialx;
 		posbuf[6 * int(h * y + x) + 5] = partialy;
 	}
-
-	fragColor = vec4(normalvec, 1.f);
 }
