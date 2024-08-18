@@ -283,6 +283,7 @@ public:
     bool trace = true;
     bool tangent_plane = false, apply_tangent_plane = false;
     bool gradient_vector = false;
+    bool normal_vector = false;
     vec2 xrange, yrange, zrange;
 
     bool integral = false, second_corner = false, apply_integral = false, show_integral_result = false;
@@ -589,50 +590,56 @@ private:
 
     void draw_vector(mat4 view, mat4 proj) {
         float magnitude = distance(vector_start, vector_end);
-        float tip_height = clamp(magnitude / 2.f, 0.f, 0.1f);
+        float tip_height = clamp(magnitude / 2.f, 0.01f, 0.1f);
         float bottom_radius = 0.01f;
         float top_radius = 0.03f;
-        int segments = 50;
-        auto push = [](std::vector<float>& arr, vec3 v) {
+        int segments = 10;
+        auto push = [](std::vector<float>& arr, vec3 v, vec3 normal) {
             arr.push_back(v.x);
             arr.push_back(v.y);
             arr.push_back(v.z);
+            arr.push_back(normal.x);
+            arr.push_back(normal.y);
+            arr.push_back(normal.z);
         };
         std::vector<float> bottom_circle;
         std::vector<float> cylinder;
         std::vector<float> top_circle;
         std::vector<float> conic_head;
 
-        push(bottom_circle, vec3(0.f));
+        vec3 bottom_normal = vec3(0,-1,0);
+        push(bottom_circle, vec3(0.f), bottom_normal);
         for (float a = 0.f; a < 2.f * M_PI; a += 2.f * M_PI / segments) {
-            bottom_circle.push_back(bottom_radius * cos(a));
-            bottom_circle.push_back(0.f);
-            bottom_circle.push_back(bottom_radius * sin(a));
+            push(bottom_circle, vec3(bottom_radius * cos(a), 0.f, bottom_radius * sin(a)), bottom_normal);
         }
-        push(bottom_circle, vec3(bottom_radius, 0.f, 0.f));
+        push(bottom_circle, vec3(bottom_radius, 0.f, 0.f), bottom_normal);
 
         for (float a = 0.f; a <= 2.f * M_PI; a += 2.f * M_PI / segments) {
-            push(cylinder, bottom_radius * vec3(cos(a), 0.f, sin(a)));
-            push(cylinder, vec3(bottom_radius * cos(a), magnitude - tip_height, bottom_radius * sin(a)));
+            vec3 normal = vec3(cos(a), 0.f, sin(a));
+            push(cylinder, bottom_radius * vec3(cos(a), 0.f, sin(a)), normal);
+            push(cylinder, vec3(bottom_radius * cos(a), magnitude - tip_height, bottom_radius * sin(a)), normal);
         }
-        push(cylinder, vec3(bottom_radius, 0.f, 0.f));
-        push(cylinder, vec3(bottom_radius, magnitude - tip_height, 0.f));
+        push(cylinder, vec3(bottom_radius, 0.f, 0.f), vec3(1.f, 0.f, 0.f));
+        push(cylinder, vec3(bottom_radius, magnitude - tip_height, 0.f), vec3(1.f, 0.f, 0.f));
 
-        push(top_circle, vec3(0.f, magnitude - tip_height, 0.f));
+        vec3 top_normal = vec3(0, -1, 0);
+        push(top_circle, vec3(0.f, magnitude - tip_height, 0.f), top_normal);
         for (float a = 0.f; a < 2.f * M_PI; a += 2.f * M_PI / segments) {
-            top_circle.push_back(top_radius * cos(a));
-            top_circle.push_back(magnitude - tip_height);
-            top_circle.push_back(top_radius * sin(a));
+            push(top_circle, vec3(top_radius * cos(a), magnitude - tip_height, top_radius * sin(a)), top_normal);
         }
-        push(top_circle, vec3(top_radius, magnitude - tip_height, 0.f));
+        push(top_circle, vec3(top_radius, magnitude - tip_height, 0.f), top_normal);
 
-        push(conic_head, vec3(0.f, magnitude, 0.f));
+        auto normal_vec = [&](float a) {
+            float inc = atan(tip_height / top_radius);
+            return vec3(sin(inc) * cos(a), cos(inc), sin(inc) * sin(a));
+        };
         for (float a = 0.f; a < 2.f * M_PI; a += 2.f * M_PI / segments) {
-            conic_head.push_back(top_radius * cos(a));
-            conic_head.push_back(magnitude - tip_height);
-            conic_head.push_back(top_radius * sin(a));
+            push(conic_head, vec3(0.f, magnitude, 0.f), normal_vec(a));
+            push(conic_head, vec3(top_radius * cos(a), magnitude - tip_height, top_radius * sin(a)), normal_vec(a));
         }
-        push(conic_head, vec3(top_radius, magnitude - tip_height, 0.f));
+        push(conic_head, vec3(0.f, magnitude, 0.f), normal_vec(0.f));
+        push(conic_head, vec3(top_radius, magnitude - tip_height, 0.f), normal_vec(0.f));
+        
         
         int success;
         char infoLog[512];
@@ -642,12 +649,19 @@ private:
 #version 460 core
 
 layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aNormal;
+
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 proj;
 
+out vec3 fragPos;
+out vec3 normal;
+
 void main() {
-    gl_Position = proj * view * model * vec4(aPos, 1.f);
+    fragPos = vec3(model * vec4(aPos, 1.f));
+    normal = mat3(transpose(inverse(model))) * aNormal;
+    gl_Position = proj * view * vec4(fragPos, 1.f);
 })glsl";
         glShaderSource(vertexShader, 1, &vertexSource, NULL);
         glCompileShader(vertexShader);
@@ -662,11 +676,25 @@ void main() {
         const char* fragmentSource = R"glsl(
 #version 460 core
 
+in vec3 fragPos;
+in vec3 normal;
+
 out vec4 fragColor;
+
 uniform vec3 color;
+uniform vec3 lightPos;
 
 void main() {
-    fragColor = vec4(color, 1.f);
+    float ambientStrength = 0.3f;
+    vec3 ambient = ambientStrength * color;
+
+    vec3 norm = normalize(normal);
+    vec3 lightDir = normalize(lightPos - fragPos);
+    float diff = max(dot(norm, lightDir), 0.f);
+    vec3 diffuse = diff * color;
+
+    fragColor = vec4(ambient + diffuse, 1.f);
+    //fragColor = vec4(normal * 0.5f + 0.5f, 1.f);
 })glsl";
         glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
         glCompileShader(fragmentShader);
@@ -696,7 +724,8 @@ void main() {
         glUniformMatrix4fv(glGetUniformLocation(vectorShaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(vectorShaderProgram, "proj"), 1, GL_FALSE, glm::value_ptr(proj));
 
-        glUniform3fv(glGetUniformLocation(vectorShaderProgram, "color"), 1, value_ptr(vec4(1.f) - graphs[graph_index].color));
+        glUniform3fv(glGetUniformLocation(vectorShaderProgram, "color"), 1, value_ptr(colors[1]));
+        glUniform3f(glGetUniformLocation(vectorShaderProgram, "lightPos"), 0.f, 50.f, 0.f);
 
         unsigned int vao, vbo;
         glGenVertexArrays(1, &vao);
@@ -706,20 +735,22 @@ void main() {
 
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), nullptr);
         glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
 
         glBufferData(GL_ARRAY_BUFFER, bottom_circle.size() * sizeof(float), bottom_circle.data(), GL_STATIC_DRAW);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, bottom_circle.size() / 3); // Bottom circle
+        glDrawArrays(GL_TRIANGLE_FAN, 0, bottom_circle.size() / 6);
 
         glBufferData(GL_ARRAY_BUFFER, cylinder.size() * sizeof(float), cylinder.data(), GL_STATIC_DRAW);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, cylinder.size() / 3); // Cylinder
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, cylinder.size() / 6);
 
         glBufferData(GL_ARRAY_BUFFER, top_circle.size() * sizeof(float), top_circle.data(), GL_STATIC_DRAW);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, top_circle.size() / 3); // Top circle
+        glDrawArrays(GL_TRIANGLE_FAN, 0, top_circle.size() / 6);
 
         glBufferData(GL_ARRAY_BUFFER, conic_head.size() * sizeof(float), conic_head.data(), GL_STATIC_DRAW);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, conic_head.size() / 3); // Conic head
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, conic_head.size() / 6);
 
         glDeleteProgram(vectorShaderProgram);
         glDeleteBuffers(1, &vbo);
@@ -1354,6 +1385,7 @@ public:
             if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)gradVec_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 gradient_vector ^= 1;
                 tangent_plane = false;
+                normal_vector = false;
                 glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
                 integral = show_integral_result = apply_integral = second_corner = false;
                 if (integrand_index != -1) graphs[integrand_index].upload_definition(sliders);
@@ -1368,6 +1400,7 @@ public:
             if (ImGui::ImageButton("tangent_plane", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 tangent_plane ^= 1;
                 gradient_vector = false;
+                normal_vector = false;
                 glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
                 integral = show_integral_result = apply_integral = second_corner = false;
                 if (integrand_index != -1) graphs[integrand_index].upload_definition(sliders);
@@ -1378,9 +1411,17 @@ public:
                 ImGui::SetTooltip("Tangent Plane", ImGui::GetStyle().HoverDelayNormal);
 
             ImGui::SameLine();
+            if (normal_vector) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
             if (ImGui::ImageButton("normal_vector", (void*)(intptr_t)normVec_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
-                
+                normal_vector ^= 1;
+                tangent_plane = false;
+                gradient_vector = false;
+                glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
+                integral = show_integral_result = apply_integral = second_corner = false;
+                if (integrand_index != -1) graphs[integrand_index].upload_definition(sliders);
+                if (!normal_vector) ImGui::PopStyleColor();
             }
+            else if (normal_vector) ImGui::PopStyleColor();
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                 ImGui::SetTooltip("Normal Vector", ImGui::GetStyle().HoverDelayNormal);
 
@@ -1404,6 +1445,7 @@ public:
                 }
                 tangent_plane = false;
                 gradient_vector = false;
+                normal_vector = false;
                 if (!integral) ImGui::PopStyleColor();
             }
             else if (integral) ImGui::PopStyleColor();
@@ -1607,15 +1649,18 @@ public:
                 ImVec2 prevWindowSize = ImGui::GetWindowSize();
                 ImGui::End();
 
+                const float gridres = graphs[graph_index].grid_res + 2;
+                const float halfres = gridres / 2.f;
+                auto to_worldspace = [&](vec3 v) {
+                    v -= centerPos;
+                    return vec3(graph_size * v.x / zoomx, v.z / zoomz * graph_size, graph_size * v.y / zoomy);
+                };
                 if (gradient_vector) {
-                    const float gridres = graphs[graph_index].grid_res + 2;
-                    const float halfres = gridres / 2.f;
-                    auto to_worldspace = [&](vec3 v) {
-                        v -= centerPos;
-                        return vec3(graph_size * v.x / zoomx, v.z / zoomz * graph_size, graph_size * v.y / zoomy);
-                    };
                     vector_start = to_worldspace(fragPos);
                     vector_end = to_worldspace(fragPos + vec3(data[4], data[5], pow(length(gradient), 2)));
+                }
+                if (normal_vector) {
+                    
                 }
 
                 GLfloat params[5] = { fragPos.z, gradient.x, fragPos.x, gradient.y, fragPos.y };
