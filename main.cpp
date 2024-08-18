@@ -724,7 +724,7 @@ void main() {
         glUniformMatrix4fv(glGetUniformLocation(vectorShaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(vectorShaderProgram, "proj"), 1, GL_FALSE, glm::value_ptr(proj));
 
-        glUniform3fv(glGetUniformLocation(vectorShaderProgram, "color"), 1, value_ptr(colors[1]));
+        glUniform3fv(glGetUniformLocation(vectorShaderProgram, "color"), 1, value_ptr(graphs[graph_index].secondary_color));
         glUniform3f(glGetUniformLocation(vectorShaderProgram, "lightPos"), 0.f, 50.f, 0.f);
 
         unsigned int vao, vbo;
