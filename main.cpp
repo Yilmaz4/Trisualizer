@@ -1660,7 +1660,8 @@ public:
                     vector_end = to_worldspace(fragPos + vec3(data[4], data[5], pow(length(gradient), 2)));
                 }
                 if (normal_vector) {
-                    
+                    vector_start = to_worldspace(fragPos);
+                    vector_end = to_worldspace(fragPos + normalize(vec3(-gradient, 1.f)));
                 }
 
                 GLfloat params[5] = { fragPos.z, gradient.x, fragPos.x, gradient.y, fragPos.y };
@@ -1892,7 +1893,7 @@ public:
             }
             if (graphs[0].enabled) render_graph(0);
 
-            if (gradient_vector && cursor_on_point) draw_vector(view, proj);
+            if ((gradient_vector || normal_vector) && cursor_on_point) draw_vector(view, proj);
 
             glViewport(sidebarWidth, 0, wWidth - sidebarWidth, wHeight);
 
