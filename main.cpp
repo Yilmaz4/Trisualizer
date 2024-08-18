@@ -1611,7 +1611,8 @@ public:
                     const float gridres = graphs[graph_index].grid_res + 2;
                     const float halfres = gridres / 2.f;
                     auto to_worldspace = [&](vec3 v) {
-                        return vec3(graph_size * v.x / zoomx, (v.z - centerPos.z) / zoomz * graph_size, graph_size * v.y / zoomy);
+                        v -= centerPos;
+                        return vec3(graph_size * v.x / zoomx, v.z / zoomz * graph_size, graph_size * v.y / zoomy);
                     };
                     vector_start = to_worldspace(fragPos);
                     vector_end = to_worldspace(fragPos + vec3(data[4], data[5], pow(length(gradient), 2)));
