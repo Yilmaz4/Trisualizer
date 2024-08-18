@@ -1627,7 +1627,7 @@ public:
                 ImGui::Begin("info", nullptr,
                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                     ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
-                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
+                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoFocusOnAppearing);
                 ImVec2 size = ImGui::GetWindowSize();
                 ImVec2 pos = { (float)x + 20.0f, (float)y + 20.f };
                 if (size.x > wWidth - pos.x - 5)
@@ -1676,7 +1676,7 @@ public:
                     ImGui::Begin("tooltip", nullptr,
                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
-                        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
+                        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoFocusOnAppearing);
                     ImVec2 size = ImGui::GetWindowSize();
                     ImVec2 pos = { (float)x + 20.0f, (float)y + 20.f + prevWindowSize.y + 3.f };
                     if (size.x > wWidth - pos.x - 5)
@@ -1707,7 +1707,7 @@ public:
                     ImGui::Begin("tooltip", nullptr,
                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
-                        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
+                        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoFocusOnAppearing);
                     ImVec2 size = ImGui::GetWindowSize();
                     ImVec2 pos = { (float)x + 20.0f, (float)y + 20.f + prevWindowSize.y + 3.f };
                     if (size.x > wWidth - pos.x - 5)
@@ -1772,7 +1772,7 @@ public:
                 static bool result_window = true;
                 ImGui::Begin("Volume under surface", &result_window,
                     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
-                    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove);
+                    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing);
                 switch (region_type) {
                 case CartesianRectangle:
                     ImGui::Text(u8"%.4g \u2264 x \u2264 %.4g, %.4g \u2264 y \u2264 %.4g", x_min, x_max, y_min, y_max);
