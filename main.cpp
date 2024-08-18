@@ -293,6 +293,8 @@ public:
     vec3 center_of_region;
     float integral_result, middle_height, dx, dy;
 
+    vec3 vector_start = vec3(0.f), vector_end = vec3(0.f, 0.5f, 0.f);
+
     bool cursor_on_point;
     int graph_index;
     vec3 fragPos;
@@ -406,6 +408,7 @@ public:
         glAttachShader(shaderProgram, fragmentShader);
         glLinkProgram(shaderProgram);
         glDeleteShader(fragmentShader);
+        glDeleteShader(vertexShader);
         glUseProgram(shaderProgram);
         delete[] vertexSource, fragmentSource;
 
@@ -582,6 +585,149 @@ private:
             float yoffset = y - app->mousePos.y;
         }
         app->mousePos = { x, y };
+    }
+
+    void draw_vector(mat4 view, mat4 proj) {
+        float magnitude = distance(vector_start, vector_end);
+        float tip_height = clamp(magnitude / 2.f, 0.f, 0.1f);
+        float bottom_radius = 0.01f;
+        float top_radius = 0.03f;
+        int segments = 50;
+        auto push = [](std::vector<float>& arr, vec3 v) {
+            arr.push_back(v.x);
+            arr.push_back(v.y);
+            arr.push_back(v.z);
+        };
+        std::vector<float> bottom_circle;
+        std::vector<float> cylinder;
+        std::vector<float> top_circle;
+        std::vector<float> conic_head;
+
+        push(bottom_circle, vec3(0.f));
+        for (float a = 0.f; a < 2.f * M_PI; a += 2.f * M_PI / segments) {
+            bottom_circle.push_back(bottom_radius * cos(a));
+            bottom_circle.push_back(0.f);
+            bottom_circle.push_back(bottom_radius * sin(a));
+        }
+        push(bottom_circle, vec3(bottom_radius, 0.f, 0.f));
+
+        for (float a = 0.f; a <= 2.f * M_PI; a += 2.f * M_PI / segments) {
+            push(cylinder, bottom_radius * vec3(cos(a), 0.f, sin(a)));
+            push(cylinder, vec3(bottom_radius * cos(a), magnitude - tip_height, bottom_radius * sin(a)));
+        }
+        push(cylinder, vec3(bottom_radius, 0.f, 0.f));
+        push(cylinder, vec3(bottom_radius, magnitude - tip_height, 0.f));
+
+        push(top_circle, vec3(0.f, magnitude - tip_height, 0.f));
+        for (float a = 0.f; a < 2.f * M_PI; a += 2.f * M_PI / segments) {
+            top_circle.push_back(top_radius * cos(a));
+            top_circle.push_back(magnitude - tip_height);
+            top_circle.push_back(top_radius * sin(a));
+        }
+        push(top_circle, vec3(top_radius, magnitude - tip_height, 0.f));
+
+        push(conic_head, vec3(0.f, magnitude, 0.f));
+        for (float a = 0.f; a < 2.f * M_PI; a += 2.f * M_PI / segments) {
+            conic_head.push_back(top_radius * cos(a));
+            conic_head.push_back(magnitude - tip_height);
+            conic_head.push_back(top_radius * sin(a));
+        }
+        push(conic_head, vec3(top_radius, magnitude - tip_height, 0.f));
+        
+        int success;
+        char infoLog[512];
+
+        unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+        const char* vertexSource = R"glsl(
+#version 460 core
+
+layout (location = 0) in vec3 aPos;
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 proj;
+
+void main() {
+    gl_Position = proj * view * model * vec4(aPos, 1.f);
+})glsl";
+        glShaderSource(vertexShader, 1, &vertexSource, NULL);
+        glCompileShader(vertexShader);
+        glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+            std::cerr << infoLog << std::endl;
+            return;
+        }
+
+        unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        const char* fragmentSource = R"glsl(
+#version 460 core
+
+out vec4 fragColor;
+uniform vec3 color;
+
+void main() {
+    fragColor = vec4(color, 1.f);
+})glsl";
+        glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
+        glCompileShader(fragmentShader);
+        glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+            std::cerr << infoLog << std::endl;
+            return;
+        }
+
+        GLuint vectorShaderProgram = glCreateProgram();
+        glAttachShader(vectorShaderProgram, vertexShader);
+        glAttachShader(vectorShaderProgram, fragmentShader);
+        glLinkProgram(vectorShaderProgram);
+        glDeleteShader(fragmentShader);
+        glDeleteShader(vertexShader);
+        glUseProgram(vectorShaderProgram);
+
+        vec3 direction = normalize(vector_end - vector_start);
+        vec3 defdir = vec3(0.f, 1.f, 0.f);
+        vec3 rotationAxis = cross(defdir, direction);
+        if (length(rotationAxis) < 1e-6) rotationAxis = vec3(1.0f, 0.0f, 0.0f);
+        float angle = acos(clamp(dot(defdir, direction), -1.0f, 1.0f));
+        mat4 rotationMatrix = rotate(mat4(1.f), angle, normalize(rotationAxis));
+        mat4 modelMatrix = translate(mat4(1.f), vector_start) * rotationMatrix;
+        glUniformMatrix4fv(glGetUniformLocation(vectorShaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
+        glUniformMatrix4fv(glGetUniformLocation(vectorShaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(glGetUniformLocation(vectorShaderProgram, "proj"), 1, GL_FALSE, glm::value_ptr(proj));
+
+        glUniform3fv(glGetUniformLocation(vectorShaderProgram, "color"), 1, value_ptr(vec4(1.f) - graphs[graph_index].color));
+
+        unsigned int vao, vbo;
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+
+        glBindVertexArray(vao);
+
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
+        glEnableVertexAttribArray(0);
+
+        glBufferData(GL_ARRAY_BUFFER, bottom_circle.size() * sizeof(float), bottom_circle.data(), GL_STATIC_DRAW);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, bottom_circle.size() / 3); // Bottom circle
+
+        glBufferData(GL_ARRAY_BUFFER, cylinder.size() * sizeof(float), cylinder.data(), GL_STATIC_DRAW);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, cylinder.size() / 3); // Cylinder
+
+        glBufferData(GL_ARRAY_BUFFER, top_circle.size() * sizeof(float), top_circle.data(), GL_STATIC_DRAW);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, top_circle.size() / 3); // Top circle
+
+        glBufferData(GL_ARRAY_BUFFER, conic_head.size() * sizeof(float), conic_head.data(), GL_STATIC_DRAW);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, conic_head.size() / 3); // Conic head
+
+        glDeleteProgram(vectorShaderProgram);
+        glDeleteBuffers(1, &vbo);
+        glDeleteVertexArrays(1, &vao);
+
+        glUseProgram(shaderProgram);
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
     }
 
     std::pair<float, float> min_max(char var, const char* func, float rbegin, float rend, int samplesize, char* infoLog) {
@@ -810,7 +956,7 @@ public:
             glUniform1f(glGetUniformLocation(shaderProgram, "zoomy"), zoomy);
             glUniform1f(glGetUniformLocation(shaderProgram, "zoomz"), zoomz);
             zoomSpeed -= (zoomSpeed - 1.f) * min(timeStep * 10.f, 1.0);
-            if (currentTime - zoomTimestamp > 1.0) zoomSpeed = 1.f; 
+            if (currentTime - zoomTimestamp > 0.8) zoomSpeed = 1.f; 
 
             ImGui::PushFont(font_title);
 
@@ -1385,7 +1531,7 @@ public:
                 if (ImGui::Begin("##scale", nullptr,
                     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav)) {
 
-                    auto to_imu32 = [](glm::vec4 v) -> ImU32 {
+                    auto to_imu32 = [](vec4 v) -> ImU32 {
                         ImU32 r = static_cast<ImU32>(v.r * 255.0f);
                         ImU32 g = static_cast<ImU32>(v.g * 255.0f);
                         ImU32 b = static_cast<ImU32>(v.b * 255.0f);
@@ -1460,6 +1606,16 @@ public:
                 ImGui::Text(u8"\u2202z/\u2202x=% 06.4f\n\u2202z/\u2202y=% 06.4f", gradient.x, gradient.y);
                 ImVec2 prevWindowSize = ImGui::GetWindowSize();
                 ImGui::End();
+
+                if (gradient_vector) {
+                    const float gridres = graphs[graph_index].grid_res + 2;
+                    const float halfres = gridres / 2.f;
+                    auto to_worldspace = [&](vec3 v) {
+                        return vec3(graph_size * v.x / zoomx, (v.z - centerPos.z) / zoomz * graph_size, graph_size * v.y / zoomy);
+                    };
+                    vector_start = to_worldspace(fragPos);
+                    vector_end = to_worldspace(fragPos + vec3(data[4], data[5], pow(length(gradient), 2)));
+                }
 
                 GLfloat params[5] = { fragPos.z, gradient.x, fragPos.x, gradient.y, fragPos.y };
                 if (tangent_plane) {
@@ -1615,7 +1771,7 @@ public:
             if (autoRotate)
                 phi += timeStep * 5.f;
 
-            auto cameraPos = vec3(sin(glm::radians(theta)) * cos(glm::radians(phi)), cos(glm::radians(theta)), sin(glm::radians(theta)) * sin(glm::radians(phi)));
+            auto cameraPos = vec3(sin(radians(theta)) * cos(radians(phi)), cos(radians(theta)), sin(radians(theta)) * sin(radians(phi)));
             view = lookAt(cameraPos, vec3(0.f), { 0.f, 1.f, 0.f });
             proj = ortho(-1.f, 1.f, -(float)wHeight / (float)(wWidth - sidebarWidth), (float)wHeight / (float)(wWidth - sidebarWidth), -10.f, 10.f);
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "vpmat"), 1, GL_FALSE, value_ptr(proj * view));
@@ -1689,6 +1845,8 @@ public:
                 write_to_prevzbuf();
             }
             if (graphs[0].enabled) render_graph(0);
+
+            if (gradient_vector && cursor_on_point) draw_vector(view, proj);
 
             glViewport(sidebarWidth, 0, wWidth - sidebarWidth, wHeight);
 
