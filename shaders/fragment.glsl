@@ -62,7 +62,7 @@ void main() {
 		return;
 	}
 	float z = fragPos.y * zoomz / graph_size;
-	vec3 normalvec = normal * (int(gl_FrontFacing) * 2 - 1);
+	vec3 normalvec = normal * (int(!gl_FrontFacing) * 2 - 1);
 	float partialx = 1.f / tan(acos(dot(vec3(1, 0, 0), normalize(dot(normal, vec3(1, 0, 0)) * vec3(1, 0, 0) + dot(normal, vec3(0, 1, 0)) * vec3(0, 1, 0)))));
 	float partialy = 1.f / tan(acos(dot(vec3(0, 0, 1), normalize(dot(normal, vec3(0, 0, 1)) * vec3(0, 0, 1) + dot(normal, vec3(0, 1, 0)) * vec3(0, 1, 0)))));
 	vec2 gradient = vec2(partialx, partialy);
@@ -89,8 +89,8 @@ void main() {
 	if (abs(z - centerPos.z) > zoomz / 2.f && index != 0) discard;
 	
 	if (!tangent_plane && shading) {
-		vec3 diffuse = vec3(max(dot(normalvec, normalize(fragPos - lightPos)), 0.f)) * 0.7f;
-		vec3 specular = vec3(pow(max(dot(normalvec, normalize(-normalize(lightPos + fragPos) - normalize(cameraPos + fragPos))), 0.0), shininess)) * (shininess / 20.f) * 0.4f;
+		vec3 diffuse = vec3(max(dot(normalvec, normalize(fragPos + lightPos)), 0.f)) * 0.7f;
+		vec3 specular = vec3(pow(max(dot(normalvec, normalize(normalize(lightPos + fragPos) + normalize(cameraPos + fragPos))), 0.0), shininess)) * (shininess / 20.f) * 0.4f;
 		fragColor = vec4((ambientStrength + diffuse) * fragColor.rgb + specular * vec3(1.f), fragColor.w);
 	}
 
@@ -141,4 +141,6 @@ void main() {
 		posbuf[6 * int(h * y + x) + 4] = partialx;
 		posbuf[6 * int(h * y + x) + 5] = partialy;
 	}
+
+	fragColor = vec4(normalvec, 1.f);
 }
