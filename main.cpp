@@ -111,8 +111,7 @@ BITMAP loadImageFromResource(int resourceID) {
     if (auto hres = FindResource(getCurrentModule(), MAKEINTRESOURCE(resourceID), RT_RCDATA))
         if (auto size = SizeofResource(getCurrentModule(), hres))
             if (auto data = LockResource(LoadResource(getCurrentModule(), hres)))
-                if (auto stream = SHCreateMemStream((BYTE*)data, size))
-                {
+                if (auto stream = SHCreateMemStream((BYTE*)data, size)) {
                     Gdiplus::Bitmap bmp(stream);
                     stream->Release();
                     bmp.GetHBITMAP(Gdiplus::Color::Transparent, &hbitmap);
@@ -346,6 +345,13 @@ public:
         glfwSetScrollCallback(window, on_mouseScroll);
         glfwSetWindowSizeCallback(window, on_windowResize);
         glfwSetMouseButtonCallback(window, on_mouseButton);
+
+        BITMAP window_icon = loadImageFromResource(WINDOW_ICON);
+        GLFWimage icons[1];
+        icons[0].width = window_icon.bmWidth;
+        icons[0].height = window_icon.bmHeight;
+        icons[0].pixels = reinterpret_cast<unsigned char*>(window_icon.bmBits);
+        glfwSetWindowIcon(window, 1, icons);
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();

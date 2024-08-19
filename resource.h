@@ -4,6 +4,7 @@
 #define IDR_FRAG 102
 #define IDR_CMPT 103
 
+#define WINDOW_ICON 200
 #define TNGTPLANE_ICON 201
 #define GRADVEC_ICON 202
 #define NORMVEC_ICON 203
