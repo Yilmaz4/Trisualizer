@@ -1425,6 +1425,14 @@ public:
             bool none_active = true;
             for (int j = 1; j < graphs.size(); j++)
                 if (graphs[j].enabled) none_active = false;
+            if (none_active) {
+                gradient_vector = false;
+                tangent_plane = false;
+                normal_vector = false;
+                glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
+                integral = show_integral_result = apply_integral = second_corner = false;
+                if (integrand_index != -1 && integrand_index < graphs.size()) graphs[integrand_index].upload_definition(sliders);
+            }
             ImGui::BeginDisabled(none_active);
             if (gradient_vector) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
             if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)gradVec_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
@@ -1570,11 +1578,11 @@ public:
 
                         ImGui::InputText(u8"\u2264 r \u2264", r_min_eq, 32);
                         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                            ImGui::SetTooltip(u8"Enter a function of \u03b8", ImGui::GetStyle().HoverDelayNormal);
+                            ImGui::SetTooltip(u8"Enter a function of \u03b8 (alias: t)", ImGui::GetStyle().HoverDelayNormal);
                         ImGui::SameLine();
                         ImGui::InputText("##r_max", r_max_eq, 32);
                         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                            ImGui::SetTooltip(u8"Enter a function of \u03b8", ImGui::GetStyle().HoverDelayNormal);
+                            ImGui::SetTooltip(u8"Enter a function of \u03b8 (alias: t)", ImGui::GetStyle().HoverDelayNormal);
                         if (strlen(r_min_eq) == 0 || strlen(r_max_eq) == 0) ready = false;
                         break;
                     }
