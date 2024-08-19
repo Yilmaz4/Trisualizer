@@ -287,7 +287,7 @@ public:
     vec2 xrange, yrange, zrange;
 
     bool integral = false, second_corner = false, apply_integral = false, show_integral_result = false;
-    int integrand_index = -1, region_type = CartesianRectangle, integral_precision = 2000, erroring_eq = -1;
+    int integrand_index = 1, region_type = CartesianRectangle, integral_precision = 2000, erroring_eq = -1;
     float x_min, x_max, y_min, y_max, theta_min, theta_max;
     char x_min_eq[32], x_max_eq[32], y_min_eq[32], y_max_eq[32], r_min_eq[32], r_max_eq[32], integral_infoLog[512];
     float x_min_eq_min, x_max_eq_max, y_min_eq_min, y_max_eq_max;
@@ -588,12 +588,13 @@ private:
         app->mousePos = { x, y };
     }
 
+    // TODO: add shadows under arrow
     void draw_vector(mat4 view, mat4 proj) {
         float magnitude = distance(vector_start, vector_end);
         float tip_height = clamp(magnitude / 2.f, 0.01f, 0.1f);
         float bottom_radius = 0.01f;
         float top_radius = 0.03f;
-        int segments = 10;
+        int segments = 20;
         auto push = [](std::vector<float>& arr, vec3 v, vec3 normal) {
             arr.push_back(v.x);
             arr.push_back(v.y);
@@ -1131,7 +1132,26 @@ public:
                 ImVec2 vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
                 ImVec2 vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
                 ImGui::BeginDisabled(!g.valid);
-                ImGui::Checkbox(std::format("##check{}", i).c_str(), &g.enabled);
+                if (ImGui::Checkbox(std::format("##check{}", i).c_str(), &g.enabled)) {
+                    bool none_active = true;
+                    int first_active = -1;
+                    for (int j = 1; j < graphs.size(); j++)
+                        if (j != i && graphs[j].enabled) {
+                            if (first_active == -1) first_active = j;
+                            none_active = false;
+                        }
+                    if (i == integrand_index) {
+                        glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
+                        if (none_active) {
+                            integral = show_integral_result = apply_integral = second_corner = false;
+                            graphs[integrand_index].upload_definition(sliders);
+                        }
+                        else {
+                            show_integral_result = apply_integral = second_corner = false;
+                            integrand_index = first_active;
+                        }
+                    }
+                }
                 ImGui::EndDisabled();
                 ImGui::SameLine();
                 ImGui::ColorEdit4(std::format("##color{}", i).c_str(), value_ptr(g.color), ImGuiColorEditFlags_NoInputs);
@@ -1159,10 +1179,31 @@ public:
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("x", ImVec2(16, 0))) {
+                    bool none_active = true;
+                    int first_active = -1;
+                    for (int j = 1; j < graphs.size(); j++)
+                        if (j != i && graphs[j].enabled) {
+                            if (first_active == -1) first_active = j;
+                            none_active = false;
+                        }
                     if (i == integrand_index) {
                         glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
+                        if (none_active) {
+                            integral = show_integral_result = apply_integral = second_corner = false;
+                            graphs[integrand_index].upload_definition(sliders);
+                        }
+                        else {
+                            show_integral_result = apply_integral = second_corner = false;
+                            integrand_index = first_active;
+                        }
+                    }
+                    
+                    if (none_active) {
+                        gradient_vector = false;
+                        normal_vector = false;
                         integral = show_integral_result = apply_integral = second_corner = false;
-                        if (integrand_index != -1) graphs[integrand_index].upload_definition(sliders);
+                        glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
+                        tangent_plane = false;
                     }
                     graphs.erase(graphs.begin() + i);
                     for (Slider& s : sliders) {
@@ -1381,6 +1422,10 @@ public:
                 glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
             }
 
+            bool none_active = true;
+            for (int j = 1; j < graphs.size(); j++)
+                if (graphs[j].enabled) none_active = false;
+            ImGui::BeginDisabled(none_active);
             if (gradient_vector) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
             if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)gradVec_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 gradient_vector ^= 1;
@@ -1434,6 +1479,7 @@ public:
                     if (integrand_index != -1) graphs[integrand_index].upload_definition(sliders);
                 }
                 if (show_integral_result) {
+                    glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
                     show_integral_result = false;
                     ImGui::PopStyleColor();
                     goto skip;
@@ -1451,13 +1497,14 @@ public:
             else if (integral) ImGui::PopStyleColor();
         skip:
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                ImGui::SetTooltip("Double Integral", ImGui::GetStyle().HoverDelayNormal);  
+                ImGui::SetTooltip("Double Integral", ImGui::GetStyle().HoverDelayNormal);
+            ImGui::EndDisabled();
             ImGui::End();
             
             if ((integral || show_integral_result)) {
                 ImGui::SetNextWindowBgAlpha(0.5f);
                 ImGui::SetNextWindowPos(ImVec2(sidebarWidth + 10.f, 24.f));
-                ImGui::SetNextWindowSize(ImVec2(300.f, 0.f));
+                ImGui::SetNextWindowSize(ImVec2(350.f, 0.f));
                 if (ImGui::Begin("##doubleintegral", nullptr,
                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav)) {
 
@@ -1532,17 +1579,43 @@ public:
                         break;
                     }
                     ImGui::PopItemWidth();
-                    ImGui::SetNextItemWidth(vMax.x - vMin.x - 62.f);
-                    if (ImGui::InputInt("Precision", &integral_precision, 50, 100))
+                    ImGui::SetNextItemWidth(vMax.x - vMin.x - 81.f);
+
+                    const char* preview = graphs[integrand_index].defn;
+                    auto to_imcol32 = [](const glm::vec4& color) {
+                        ImU8 r = static_cast<ImU8>(clamp(color.r, 0.f, 1.f) * 255.f);
+                        ImU8 g = static_cast<ImU8>(clamp(color.g, 0.f, 1.f) * 255.f);
+                        ImU8 b = static_cast<ImU8>(clamp(color.b, 0.f, 1.f) * 255.f);
+                        ImU8 a = static_cast<ImU8>(clamp(color.w, 0.f, 1.f) * 255.f);
+                        return IM_COL32(r, g, b, a);
+                        };
+                    if (ImGui::BeginCombo("##integrand", preview)) {
+                        for (int n = 1; n < graphs.size(); n++) {
+                            if (!graphs[n].enabled) continue;
+                            const bool is_selected = (integrand_index == n);
+                            ImGui::PushStyleColor(ImGuiCol_Text, to_imcol32(graphs[n].color * 1.1f));
+                            if (ImGui::Selectable(graphs[n].defn, is_selected))
+                                integrand_index = n;
+                            ImGui::PopStyleColor();
+                            if (is_selected) ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::EndCombo();
+                    }
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                        ImGui::SetTooltip("Integrand", ImGui::GetStyle().HoverDelayNormal);
+                    ImGui::SameLine();
+
+                    ImGui::SetNextItemWidth(75.f);
+                    if (ImGui::InputInt("##precision", &integral_precision, 50, 100))
                         if (integral_precision < 50) integral_precision = 50;
                     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                         ImGui::SetTooltip("Precision, higher the better", ImGui::GetStyle().HoverDelayNormal);
+
                     ImGui::EndDisabled();
                     ImGui::BeginDisabled(!ready || show_integral_result || second_corner);
                     if (ImGui::Button("Compute", ImVec2(vMax.x - vMin.x, 0.f))) {
-                        integrand_index = 1;
                         glUniform1i(glGetUniformLocation(shaderProgram, "integral"), true);
-                        glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), 1);
+                        glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), integrand_index);
                         glUniform1i(glGetUniformLocation(shaderProgram, "region_type"), region_type);
                         int error = compute_integral(integral_infoLog);
                         if (error != -1) erroring_eq = error;
