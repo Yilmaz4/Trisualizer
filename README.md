@@ -3,7 +3,9 @@
 <br>
 <br>
 
-**Trisualizer** is an advanced two-variable function grapher that allows users to visualize and interact with mathematical functions in real-time. It features capabilities for displaying the partial derivatives, gradient vector, normal vector, and tangent plane at any selected point on the surface, and computing double integrals over general regions using numerical methods.
+**Trisualizer** is an advanced two-variable function grapher that allows users to visualize and interact with mathematical functions in real-time.
+
+It features capabilities for displaying the partial derivatives, gradient vector, normal vector, and tangent plane at any selected point on the surface, and computing double integrals over general regions using numerical methods.
 
 ![ui](https://github.com/user-attachments/assets/6ed5c52a-f31e-4f20-a0f4-bfa13ceffeba)
 
