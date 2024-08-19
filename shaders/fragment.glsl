@@ -84,6 +84,9 @@ void main() {
 	case 3:
 		if (isnan(angle) || isinf(angle)) angle = 0.f;
 		fragColor = mix(color, secondary_color, angle / 1.57079632f);
+		break;
+	case 4:
+		fragColor = vec4(normalvec * 0.5f + 0.5f, 1.f);
 	}
 
 	if (abs(z - centerPos.z) > zoomz / 2.f && index != 0) discard;

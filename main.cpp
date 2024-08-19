@@ -259,6 +259,7 @@ enum ColoringStyle {
     TopBottom,
     Elevation,
     Slope,
+    NormalMap,
 };
 
 class Trisualizer {
@@ -1030,6 +1031,10 @@ public:
                         coloring = Slope;
                         glUniform1i(glGetUniformLocation(shaderProgram, "coloring"), coloring);
                     }
+                    if (ImGui::MenuItem("Normal map", nullptr, coloring == NormalMap)) {
+                        coloring = NormalMap;
+                        glUniform1i(glGetUniformLocation(shaderProgram, "coloring"), coloring);
+                    }
                     ImGui::Separator();
                     if (ImGui::MenuItem("Anti-aliasing", nullptr, &ssaa)) {
                         if (ssaa) ssaa_factor = 3.f;
@@ -1156,11 +1161,11 @@ public:
                 ImGui::SameLine();
                 ImGui::ColorEdit4(std::format("##color{}", i).c_str(), value_ptr(g.color), ImGuiColorEditFlags_NoInputs);
                 ImGui::SameLine();
-                if (coloring != SingleColor) {
+                if (coloring != SingleColor && coloring != NormalMap) {
                     ImGui::ColorEdit4(std::format("##color2{}", i).c_str(), value_ptr(g.secondary_color), ImGuiColorEditFlags_NoInputs);
                     ImGui::SameLine();
                 }
-                ImGui::PushItemWidth((vMax.x - vMin.x) - 86 - (coloring != SingleColor ? 21 : 0));
+                ImGui::PushItemWidth((vMax.x - vMin.x) - 86 - ((coloring != SingleColor && coloring != NormalMap) ? 21 : 0));
                 if (i == graphs.size() - 1 && set_focus) {
                     ImGui::SetKeyboardFocusHere(0);
                 }
