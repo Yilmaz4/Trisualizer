@@ -1,4 +1,5 @@
 ﻿#define VERSION "0.1"
+#define CNFGVER "1"
 
 #pragma comment(linker, "/ENTRY:mainCRTStartup")
 
@@ -661,6 +662,7 @@ private:
         std::ofstream out;
         out.open(ofn.lpstrFile, std::ios::out | std::ios::binary | std::ofstream::trunc);
 
+        out.write(CNFGVER, 1);
         auto cast = []<typename T>(T d) {
             return reinterpret_cast<const char*>(d);
         };
@@ -677,6 +679,7 @@ private:
         out.write(cast(value_ptr(zrange)), 2 * sizeof(float));
         out.write(cast(&coloring), sizeof(int));
         out.write(cast(&shading), sizeof(bool));
+        out.write(cast(&gridLines), sizeof(bool));
 
         out.close();
     }
@@ -709,6 +712,12 @@ private:
         std::ifstream in;
         in.open(ofn.lpstrFile, std::ios::in | std::ios::binary);
 
+        char ver[1];
+        in.read(&ver[0], 1);
+        if (ver[0] != CNFGVER[0]) {
+            MessageBoxA(NULL, std::format("This file is from a previous version of Trisualizer ({}.0) and will not work on this version.", ver[0]).c_str(), "Incompatible version", MB_ICONERROR | MB_OK);
+            return;
+        }
         int num_graphs, num_sliders;
         char buf[8];
         in.read(&buf[0], sizeof(size_t));
@@ -734,6 +743,9 @@ private:
         }
         delete[] sliders_buf;
 
+        for (Slider& s : sliders) {
+            s.used_in.resize(graphs.size(), false);
+        }
         for (Graph& g : graphs) {
             g.SSBO = gridSSBO;
             g.EBO = EBO;
@@ -765,6 +777,9 @@ private:
         in.read(&buf[0], sizeof(bool));
         shading = *reinterpret_cast<bool*>(buf);
         glUniform1i(glGetUniformLocation(shaderProgram, "shading"), shading);
+        in.read(&buf[0], sizeof(bool));
+        gridLines = *reinterpret_cast<bool*>(buf);
+        glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLines ? gridLineDensity : 0.f);
 
         in.close();
     }
