@@ -1,8 +1,6 @@
 ﻿#define VERSION "0.1"
 
-#ifndef _DEBUG
-#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
-#endif
+#pragma comment(linker, "/ENTRY:mainCRTStartup")
 
 #pragma warning(disable: 26495)
 #pragma warning(disable: 6387)
@@ -31,6 +29,8 @@
 #include "glm/gtx/string_cast.hpp"
 
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <vector>
 #include <iomanip>
 #include <ctime>
@@ -131,8 +131,20 @@ struct Slider {
     std::vector<bool> used_in;
     char infoLog[128];
 
+    Slider() = default;
     Slider(float defval, float min, float max, const char* sym) : value(defval), min(min), max(max) {
         strcpy_s(symbol, sym);
+    }
+
+    Slider& operator=(const Slider& other) {
+        if (this != &other) {
+            value = other.value;
+            min = other.min;
+            max = other.max;
+            memcpy(symbol, other.symbol, 32);
+            valid = other.valid;
+        }
+        return *this;
     }
 };
 
@@ -159,9 +171,25 @@ public:
     vec4 color;
     vec4 secondary_color;
 
+    Graph() = default;
     Graph(size_t idx, int type, const char* definition, int res, vec4 color, vec4 color2, bool enabled, GLuint SSBO, GLuint EBO)
         : type(type), idx(idx), grid_res(res), color(color), secondary_color(color2), enabled(enabled), SSBO(SSBO), EBO(EBO) {
         strcpy_s(defn, definition);
+    }
+
+    Graph& operator=(const Graph& other) {
+        if (this != &other) {
+            idx = other.idx;
+            enabled = other.enabled;
+            grid_lines = other.grid_lines;
+            shininess = other.shininess;
+            type = other.type;
+            grid_res = other.grid_res;
+            memcpy(defn, other.defn, 256);
+            color = other.color;
+            secondary_color = other.secondary_color;
+        }
+        return *this;
     }
 
     void setup() {
@@ -280,7 +308,6 @@ public:
     bool shading = true;
     int coloring = SingleColor;
     bool autoRotate = false;
-    bool trace = true;
     bool tangent_plane = false, apply_tangent_plane = false;
     bool gradient_vector = false;
     bool normal_vector = false;
@@ -523,7 +550,6 @@ public:
 
         mainloop();
     }
-
 private:
     static inline void on_windowResize(GLFWwindow* window, int width, int height) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
@@ -593,6 +619,154 @@ private:
             float yoffset = y - app->mousePos.y;
         }
         app->mousePos = { x, y };
+    }
+
+    void save_file() {
+        OPENFILENAMEA ofn;
+        auto t = std::time(nullptr);
+        std::tm bt{};
+        localtime_s(&bt, &t);
+        std::ostringstream oss;
+        oss << std::put_time(&bt, "Trisualizer Snapshot %d-%m-%Y %H-%M-%S.tris");
+        std::string filename = oss.str();
+
+        char szFileName[MAX_PATH];
+        char szFileTitle[MAX_PATH];
+        char filePath[MAX_PATH];
+        char szFile[MAX_PATH];
+        *szFileName = 0;
+        *szFileTitle = 0;
+
+        filename.copy(szFile, filename.size());
+        szFile[filename.size()] = '\0';
+
+        ofn.lpstrFile = szFile;
+        ofn.lStructSize = sizeof(OPENFILENAME);
+        ofn.hwndOwner = GetFocus();
+        ofn.lpstrFilter = "Trisualizer Snapshot (*.tris)\0*.tris\0All Files (*.*)\0*.*\0";
+        ofn.lpstrCustomFilter = NULL;
+        ofn.nMaxCustFilter = NULL;
+        ofn.nFilterIndex = NULL;
+        ofn.nMaxFile = MAX_PATH;
+        ofn.lpstrInitialDir = ".";
+        ofn.lpstrFileTitle = szFileTitle;
+        ofn.nMaxFileTitle = MAX_PATH;
+        ofn.lpstrTitle = "Save the current configuration to a file...";
+        ofn.lpstrDefExt = "*.tris";
+
+        ofn.Flags = OFN_OVERWRITEPROMPT | OFN_HIDEREADONLY;
+
+        if (!GetSaveFileNameA(reinterpret_cast<LPOPENFILENAMEA>(&ofn)))
+            return;
+        std::ofstream out;
+        out.open(ofn.lpstrFile, std::ios::out | std::ios::binary | std::ofstream::trunc);
+
+        auto cast = []<typename T>(T d) {
+            return reinterpret_cast<const char*>(d);
+        };
+        size_t n = graphs.size();
+        out.write(cast(&n), sizeof(size_t));
+        n = sliders.size();
+        out.write(cast(&n), sizeof(size_t));
+
+        out.write(cast(graphs.data()), graphs.size() * sizeof(Graph));
+        out.write(cast(sliders.data()), sliders.size() * sizeof(Slider));
+
+        out.write(cast(value_ptr(xrange)), 2 * sizeof(float));
+        out.write(cast(value_ptr(yrange)), 2 * sizeof(float));
+        out.write(cast(value_ptr(zrange)), 2 * sizeof(float));
+        out.write(cast(&coloring), sizeof(int));
+        out.write(cast(&shading), sizeof(bool));
+
+        out.close();
+    }
+
+    void open_file() {
+        OPENFILENAMEA ofn;
+
+        char szFileName[MAX_PATH];
+        char szFileTitle[MAX_PATH];
+        *szFileName = 0;
+        *szFileTitle = 0;
+
+        ofn.lStructSize = sizeof(OPENFILENAME);
+        ofn.hwndOwner = GetFocus();
+        ofn.lpstrFilter = "Trisualizer Snapshot (*.tris)\0*.tris\0All Files (*.*)\0*.*\0";
+        ofn.lpstrCustomFilter = NULL;
+        ofn.nMaxCustFilter = NULL;
+        ofn.nFilterIndex = NULL;
+        ofn.lpstrFile = szFileName;
+        ofn.nMaxFile = MAX_PATH;
+        ofn.lpstrInitialDir = ".";
+        ofn.lpstrFileTitle = szFileTitle;
+        ofn.nMaxFileTitle = MAX_PATH;
+        ofn.lpstrTitle = "Load a Trisualizer configuration...";
+        ofn.lpstrDefExt = "*.tris";
+        ofn.Flags = OFN_FILEMUSTEXIST;
+
+        if (!GetOpenFileNameA(reinterpret_cast<LPOPENFILENAMEA>(&ofn)))
+            return;
+        std::ifstream in;
+        in.open(ofn.lpstrFile, std::ios::in | std::ios::binary);
+
+        int num_graphs, num_sliders;
+        char buf[8];
+        in.read(&buf[0], sizeof(size_t));
+        num_graphs = *reinterpret_cast<size_t*>(buf);
+        in.read(&buf[0], sizeof(size_t));
+        num_sliders = *reinterpret_cast<size_t*>(buf);
+
+        char* graphs_buf = new char[num_graphs * sizeof(Graph)];
+        in.read(graphs_buf, num_graphs * sizeof(Graph));
+        graphs.clear();
+        for (size_t i = 0; i < num_graphs; i++) {
+            graphs.push_back(Graph());
+            graphs[i] = reinterpret_cast<Graph*>(graphs_buf)[i];
+        }
+        delete[] graphs_buf;
+
+        char* sliders_buf = new char[num_sliders * sizeof(Slider)];
+        in.read(sliders_buf, num_sliders * sizeof(Slider));
+        sliders.clear();
+        for (size_t i = 0; i < num_sliders; i++) {
+            sliders.push_back(Slider());
+            sliders[i] = reinterpret_cast<Slider*>(sliders_buf)[i];
+        }
+        delete[] sliders_buf;
+
+        for (Graph& g : graphs) {
+            g.SSBO = gridSSBO;
+            g.EBO = EBO;
+            g.upload_definition(sliders);
+            g.setup();
+        }
+
+        in.read(&buf[0], 2 * sizeof(float));
+        xrange[0] = *reinterpret_cast<float*>(buf);
+        xrange[1] = *reinterpret_cast<float*>(buf + sizeof(float));
+        in.read(&buf[0], 2 * sizeof(float));
+        yrange[0] = *reinterpret_cast<float*>(buf);
+        yrange[1] = *reinterpret_cast<float*>(buf + sizeof(float));
+        in.read(&buf[0], 2 * sizeof(float));
+        zrange[0] = *reinterpret_cast<float*>(buf);
+        zrange[1] = *reinterpret_cast<float*>(buf + sizeof(float));
+
+        zoomx = abs(xrange[0] - xrange[1]);
+        centerPos.x = (xrange[0] + xrange[1]) / 2.f;
+        zoomy = abs(yrange[0] - yrange[1]);
+        centerPos.y = (yrange[0] + yrange[1]) / 2.f;
+        zoomz = abs(zrange[0] - zrange[1]);
+        centerPos.z = (zrange[0] + zrange[1]) / 2.f;
+        glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
+
+        in.read(&buf[0], sizeof(int));
+        coloring = *reinterpret_cast<int*>(buf);
+        glUniform1i(glGetUniformLocation(shaderProgram, "coloring"), coloring);
+        in.read(&buf[0], sizeof(bool));
+        shading = *reinterpret_cast<bool*>(buf);
+        glUniform1i(glGetUniformLocation(shaderProgram, "shading"), shading);
+
+        in.close();
     }
 
     // TODO: add shadows under arrow
@@ -1004,10 +1178,10 @@ public:
             if (ImGui::BeginMainMenuBar()) {
                 if (ImGui::BeginMenu("File")) {
                     if (ImGui::MenuItem("Open", "Ctrl+O")) {
-
+                        open_file();
                     }
                     if (ImGui::MenuItem("Save", "Ctrl+S")) {
-
+                        save_file();
                     }
                     ImGui::Separator();
                     if (ImGui::MenuItem("Exit", "Alt+F4")) {
@@ -1895,7 +2069,7 @@ public:
             if (ImGui::BeginPopupModal("About Trisualizer", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
                 ImGui::Text("Version v" VERSION " (Build date: " __DATE__ " " __TIME__ ")\n\nTrisualizer is a two-variable function grapher");
                 ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(150, 150, 150, 255));
-                ImGui::Text(u8"Copyright © 2017-2024 Yilmaz Alpaslan");
+                ImGui::Text(u8"Copyright © 2018-2024 Yilmaz Alpaslan");
                 ImGui::PopStyleColor();
                 if (ImGui::Button("Open GitHub Page"))
                     ShellExecuteW(0, 0, L"https://github.com/Yilmaz4/Trisualizer", 0, 0, SW_SHOW);
@@ -2004,6 +2178,5 @@ public:
 
 int main() {
     Trisualizer app;
-
     return 0;
 }
