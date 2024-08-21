@@ -1899,7 +1899,7 @@ public:
                 glBindFramebuffer(GL_FRAMEBUFFER, FBO);
                 glBindTexture(GL_TEXTURE_2D, prevZBuffer);
                 glReadPixels(ssaa_factor * x, ssaa_factor * (wHeight - y), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, depth);
-                if (depth[0] == 1.f) goto mouse_not_on_graph;
+                if (depth[0] == -1.f) goto mouse_not_on_graph;
 
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
