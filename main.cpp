@@ -598,7 +598,8 @@ private:
             glUniform1f(glGetUniformLocation(app->shaderProgram, "graph_size"), app->graph_size);
         }
         else {
-            app->zoomSpeed = pow(0.95f, y);
+            float factor = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ? 0.985f : 0.95f;
+            app->zoomSpeed = pow(factor, y);
             app->zoomTimestamp = glfwGetTime();
         }
     }
@@ -1989,6 +1990,7 @@ public:
                     }
                     graphs[graphs.size() - 1].setup();
                     graphs[graphs.size() - 1].upload_definition(sliders);
+                    graphs[graphs.size() - 1].grid_lines = graphs[graph_index].grid_lines;
                     apply_tangent_plane = false;
                     tangent_plane = false;
                     graphs[0].enabled = false;
