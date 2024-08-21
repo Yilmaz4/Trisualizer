@@ -1961,6 +1961,7 @@ public:
                     vec4 nc2 = colors[(graphs.size()) % colors.size()];
                     graphs[0].color = vec4(nc1.r, nc1.g, nc1.b, 0.4f);
                     graphs[0].secondary_color = vec4(nc2.r, nc2.g, nc2.b, 0.4f);
+                    graphs[0].grid_lines = graphs[graph_index].grid_lines;
                     glUseProgram(shaderProgram);
                     ImGui::Begin("tooltip", nullptr,
                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
