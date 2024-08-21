@@ -297,7 +297,7 @@ public:
     std::vector<Graph> graphs;
     std::vector<Slider> sliders;
 
-    float theta = 45, phi = 45;
+    float theta = 135, phi = 45;
     double zoomTimestamp = 0.f;
     float zoomSpeed = 1.f;
     float zoomx = 8.f;
@@ -320,7 +320,7 @@ public:
     char x_min_eq[32], x_max_eq[32], y_min_eq[32], y_max_eq[32], r_min_eq[32], r_max_eq[32], integral_infoLog[512];
     float x_min_eq_min, x_max_eq_max, y_min_eq_min, y_max_eq_max;
     vec3 center_of_region;
-    float integral_result, middle_height, dx, dy;
+    float integral_result, dx, dy;
 
     vec3 vector_start = vec3(0.f), vector_end = vec3(0.f, 0.5f, 0.f);
 
@@ -972,6 +972,16 @@ uniform int samplesize;
 uniform float rbegin;
 uniform float rend;
 
+float cot(float x) {
+	return 1.f / tan(x);
+}
+float sec(float x) {
+	return 1.f / cos(x);
+}
+float csc(float x) {
+	return 1.f / sin(x);
+}
+
 void main() {
 	float %c = rbegin + ((rend - rbegin) / samplesize) * float(gl_GlobalInvocationID.x);
     samples[gl_GlobalInvocationID.x] = float(%s);
@@ -1092,15 +1102,22 @@ void main() {
         dx = abs(xmax - xmin) / g.grid_res;
         dy = abs(ymax - ymin) / g.grid_res;
         integral_result = 0.f;
+        vec3 region_center = vec3(0.f);
+        int num_samples = 0;
+        std::cout << to_string(center_of_region) << std::endl;
         for (int i = 0; i < 2 * g.grid_res * g.grid_res; i += 2) {
+            float x = (graph_size / g.grid_res) * (((i / 2) % g.grid_res) - g.grid_res / 2.f);
+            float y = (graph_size / g.grid_res) * ((g.grid_res - floor((i / 2) / g.grid_res)) - g.grid_res / 2.f);
             float val = data[i];
             bool in_region = static_cast<bool>(data[i + 1]);
             if (isnan(val) || isinf(val) || !in_region) continue;
             integral_result += val * dx * dy;
+            num_samples++;
+            region_center += vec3(x, y, val);
         }
-        middle_height = data[g.grid_res * (g.grid_res / 2) + (g.grid_res / 2)];
+        center_of_region = region_center / static_cast<float>(num_samples);
         delete[] data;
-
+        std::cout << to_string(center_of_region) << std::endl;
         graphs[integrand_index].upload_definition(sliders, regionBool, region_type == Polar);
         return -1;
     }
@@ -2048,7 +2065,7 @@ public:
                 vec3 v = center_of_region - centerPos;
                 const float gridres = graphs[integrand_index].grid_res + 2;
                 const float halfres = gridres / 2.f;
-                vec4 ndc = proj * view * vec4(graph_size * v.x / zoomx, (middle_height - centerPos.z) / zoomz * graph_size, graph_size * v.y / zoomy, 1.f);
+                vec4 ndc = proj * view * vec4(graph_size * v.x / zoomx, (v.z - centerPos.z) / zoomz * graph_size, graph_size * v.y / zoomy, 1.f);
                 ndc = ndc / ndc.w;
                 ImGui::SetNextWindowPos(ImVec2((ndc.x + 1.f) * (wWidth - sidebarWidth) / 2.f + sidebarWidth, (wHeight - (ndc.y + 1.f) * wHeight / 2.f)));
                 static bool result_window = true;
@@ -2111,6 +2128,7 @@ public:
             glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32F, GL_RED, GL_FLOAT, nullptr);
 
             glClearColor(0.0f, 0.0f, 0.0f, 1.f);
+            glClearDepth(-1.f);
             glBindFramebuffer(GL_FRAMEBUFFER, NULL);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glBindFramebuffer(GL_FRAMEBUFFER, FBO);
@@ -2186,6 +2204,7 @@ public:
 
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
             glfwSwapBuffers(window);
+            glDepthFunc(GL_GREATER);
 
         } while (!glfwWindowShouldClose(window));
     }

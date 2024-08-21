@@ -28,8 +28,8 @@ void main() {
 	}
 	const float gridres = grid_res + 2;
 	const float halfres = gridres / 2.f;
-	float x = (gl_VertexID % grid_res) + 1;
-	float y = floor(gl_VertexID / grid_res) + 1;
+	float x = floor(gl_VertexID / grid_res) + 1;
+	float y = (gl_VertexID % grid_res) + 1;
 
 	fragPos = vec3((graph_size / gridres) * (x - halfres), graph_size * grid[2 * int(y * gridres + x)], (graph_size / gridres) * (y - halfres));
 	gridCoord = vec2(zoomx * (x - halfres) / gridres, zoomy * (y - halfres) / gridres) + centerPos.xy;
