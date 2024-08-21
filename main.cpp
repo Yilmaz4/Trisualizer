@@ -161,7 +161,7 @@ public:
     bool enabled = false;
     bool valid = false;
     bool advanced_view = false;
-    bool grid_lines = true;
+    bool grid_lines = false;
     float shininess = 16;
     char* infoLog = new char[512]{};
     int type;
@@ -304,7 +304,6 @@ public:
     float zoomy = 8.f;
     float zoomz = 8.f;
     float graph_size = 1.3f;
-    bool gridLines = true;
     float gridLineDensity = 3.f;
     bool shading = true;
     int coloring = SingleColor;
@@ -679,7 +678,6 @@ private:
         out.write(cast(value_ptr(zrange)), 2 * sizeof(float));
         out.write(cast(&coloring), sizeof(int));
         out.write(cast(&shading), sizeof(bool));
-        out.write(cast(&gridLines), sizeof(bool));
 
         out.close();
     }
@@ -777,9 +775,6 @@ private:
         in.read(&buf[0], sizeof(bool));
         shading = *reinterpret_cast<bool*>(buf);
         glUniform1i(glGetUniformLocation(shaderProgram, "shading"), shading);
-        in.read(&buf[0], sizeof(bool));
-        gridLines = *reinterpret_cast<bool*>(buf);
-        glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLines ? gridLineDensity : 0.f);
 
         in.close();
     }
@@ -1222,9 +1217,6 @@ public:
                     ImGui::EndMenu();
                 }
                 if (ImGui::BeginMenu("Graph")) {
-                    if (ImGui::MenuItem("Grid lines", nullptr, &gridLines)) {
-                        glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLines ? gridLineDensity : 0.f);
-                    }
                     ImGui::MenuItem("Auto-rotate", nullptr, &autoRotate);
                     ImGui::SeparatorText("Graphing");
                     if (ImGui::MenuItem("Single Color", nullptr, coloring == SingleColor)) {
@@ -1446,9 +1438,7 @@ public:
                     ImGui::SameLine();
                     ImGui::DragFloat(std::format("Shininess##{}", i).c_str(), &g.shininess, g.shininess / 40.f, 1.f, 1024.f, "%.0f");
                     ImGui::SameLine();
-                    ImGui::BeginDisabled(!gridLines);
-                    ImGui::Checkbox(std::format("Grid lines##{}", i).c_str(), &g.grid_lines);
-                    ImGui::EndDisabled();
+                    ImGui::Checkbox(std::format("Grid##{}", i).c_str(), &g.grid_lines);
                     ImGui::EndDisabled();
                 }
                 ImGui::EndChild();
@@ -2157,8 +2147,7 @@ public:
                 glUniform1i(glGetUniformLocation(shaderProgram, "grid_res"), g.grid_res);
                 glUniform1i(glGetUniformLocation(shaderProgram, "tangent_plane"), g.type == TangentPlane);
                 glUniform1f(glGetUniformLocation(shaderProgram, "shininess"), g.shininess);
-                if (gridLines)
-                    glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), g.grid_lines ? gridLineDensity : 0.f);
+                glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), g.grid_lines ? gridLineDensity : 0.f);
                 glBindVertexArray(VAO);
                 glUniform1i(glGetUniformLocation(shaderProgram, "quad"), false);
                 glActiveTexture(GL_TEXTURE1);
