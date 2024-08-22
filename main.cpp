@@ -1925,7 +1925,7 @@ public:
                     for (int i = 1; i < graphs.size(); i++) {
                         Graph g = graphs[i];
                         if (!g.enabled) continue;
-                        draw_list->AddRectFilledMultiColor(corner + ImVec2(8 + (i-1) * 12, 6), corner + ImVec2(2 + i * 12, 114), to_imu32(g.color), to_imu32(g.color), to_imu32(g.secondary_color), to_imu32(g.secondary_color));
+                        draw_list->AddRectFilledMultiColor(corner + ImVec2(8 + nActive * 12, 6), corner + ImVec2(14 + nActive * 12, 114), to_imu32(g.color), to_imu32(g.color), to_imu32(g.secondary_color), to_imu32(g.secondary_color));
                         nActive += 1;
                     }
                     ImGui::SetCursorPos(ImVec2(nActive * 12 + 4, 5));
