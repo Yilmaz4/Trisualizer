@@ -131,17 +131,18 @@ void main() {
 	}
 
 	float prevDepth = texture(prevZBuffer, (gl_FragCoord.xy) / windowSize).r;
-	if (!tangent_plane && int(gl_FragCoord.x) % radius == 0 && int(gl_FragCoord.y) % radius == 0 && abs(gl_FragCoord.z - prevDepth) == 0.f) {
+	if (!tangent_plane && int(gl_FragCoord.x) % radius == 0 && int(gl_FragCoord.y) % radius == 0 && 
+		abs(gl_FragCoord.z - prevDepth) == 0.f) {
 		if (integral && index != integrand_idx) return;
 		float x = floor((gl_FragCoord.x - windowSize.x + regionSize.x) / radius);
 		float y = floor(gl_FragCoord.y / radius);
-		float h = floor(regionSize.y / radius);
-		y = h - y;
-		posbuf[6 * int(h * y + x) + 0] = gridCoord.x;
-		posbuf[6 * int(h * y + x) + 1] = gridCoord.y;
-		posbuf[6 * int(h * y + x) + 2] = z;
-		posbuf[6 * int(h * y + x) + 3] = float(index);
-		posbuf[6 * int(h * y + x) + 4] = partialx;
-		posbuf[6 * int(h * y + x) + 5] = partialy;
+		float w = floor(regionSize.x / radius);
+		y = floor(regionSize.y / radius) - y;
+		posbuf[6 * int(w * y + x) + 0] = gridCoord.x;
+		posbuf[6 * int(w * y + x) + 1] = gridCoord.y;
+		posbuf[6 * int(w * y + x) + 2] = z;
+		posbuf[6 * int(w * y + x) + 3] = float(index);
+		posbuf[6 * int(w * y + x) + 4] = partialx;
+		posbuf[6 * int(w * y + x) + 5] = partialy;
 	}
 }

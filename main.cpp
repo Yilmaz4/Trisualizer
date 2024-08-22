@@ -51,7 +51,6 @@ TODO:
 - Implicit functions using marching cubes alg.
 - Curl and divergence visualization
 - Gradient vector fields
-- Adjustable grid density
 - Keyboard controls
 - Preset views (top, front, sides)
 - Key axes
@@ -68,7 +67,6 @@ TODO:
 - Export data to CSV
 - High-res image export (PNG & JPG)
 - Complex functions
-- Dynamic resolution adjustment based on FPS
 */
 
 using namespace Gdiplus;
@@ -1954,7 +1952,7 @@ public:
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                 float data[6];
-                glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * (wHeight * y + x - sidebarWidth)) * sizeof(float), 6 * sizeof(float), data);
+                glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * ((wWidth - sidebarWidth) * y + x - sidebarWidth)) * sizeof(float), 6 * sizeof(float), data);
                 fragPos = { data[0], data[1], data[2] };
                 graph_index = static_cast<int>(data[3]);
                 gradient = { data[4], data[5] };
