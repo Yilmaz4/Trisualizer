@@ -1149,9 +1149,6 @@ void main() {
         dx = abs(xmax - xmin) / g.grid_res;
         dy = abs(ymax - ymin) / g.grid_res;
         integral_result = 0.f;
-        vec3 region_center = vec3(0.f);
-        int num_samples = 0;
-        std::cout << to_string(center_of_region) << std::endl;
         for (int i = 0; i < 2 * g.grid_res * g.grid_res; i += 2) {
             float x = (graph_size / g.grid_res) * (((i / 2) % g.grid_res) - g.grid_res / 2.f);
             float y = (graph_size / g.grid_res) * ((g.grid_res - floor((i / 2) / g.grid_res)) - g.grid_res / 2.f);
@@ -1159,12 +1156,8 @@ void main() {
             bool in_region = static_cast<bool>(data[i + 1]);
             if (isnan(val) || isinf(val) || !in_region) continue;
             integral_result += val * dx * dy;
-            num_samples++;
-            region_center += vec3(x, y, val);
         }
-        center_of_region = region_center / static_cast<float>(num_samples);
         delete[] data;
-        std::cout << to_string(center_of_region) << std::endl;
         graphs[integrand_index].upload_definition(sliders, regionBool, region_type == Polar);
         return -1;
     }
@@ -1270,6 +1263,12 @@ public:
                 }
                 if (ImGui::BeginMenu("Graph")) {
                     ImGui::MenuItem("Auto-rotate", nullptr, &autoRotate);
+                    if (ImGui::BeginMenu("Grid density")) {
+                        if (ImGui::MenuItem("Low", nullptr, gridLineDensity == 2.f)) gridLineDensity = 2.f;
+                        if (ImGui::MenuItem("Moderate", nullptr, gridLineDensity == 3.f)) gridLineDensity = 3.f;
+                        if (ImGui::MenuItem("High", nullptr, gridLineDensity == 4.f)) gridLineDensity = 4.f;
+                        ImGui::EndMenu();
+                    }
                     ImGui::SeparatorText("Graphing");
                     if (ImGui::MenuItem("Single Color", nullptr, coloring == SingleColor)) {
                         coloring = SingleColor;
