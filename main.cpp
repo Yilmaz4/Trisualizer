@@ -357,6 +357,8 @@ public:
     std::pair<vec3, vec3> integral_limits;
     vec3 centerPos = vec3(0.f);
     vec2 mousePos = vec2(0.f);
+    ivec2 prevWindowPos = ivec2(200, 200);
+    ivec2 prevWindowSize = ivec2(1000, 600);
     int sidebarWidth = 300;
     bool updateBufferSize = false;
     double lastMousePress = 0.0;
@@ -398,6 +400,7 @@ public:
         glfwSetScrollCallback(window, on_mouseScroll);
         glfwSetWindowSizeCallback(window, on_windowResize);
         glfwSetMouseButtonCallback(window, on_mouseButton);
+        glfwSetKeyCallback(window, on_keyPress);
 
         BITMAP window_icon = loadImageFromResource(WINDOW_ICON);
         GLFWimage icons[1];
@@ -648,6 +651,25 @@ private:
         app->mousePos = { x, y };
     }
 
+    static inline void on_keyPress(GLFWwindow* window, int key, int scancode, int action, int mods) {
+        Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
+        switch (action) {
+        case GLFW_PRESS:
+            if (key == GLFW_KEY_F11) {
+                if (glfwGetWindowMonitor(window) == nullptr) {
+                    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+                    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+                    glfwGetWindowPos(window, &app->prevWindowPos.x, &app->prevWindowPos.y);
+                    glfwGetWindowSize(window, &app->prevWindowSize.x, &app->prevWindowSize.y);
+                    glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+                } else {
+                    glfwSetWindowMonitor(window, nullptr, app->prevWindowPos.x, app->prevWindowPos.y, app->prevWindowSize.x, app->prevWindowSize.y, 0);
+                }
+            }
+            break;
+        }
+    }
+
     void save_file() {
         OPENFILENAMEA ofn;
         auto t = std::time(nullptr);
@@ -810,11 +832,12 @@ private:
 
     // TODO: add shadows under arrow
     void draw_vector(mat4 view, mat4 proj) {
+        const float factor = graph_size / 1.3f;
         float magnitude = distance(vector_start, vector_end);
-        float tip_height = clamp(magnitude / 2.f, 0.01f, 0.1f);
-        float bottom_radius = 0.01f;
-        float top_radius = 0.03f;
-        int segments = 20;
+        float tip_height = clamp(magnitude / 2.f, 0.01f, 0.1f * factor);
+        float bottom_radius = 0.01f * factor;
+        float top_radius = 0.03f * factor;
+        int segments = 20 * factor;
         auto push = [](std::vector<float>& arr, vec3 v, vec3 normal) {
             arr.push_back(v.x);
             arr.push_back(v.y);
