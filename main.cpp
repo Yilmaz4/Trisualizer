@@ -788,6 +788,8 @@ private:
         zrange[0] = *reinterpret_cast<float*>(buf);
         zrange[1] = *reinterpret_cast<float*>(buf + sizeof(float));
 
+        glUseProgram(shaderProgram);
+
         zoomx = abs(xrange[0] - xrange[1]);
         centerPos.x = (xrange[0] + xrange[1]) / 2.f;
         zoomy = abs(yrange[0] - yrange[1]);
