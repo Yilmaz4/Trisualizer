@@ -44,6 +44,33 @@
 #pragma comment(lib, "Gdiplus.lib")
 #pragma comment(lib, "Shlwapi.lib")
 
+/*
+TODO:
+
+- Parametric equations
+- Implicit functions using marching cubes alg.
+- Curl and divergence visualization
+- Gradient vector fields
+- Adjustable grid density
+- Keyboard controls
+- Preset views (top, front, sides)
+- Key axes
+- Right-click menu
+- Point of interest with label
+- Zoom onto region after integration
+- Center of mass w/ density function
+- Path and surface integrals
+- Higher-order partial derivatives
+- Local minima, maxima and saddle points
+- Slicing and cross sectional view
+- PBR rendering
+- Shadows under vector arrows
+- Export data to CSV
+- High-res image export (PNG & JPG)
+- Complex functions
+- Dynamic resolution adjustment based on FPS
+*/
+
 using namespace Gdiplus;
 using namespace glm;
 
@@ -70,7 +97,6 @@ std::vector<vec4> colors = {
 namespace ImGui {
     ImFont* font;
 
-    // from imgui demo app
     static void HelpMarker(const char* desc) {
         ImGui::TextDisabled("(?)");
         if (ImGui::BeginItemTooltip()) {
@@ -1899,7 +1925,7 @@ public:
                 glBindFramebuffer(GL_FRAMEBUFFER, FBO);
                 glBindTexture(GL_TEXTURE_2D, prevZBuffer);
                 glReadPixels(ssaa_factor * x, ssaa_factor * (wHeight - y), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, depth);
-                if (depth[0] == -1.f) goto mouse_not_on_graph;
+                if (depth[0] == 0.f) goto mouse_not_on_graph;
 
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
@@ -2121,7 +2147,7 @@ public:
             glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32F, GL_RED, GL_FLOAT, nullptr);
 
             glClearColor(0.0f, 0.0f, 0.0f, 1.f);
-            glClearDepth(-1.f);
+            glClearDepth(0.f);
             glBindFramebuffer(GL_FRAMEBUFFER, NULL);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glBindFramebuffer(GL_FRAMEBUFFER, FBO);
