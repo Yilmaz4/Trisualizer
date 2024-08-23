@@ -587,7 +587,7 @@ private:
         glBindTexture(GL_TEXTURE_2D, app->prevZBuffer);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width * app->ssaa_factor, height * app->ssaa_factor, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (size_t)(width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
     }
 
     static inline void on_mouseButton(GLFWwindow* window, int button, int action, int mods) {
@@ -600,7 +600,7 @@ private:
                     int width, height;
                     glfwGetWindowSize(window, &width, &height);
                     glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
-                    glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+                    glBufferData(GL_SHADER_STORAGE_BUFFER, 6ull * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
                     app->updateBufferSize = false;
                 }
                 break;
@@ -669,7 +669,7 @@ private:
     }
 
     void save_file() {
-        OPENFILENAMEA ofn;
+        OPENFILENAMEA ofn{};
         auto t = std::time(nullptr);
         std::tm bt{};
         localtime_s(&bt, &t);
@@ -677,12 +677,10 @@ private:
         oss << std::put_time(&bt, "Trisualizer Snapshot %d-%m-%Y %H-%M-%S.tris");
         std::string filename = oss.str();
 
-        char szFileName[MAX_PATH];
-        char szFileTitle[MAX_PATH];
-        char filePath[MAX_PATH];
+        char szFileName[MAX_PATH]{};
+        char szFileTitle[MAX_PATH]{};
+        char filePath[MAX_PATH]{};
         char szFile[MAX_PATH];
-        *szFileName = 0;
-        *szFileTitle = 0;
 
         filename.copy(szFile, filename.size());
         szFile[filename.size()] = '\0';
@@ -730,12 +728,10 @@ private:
     }
 
     void open_file() {
-        OPENFILENAMEA ofn;
+        OPENFILENAMEA ofn{};
 
-        char szFileName[MAX_PATH];
-        char szFileTitle[MAX_PATH];
-        *szFileName = 0;
-        *szFileTitle = 0;
+        char szFileName[MAX_PATH]{};
+        char szFileTitle[MAX_PATH]{};
 
         ofn.lStructSize = sizeof(OPENFILENAME);
         ofn.hwndOwner = GetFocus();
@@ -757,14 +753,14 @@ private:
         std::ifstream in;
         in.open(ofn.lpstrFile, std::ios::in | std::ios::binary);
 
-        char ver[1];
+        char ver[1]{};
         in.read(&ver[0], 1);
         if (ver[0] != CNFGVER[0]) {
             MessageBoxA(NULL, std::format("This file is from a previous version of Trisualizer ({}.0) and will not work on this version.", ver[0]).c_str(), "Incompatible version", MB_ICONERROR | MB_OK);
             return;
         }
         int num_graphs, num_sliders;
-        char buf[8];
+        char buf[8]{};
         in.read(&buf[0], sizeof(size_t));
         num_graphs = *reinterpret_cast<size_t*>(buf);
         in.read(&buf[0], sizeof(size_t));
@@ -1094,7 +1090,7 @@ void main() {
     int compute_integral(char* infoLog) {
         Graph g = graphs[integrand_index];
         g.grid_res = integral_precision;
-        float xmin, xmax, ymin, ymax;
+        float xmin{}, xmax{}, ymin{}, ymax{};
         char regionBool[256];
         switch (region_type) {
         case CartesianRectangle:
@@ -1139,17 +1135,17 @@ void main() {
         glUniform1i(glGetUniformLocation(g.computeProgram, "grid_res"), g.grid_res);
         glUniform3fv(glGetUniformLocation(g.computeProgram, "centerPos"), 1, value_ptr(center_of_region));
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, g.SSBO);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 2 * g.grid_res * g.grid_res * (int)sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 2ull * g.grid_res * g.grid_res * (int)sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glDispatchCompute(g.grid_res, g.grid_res, 1);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-        float* data = new float[2 * g.grid_res * g.grid_res]{};
-        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 2 * g.grid_res * g.grid_res * sizeof(float), data);
+        float* data = new float[2ull * g.grid_res * g.grid_res]{};
+        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 2ull * g.grid_res * g.grid_res * sizeof(float), data);
         dx = abs(xmax - xmin) / g.grid_res;
         dy = abs(ymax - ymin) / g.grid_res;
         integral_result = 0.f;
         for (int i = 0; i < 2 * g.grid_res * g.grid_res; i += 2) {
-            float x = (graph_size / g.grid_res) * (((i / 2) % g.grid_res) - g.grid_res / 2.f);
-            float y = (graph_size / g.grid_res) * ((g.grid_res - floor((i / 2) / g.grid_res)) - g.grid_res / 2.f);
+            float x = (graph_size / g.grid_res) * (fmod(i / 2.f, g.grid_res) - g.grid_res / 2.f);
+            float y = (graph_size / g.grid_res) * ((g.grid_res - floor((i / 2.f) / g.grid_res)) - g.grid_res / 2.f);
             float val = data[i];
             bool in_region = static_cast<bool>(data[i + 1]);
             if (isnan(val) || isinf(val) || !in_region) continue;
@@ -1162,7 +1158,7 @@ void main() {
 public:
     void mainloop() {
         double prevTime = glfwGetTime();
-        mat4 view, proj;
+        mat4 view{}, proj{};
 
         BITMAP tangentPlane_icon = loadImageFromResource(TNGTPLANE_ICON);
         GLuint tangentPlane_texture = 0;
@@ -1229,9 +1225,9 @@ public:
             double timeStep = currentTime - prevTime;
             prevTime = currentTime;
 
-            zoomx *= zoomSpeed;
-            zoomy *= zoomSpeed;
-            zoomz *= zoomSpeed;
+            zoomx *= pow(zoomSpeed, timeStep / 0.007f);
+            zoomy *= pow(zoomSpeed, timeStep / 0.007f);
+            zoomz *= pow(zoomSpeed, timeStep / 0.007f);
             xrange = vec2(zoomx / 2.f, -zoomx / 2.f) + centerPos.x;
             yrange = vec2(zoomy / 2.f, -zoomy / 2.f) + centerPos.y;
             zrange = vec2(zoomz / 2.f, -zoomz / 2.f) + centerPos.z;
@@ -1943,6 +1939,7 @@ public:
             glfwGetCursorPos(window, &x, &y);
             if (graphs.size() > 0 && x - sidebarWidth > 0. && x - sidebarWidth < (wWidth - sidebarWidth) && y > 0. && y < wHeight &&
                 glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE && zoomSpeed == 1.f && !ImGui::GetIO().WantCaptureMouse && !autoRotate) {
+                // depth check not needed since 977ef16
                 float depth[1];
                 glBindFramebuffer(GL_FRAMEBUFFER, FBO);
                 glBindTexture(GL_TEXTURE_2D, prevZBuffer);
