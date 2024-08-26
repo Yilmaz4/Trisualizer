@@ -237,17 +237,22 @@ public:
     void upload_definition(std::vector<Slider>& sliders, const char* regionBool = "true", bool polar = false) {
         int success;
 
+        auto replace = [&](std::string& source, std::string x, std::string y) {
+            std::string pattern = "\\b";
+            pattern.append(x);
+            pattern.append("\\b");
+            return std::regex_replace(source, std::regex(pattern), y);
+        };
+
         std::string pdefn = defn;
         pdefn.resize(512);
         for (int i = 0; i < sliders.size(); i++) {
             if (!sliders[i].valid) continue;
-            std::string pattern = "\\b";
-            pattern.append(sliders[i].symbol);
-            pattern.append("\\b");
-            std::string temp = std::regex_replace(pdefn, std::regex(pattern), std::format("sliders[{}]", i));
+            std::string temp = replace(pdefn, sliders[i].symbol, std::format("sliders[{}]", i));
             sliders[i].used_in[idx] = (pdefn != temp);
             pdefn = temp;
         }
+        
         unsigned int computeShader = glCreateShader(GL_COMPUTE_SHADER);
         char* computeSource = read_resource(IDR_CMPT);
         size_t size = strlen(computeSource) + 512;
@@ -335,7 +340,9 @@ public:
     bool tangent_plane = false, apply_tangent_plane = false;
     bool gradient_vector = false;
     bool normal_vector = false;
+    bool show_axes = false;
     vec2 xrange, yrange, zrange;
+    vec3 light_pos = vec3(0.f, 50.f, 0.f);
 
     bool integral = false, second_corner = false, apply_integral = false, show_integral_result = false;
     int integrand_index = 1, region_type = CartesianRectangle, integral_precision = 2000, erroring_eq = -1;
@@ -354,6 +361,9 @@ public:
 
     std::pair<vec3, vec3> integral_limits;
     vec3 centerPos = vec3(0.f);
+    vec3 next_centerPos = vec3(0.f);
+    vec3 temp_centerPos;
+    double moveTimestamp;
     vec2 mousePos = vec2(0.f);
     ivec2 prevWindowPos = ivec2(200, 200);
     ivec2 prevWindowSize = ivec2(1000, 600);
@@ -361,6 +371,8 @@ public:
     bool updateBufferSize = false;
     double lastMousePress = 0.0;
     bool doubleClickPressed = false;
+    bool rightClickPending = false;
+    bool rightClickPressed = false;
     int ssaa_factor = 3.f; // change to 3.f when enabling SSAA by default
     bool ssaa = true;
 
@@ -524,7 +536,7 @@ public:
         glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), 0.2f);
         glUniform1f(glGetUniformLocation(shaderProgram, "gridLineDensity"), gridLineDensity);
         glUniform1i(glGetUniformLocation(shaderProgram, "shading"), shading);
-        glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), 0.f, 50.f, 0.f);
+        glUniform3fv(glGetUniformLocation(shaderProgram, "lightPos"), 1, value_ptr(light_pos));
         glUniform3f(glGetUniformLocation(shaderProgram, "centerPos"), 0.f, 0.f, 0.f);
         glUniform1i(glGetUniformLocation(shaderProgram, "coloring"), SingleColor);
 
@@ -594,6 +606,7 @@ private:
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
         switch (button) {
         case GLFW_MOUSE_BUTTON_LEFT:
+            app->rightClickPressed = false;
             switch (action) {
             case GLFW_RELEASE:
                 if (app->updateBufferSize) {
@@ -614,6 +627,15 @@ private:
                 app->lastMousePress = glfwGetTime();
                 break;
             }
+            break;
+        case GLFW_MOUSE_BUTTON_RIGHT:
+            switch (action) {
+            case GLFW_PRESS:
+                app->rightClickPending = true;
+                break;
+            case GLFW_RELEASE:
+                app->rightClickPressed = app->rightClickPending;
+            }
         }
     }
 
@@ -633,7 +655,7 @@ private:
 
     static inline void on_mouseMove(GLFWwindow* window, double x, double y) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
-        if (ImGui::GetIO().WantCaptureMouse) return;
+        if (ImGui::GetIO().WantCaptureMouse && !app->rightClickPressed) return;
         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
             float xoffset = x - app->mousePos.x;
             float yoffset = y - app->mousePos.y;
@@ -641,10 +663,8 @@ private:
             app->phi -= xoffset * 0.5f;
             if (app->theta > 179.9f) app->theta = 179.9f;
             if (app->theta < 0.1f) app->theta = 0.1f;
-        }
-        else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS) {
-            float xoffset = x - app->mousePos.x;
-            float yoffset = y - app->mousePos.y;
+            app->rightClickPending = false;
+            app->rightClickPressed = false;
         }
         app->mousePos = { x, y };
     }
@@ -825,12 +845,12 @@ private:
     }
 
     // TODO: add shadows under arrow
-    void draw_vector(mat4 view, mat4 proj) {
+    void draw_vector(vec3 start, vec3 end, vec3 color, mat4 view, mat4 proj, float thickness = 1.f) {
         const float factor = graph_size / 1.3f;
-        float magnitude = distance(vector_start, vector_end);
-        float tip_height = clamp(magnitude / 2.f, 0.01f, 0.1f * factor);
-        float bottom_radius = 0.01f * factor;
-        float top_radius = 0.03f * factor;
+        float magnitude = distance(start, end);
+        float tip_height = clamp(magnitude / 2.f, 0.01f, 0.1f * factor) * thickness;
+        float bottom_radius = 0.01f * factor * thickness;
+        float top_radius = 0.03f * factor * thickness;
         int segments = 20 * factor;
         auto push = [](std::vector<float>& arr, vec3 v, vec3 normal) {
             arr.push_back(v.x);
@@ -951,19 +971,19 @@ void main() {
         glDeleteShader(vertexShader);
         glUseProgram(vectorShaderProgram);
 
-        vec3 direction = normalize(vector_end - vector_start);
+        vec3 direction = normalize(end - start);
         vec3 defdir = vec3(0.f, 1.f, 0.f);
         vec3 rotationAxis = cross(defdir, direction);
         if (length(rotationAxis) < 1e-6) rotationAxis = vec3(1.0f, 0.0f, 0.0f);
         float angle = acos(clamp(dot(defdir, direction), -1.0f, 1.0f));
         mat4 rotationMatrix = rotate(mat4(1.f), angle, normalize(rotationAxis));
-        mat4 modelMatrix = translate(mat4(1.f), vector_start) * rotationMatrix;
+        mat4 modelMatrix = translate(mat4(1.f), start) * rotationMatrix;
         glUniformMatrix4fv(glGetUniformLocation(vectorShaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
         glUniformMatrix4fv(glGetUniformLocation(vectorShaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(vectorShaderProgram, "proj"), 1, GL_FALSE, glm::value_ptr(proj));
 
-        glUniform3fv(glGetUniformLocation(vectorShaderProgram, "color"), 1, value_ptr(graphs[graph_index].secondary_color));
-        glUniform3f(glGetUniformLocation(vectorShaderProgram, "lightPos"), 0.f, 50.f, 0.f);
+        glUniform3fv(glGetUniformLocation(vectorShaderProgram, "color"), 1, value_ptr(color));
+        glUniform3fv(glGetUniformLocation(vectorShaderProgram, "lightPos"), 1, value_ptr(light_pos));
 
         unsigned int vao, vbo;
         glGenVertexArrays(1, &vao);
@@ -1155,6 +1175,30 @@ void main() {
         graphs[integrand_index].upload_definition(sliders, regionBool, region_type == Polar);
         return -1;
     }
+    
+    // v: vector in cartesian space
+    vec3 to_worldspace(vec3 v) const {
+        v -= centerPos;
+        return vec3(graph_size * v.x / zoomx, v.z / zoomz * graph_size, graph_size * v.y / zoomy);
+    }
+    // v: vector in worldspace
+    vec3 to_cartesian(vec3 v) {
+        
+    }
+    // v: vector in cartesian space
+    vec3 to_screenspace(vec3 v, ivec2 viewportSize, mat4 view, mat4 proj) const {
+        v -= centerPos;
+        vec4 ndc = proj * view * vec4(graph_size * v.x / zoomx, v.z / zoomz * graph_size, graph_size * v.y / zoomy, 1.f);
+        ndc = ndc / ndc.w;
+        return vec3((ndc.x + 1.f) * (viewportSize.x - sidebarWidth) / 2.f + sidebarWidth, (viewportSize.y - (ndc.y + 1.f) * viewportSize.y / 2.f), ndc.z);
+    }
+
+    void move_to(vec3 pos) {
+        next_centerPos = pos;
+        temp_centerPos = centerPos;
+        moveTimestamp = glfwGetTime();
+    }
+
 public:
     void mainloop() {
         double prevTime = glfwGetTime();
@@ -1213,10 +1257,11 @@ public:
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, prevZBuffer, 0);
 
         do {
-            glfwPollEvents();
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
+
+            glfwPollEvents();
 
             int wWidth, wHeight;
             glfwGetWindowSize(window, &wWidth, &wHeight);
@@ -1236,6 +1281,14 @@ public:
             glUniform1f(glGetUniformLocation(shaderProgram, "zoomz"), zoomz);
             zoomSpeed -= (zoomSpeed - 1.f) * min(timeStep * 10.f, 1.0);
             if (currentTime - zoomTimestamp > 0.8) zoomSpeed = 1.f; 
+
+            if (centerPos != next_centerPos) {
+                vec3 v = next_centerPos - temp_centerPos;
+                float step = smoothstep(0.0, 0.3, currentTime - moveTimestamp);
+                centerPos = temp_centerPos + v * step;
+                if (step == 1.f) centerPos = next_centerPos;
+                glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
+            }
 
             ImGui::PushFont(font_title);
 
@@ -1257,6 +1310,7 @@ public:
                 }
                 if (ImGui::BeginMenu("Graph")) {
                     ImGui::MenuItem("Auto-rotate", nullptr, &autoRotate);
+                    ImGui::MenuItem("Show main axes", nullptr, &show_axes);
                     if (ImGui::BeginMenu("Grid density")) {
                         if (ImGui::MenuItem("Low", nullptr, gridLineDensity == 2.f)) gridLineDensity = 2.f;
                         if (ImGui::MenuItem("Moderate", nullptr, gridLineDensity == 3.f)) gridLineDensity = 3.f;
@@ -1614,8 +1668,7 @@ public:
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                 ImGui::SetTooltip("Center position", ImGui::GetStyle().HoverDelayNormal);
             if (ImGui::Button("Center on origin", ImVec2((vMax.x - vMin.x) / 2.f - 5.f, 0))) {
-                centerPos = vec3(0.f);
-                glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
+                move_to(vec3(0.f));
             }
             ImGui::SameLine();
             if (ImGui::Button("Reset zoom", ImVec2((vMax.x - vMin.x) / 2.f - 2.f, 0))) {
@@ -1958,37 +2011,34 @@ public:
                     goto mouse_not_on_graph;
                 }
                 cursor_on_point = true;
-                ImGui::Begin("info", nullptr,
-                    ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
-                    ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
-                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoFocusOnAppearing);
-                ImVec2 size = ImGui::GetWindowSize();
-                ImVec2 pos = { (float)x + 20.0f, (float)y + 20.f };
-                if (size.x > wWidth - pos.x - 5)
-                    pos.x = wWidth - size.x - 5;
-                if (size.y > wHeight - pos.y - 5)
-                    pos.y = wHeight - size.y - 5;
-                if (pos.x < 5) pos.x = 5;
-                if (pos.y < 5) pos.y = 5;
-                ImGui::SetWindowPos(pos);
-                vec4 c = graphs[graph_index].color * 1.3f;
-                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 9.f);
-                ImGui::ColorEdit4("##infocolor", value_ptr(c), ImGuiColorEditFlags_NoInputs);
-                ImGui::SameLine();
-                ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 11.f);
-                ImGui::Text(u8"X=% 06.4f\nY=% 06.4f\nZ=% 06.4f", fragPos.x, fragPos.y, fragPos.z);
-                ImGui::SameLine();
-                ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5.f);
-                ImGui::Text(u8"\u2202z/\u2202x=% 06.4f\n\u2202z/\u2202y=% 06.4f", gradient.x, gradient.y);
-                ImVec2 prevWindowSize = ImGui::GetWindowSize();
-                ImGui::End();
+                ImVec2 prevWindowSize;
+                if (!rightClickPressed) {
+                    ImGui::Begin("info", nullptr,
+                        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+                        ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
+                        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoFocusOnAppearing);
+                    ImVec2 size = ImGui::GetWindowSize();
+                    ImVec2 pos = { (float)x + 20.0f, (float)y + 20.f };
+                    if (size.x > wWidth - pos.x - 5)
+                        pos.x = wWidth - size.x - 5;
+                    if (size.y > wHeight - pos.y - 5)
+                        pos.y = wHeight - size.y - 5;
+                    if (pos.x < 5) pos.x = 5;
+                    if (pos.y < 5) pos.y = 5;
+                    ImGui::SetWindowPos(pos);
+                    vec4 c = graphs[graph_index].color * 1.3f;
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 9.f);
+                    ImGui::ColorEdit4("##infocolor", value_ptr(c), ImGuiColorEditFlags_NoInputs);
+                    ImGui::SameLine();
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 11.f);
+                    ImGui::Text(u8"X=% 06.4f\nY=% 06.4f\nZ=% 06.4f", fragPos.x, fragPos.y, fragPos.z);
+                    ImGui::SameLine();
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5.f);
+                    ImGui::Text(u8"\u2202z/\u2202x=% 06.4f\n\u2202z/\u2202y=% 06.4f", gradient.x, gradient.y);
+                    prevWindowSize = ImGui::GetWindowSize();
+                    ImGui::End();
+                }
 
-                const float gridres = graphs[graph_index].grid_res + 2;
-                const float halfres = gridres / 2.f;
-                auto to_worldspace = [&](vec3 v) {
-                    v -= centerPos;
-                    return vec3(graph_size * v.x / zoomx, v.z / zoomz * graph_size, graph_size * v.y / zoomy);
-                };
                 if (gradient_vector) {
                     vector_start = to_worldspace(fragPos);
                     vector_end = to_worldspace(fragPos + vec3(data[4], data[5], pow(length(gradient), 2)));
@@ -1999,7 +2049,7 @@ public:
                 }
 
                 GLfloat params[5] = { fragPos.z, gradient.x, fragPos.x, gradient.y, fragPos.y };
-                if (tangent_plane) {
+                if (tangent_plane && !rightClickPressed) {
                     glUseProgram(graphs[0].computeProgram);
                     glUniform1fv(glGetUniformLocation(graphs[0].computeProgram, "plane_params"), 5, params);
                     graphs[0].enabled = true;
@@ -2040,7 +2090,7 @@ public:
                     tangent_plane = false;
                     graphs[0].enabled = false;
                 }
-                if (integral && !show_integral_result) {
+                if (integral && !show_integral_result && !rightClickPressed) {
                     ImGui::Begin("tooltip", nullptr,
                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
@@ -2086,8 +2136,7 @@ public:
                     apply_integral = false;
                 }
                 if (doubleClickPressed) {
-                    centerPos = fragPos;
-                    glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
+                    move_to(fragPos);
                     doubleClickPressed = false;
                 }
             } else {
@@ -2099,13 +2148,9 @@ public:
                 cursor_on_point = false;
             }
 
-            if (show_integral_result) {
-                vec3 v = center_of_region - centerPos;
-                const float gridres = graphs[integrand_index].grid_res + 2;
-                const float halfres = gridres / 2.f;
-                vec4 ndc = proj * view * vec4(graph_size * v.x / zoomx, (v.z - centerPos.z) / zoomz * graph_size, graph_size * v.y / zoomy, 1.f);
-                ndc = ndc / ndc.w;
-                ImGui::SetNextWindowPos(ImVec2((ndc.x + 1.f) * (wWidth - sidebarWidth) / 2.f + sidebarWidth, (wHeight - (ndc.y + 1.f) * wHeight / 2.f)));
+            if (show_integral_result && !rightClickPressed) {
+                vec3 w = to_screenspace(center_of_region, { wWidth, wHeight }, view, proj);
+                ImGui::SetNextWindowPos(ImVec2(w.x, w.y));
                 static bool result_window = true;
                 ImGui::Begin("Volume under surface", &result_window,
                     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
@@ -2134,6 +2179,29 @@ public:
                     if (integrand_index != -1) graphs[integrand_index].upload_definition(sliders);
                     result_window = true;
                 }
+            }
+
+            if (rightClickPressed) {
+                ImGui::OpenPopup("context_menu");
+            }
+
+            if (ImGui::BeginPopup("context_menu", ImGuiWindowFlags_NoFocusOnAppearing)) {
+                if (ImGui::MenuItem("Go to here")) {
+                    move_to(fragPos);
+                }
+                if (ImGui::MenuItem("Tangent plane")) {
+                    const char* eq = "%.6f%+.6f*(x%+.6f)%+.6f*(y%+.6f)";
+                    char eqf[88]{};
+                    sprintf_s(eqf, eq, fragPos.z, gradient.x, -fragPos.x, gradient.y, -fragPos.y);
+                    graphs.push_back(Graph(graphs.size(), UserDefined, eqf, 100, colors[(graphs.size() - 1) % colors.size()], colors[(graphs.size()) % colors.size()], true, gridSSBO, EBO));
+                    for (Slider& s : sliders) {
+                        s.used_in.push_back(false);
+                    }
+                    graphs[graphs.size() - 1].setup();
+                    graphs[graphs.size() - 1].upload_definition(sliders);
+                    graphs[graphs.size() - 1].grid_lines = graphs[graph_index].grid_lines;
+                }
+                ImGui::EndPopup();
             }
 
             if (ImGui::BeginPopupModal("About Trisualizer", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
@@ -2213,6 +2281,18 @@ public:
                 );
                 glBindFramebuffer(GL_FRAMEBUFFER, FBO);
             };
+
+            if (show_axes) {
+                draw_vector(to_worldspace(clamp({ xrange[1], 0.f, 0.f }, vec3(-FLT_MAX, yrange[1], zrange[1]), vec3(FLT_MAX, yrange[0], zrange[0]))),
+                    to_worldspace(clamp({ xrange[0], 0.f, 0.f }, vec3(-FLT_MAX, yrange[1], zrange[1]), vec3(FLT_MAX, yrange[0], zrange[0]))),
+                    vec3(0.8f, 0.f, 0.f), view, proj, 0.7f);
+                draw_vector(to_worldspace(clamp({ 0.f, yrange[1], 0.f }, vec3(xrange[1], -FLT_MAX, zrange[1]), vec3(xrange[0], FLT_MAX, zrange[0]))),
+                    to_worldspace(clamp({ 0.f, yrange[0], 0.f }, vec3(xrange[1], -FLT_MAX, zrange[1]), vec3(xrange[0], FLT_MAX, zrange[0]))),
+                    vec3(0.f, 0.7f, 0.f), view, proj, 0.7f);
+                draw_vector(to_worldspace(clamp({ 0.f, 0.f, zrange[1] }, vec3(xrange[1], yrange[1], -FLT_MAX), vec3(xrange[0], yrange[0], FLT_MAX))),
+                    to_worldspace(clamp({ 0.f, 0.f, zrange[0] }, vec3(xrange[1], yrange[1], -FLT_MAX), vec3(xrange[0], yrange[0], FLT_MAX))),
+                    vec3(0.f, 0.5f, 1.f), view, proj, 0.7f);
+            }
             
             if (integral && second_corner || show_integral_result) {
                 render_graph(integrand_index);
@@ -2229,7 +2309,8 @@ public:
             }
             if (graphs[0].enabled) render_graph(0);
 
-            if ((gradient_vector || normal_vector) && cursor_on_point) draw_vector(view, proj);
+            if ((gradient_vector || normal_vector) && cursor_on_point) draw_vector(vector_start, vector_end, graphs[graph_index].secondary_color, view, proj);
+            
 
             glViewport(sidebarWidth, 0, wWidth - sidebarWidth, wHeight);
 
