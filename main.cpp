@@ -44,6 +44,8 @@
 #pragma comment(lib, "Gdiplus.lib")
 #pragma comment(lib, "Shlwapi.lib")
 
+#define SC(x) x * dpi_scale
+
 /*
 TODO:
 
@@ -367,7 +369,7 @@ public:
     vec2 mousePos = vec2(0.f);
     ivec2 prevWindowPos = ivec2(200, 200);
     ivec2 prevWindowSize = ivec2(1000, 600);
-    int sidebarWidth = 300;
+    int sidebarWidth = 0;
     bool updateBufferSize = false;
     double lastMousePress = 0.0;
     bool doubleClickPressed = false;
@@ -375,6 +377,10 @@ public:
     bool rightClickPressed = false;
     int ssaa_factor = 3.f; // change to 3.f when enabling SSAA by default
     bool ssaa = true;
+    bool ssaa_enabled_by_user = false;
+    float dpi_scale = 1.f;
+    int frameCount;
+    std::vector<double> fps_history = std::vector<double>(5, 0.0);
 
     GLuint shaderProgram;
     GLuint VAO, VBO, EBO;
@@ -398,6 +404,10 @@ public:
         glfwWindowHint(GLFW_SAMPLES, 4);
 
         window = glfwCreateWindow(1000, 600, "Trisualizer", NULL, NULL);
+        float xscale, yscale;
+        glfwGetWindowContentScale(window, &xscale, &yscale);
+        dpi_scale = xscale;
+        glfwSetWindowSize(window, SC(1000), SC(600));
         if (window == nullptr) {
             std::cerr << "Failed to create OpenGL window" << std::endl;
             return;
@@ -426,12 +436,15 @@ public:
         static const ImWchar ranges[] = {
             0x0020, 0x2264, 0xFFFF
         };
-        font_title = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\consola.ttf", 11.f, nullptr, ranges);
+        font_title = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\consola.ttf", 11.f * dpi_scale, nullptr, ranges);
         IM_ASSERT(font_title != NULL);
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.IniFilename = NULL;
         io.LogFilename = NULL;
+
+        ImGuiStyle& style = ImGui::GetStyle();
+        style.ScaleAllSizes(dpi_scale);
 
         ImGui::StyleColorsDark();
         ImGui::LoadTheme();
@@ -493,7 +506,7 @@ public:
 
         glGenBuffers(1, &posBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * 700 * 600 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 6ull * SC(700) * SC(600) * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, posBuffer);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "posbuffer"), 1);
 
@@ -556,7 +569,7 @@ public:
 
         glGenTextures(1, &depthMap);
         glBindTexture(GL_TEXTURE_2D, depthMap);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 1000 * ssaa_factor, 600 * ssaa_factor, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SC(1000 * ssaa_factor), SC(600 * ssaa_factor), 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -565,7 +578,7 @@ public:
 
         glGenTextures(1, &frameTex);
         glBindTexture(GL_TEXTURE_2D, frameTex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 1000 * ssaa_factor, 600 * ssaa_factor, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SC(1000 * ssaa_factor), SC(600 * ssaa_factor), 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -574,7 +587,7 @@ public:
 
         glGenTextures(1, &prevZBuffer);
         glBindTexture(GL_TEXTURE_2D, prevZBuffer);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 1000 * ssaa_factor, 600 * ssaa_factor, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SC(1000 * ssaa_factor), SC(600 * ssaa_factor), 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -592,6 +605,7 @@ public:
 private:
     static inline void on_windowResize(GLFWwindow* window, int width, int height) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
+        float dpi_scale = app->dpi_scale;
         glBindTexture(GL_TEXTURE_2D, app->depthMap);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width * app->ssaa_factor, height * app->ssaa_factor, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glBindTexture(GL_TEXTURE_2D, app->frameTex);
@@ -1101,12 +1115,6 @@ void main() {
         return std::pair(min, max);
     }
 
-    float coterminal_angle(float angle) {
-        if (angle < 0.f) while (angle < 0.f) angle += 2 * M_PI;
-        else if (angle > 2 * M_PI) while (angle > 2 * M_PI) angle -= 2 * M_PI;
-        return angle;
-    }
-
     int compute_integral(char* infoLog) {
         Graph g = graphs[integrand_index];
         g.grid_res = integral_precision;
@@ -1290,6 +1298,20 @@ public:
                 glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
             }
 
+            frameCount++;
+            fps_history[frameCount % 5] = 1.0 / timeStep;
+            if (frameCount >= 5) {
+                double avg = 0.;
+                for (int i = 0; i < 5; i++)
+                    avg += fps_history[i] / 5;
+                if (avg < 20 && ssaa && !ssaa_enabled_by_user) {
+                    ssaa = false;
+                    ssaa_factor = 1.f;
+                    on_windowResize(window, wWidth, wHeight);
+                    glUniform1i(glGetUniformLocation(shaderProgram, "radius"), ssaa_factor);
+                }
+            }
+
             ImGui::PushFont(font_title);
 
             bool aboutTrisualizerPopup = false;
@@ -1340,7 +1362,10 @@ public:
                     }
                     ImGui::Separator();
                     if (ImGui::MenuItem("Anti-aliasing", nullptr, &ssaa)) {
-                        if (ssaa) ssaa_factor = 3.f;
+                        if (ssaa) {
+                            ssaa_factor = 3.f;
+                            ssaa_enabled_by_user = true;
+                        }
                         else ssaa_factor = 1.f;
                         on_windowResize(window, wWidth, wHeight);
                         glUniform1i(glGetUniformLocation(shaderProgram, "radius"), ssaa_factor);
@@ -1420,7 +1445,7 @@ public:
                 updateBufferSize = true;
             }
             bool set_focus = false;
-            if (ImGui::Button("New function", ImVec2(100, 0))) {
+            if (ImGui::Button("New function", ImVec2(SC(100), 0))) {
                 size_t i = graphs.size() - 1;
                 graphs.push_back(Graph(graphs.size(), UserDefined, "", 500, colors[i % colors.size()], colors[(i + 1) % colors.size()], false, gridSSBO, EBO));
                 graphs[graphs.size() - 1].setup();
@@ -1468,7 +1493,7 @@ public:
                     ImGui::ColorEdit4(std::format("##color2{}", i).c_str(), value_ptr(g.secondary_color), ImGuiColorEditFlags_NoInputs);
                     ImGui::SameLine();
                 }
-                ImGui::PushItemWidth((vMax.x - vMin.x) - 86 - ((coloring != SingleColor && coloring != NormalMap) ? 21 : 0));
+                ImGui::PushItemWidth((vMax.x - vMin.x) - SC(86) - ((coloring != SingleColor && coloring != NormalMap) ? SC(21) : 0));
                 if (i == graphs.size() - 1 && set_focus) {
                     ImGui::SetKeyboardFocusHere(0);
                 }
@@ -1482,11 +1507,11 @@ public:
                     }
                 }
                 ImGui::SameLine();
-                if (ImGui::Button(g.advanced_view ? u8"˄" : u8"˅", ImVec2(16, 0))) {
+                if (ImGui::Button(g.advanced_view ? u8"˄" : u8"˅", ImVec2(SC(16), 0))) {
                     g.advanced_view ^= 1;
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("x", ImVec2(16, 0))) {
+                if (ImGui::Button("x", ImVec2(SC(16), 0))) {
                     bool none_active = true;
                     int first_active = -1;
                     for (int j = 1; j < graphs.size(); j++)
@@ -1529,11 +1554,11 @@ public:
                 }
                 if (g.advanced_view) {
                     ImGui::BeginDisabled(!g.valid);
-                    ImGui::SetNextItemWidth(40.f);
+                    ImGui::SetNextItemWidth(SC(40.f));
                     if (ImGui::DragInt(std::format("Resolution##{}", i).c_str(), &g.grid_res, g.grid_res / 20.f, 10, 1000)) {
                         g.setup();
                     }
-                    ImGui::SetNextItemWidth(40.f);
+                    ImGui::SetNextItemWidth(SC(40.f));
                     ImGui::SameLine();
                     ImGui::DragFloat(std::format("Shininess##{}", i).c_str(), &g.shininess, g.shininess / 40.f, 1.f, 1024.f, "%.0f");
                     ImGui::SameLine();
@@ -1549,7 +1574,7 @@ public:
             vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
             vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
             bool update_all_functions = false;
-            float buttonWidth = (vMax.x - vMin.x) / 3.f - 4.f;
+            float buttonWidth = (vMax.x - vMin.x) / 3.f - SC(4.f);
             if (ImGui::Button("New variable", ImVec2(buttonWidth, 0))) {
                 sliders.push_back({ 0, -5, 5, std::format("v{}", sliders.size() + 1).c_str() });
                 for (int i = 0; i < graphs.size(); i++) {
@@ -1576,7 +1601,7 @@ public:
                 ImGui::BeginChild(std::format("##child{}", i).c_str(), ImVec2(0, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
                 ImVec2 vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
                 ImVec2 vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
-                ImGui::SetNextItemWidth(vMax.x - vMin.x - 45.f);
+                ImGui::SetNextItemWidth(vMax.x - vMin.x - SC(45.f));
                 ImGui::BeginDisabled(!s.valid);
                 if (ImGui::SliderFloat(std::format("##slider{}", i).c_str(), &s.value, s.min, s.max)) {
                     for (int j = 0; j < graphs.size(); j++) {
@@ -1589,17 +1614,17 @@ public:
                 }
                 ImGui::EndDisabled();
                 ImGui::SameLine();
-                if (ImGui::Button(s.config ? u8"˄" : u8"˅", ImVec2(16, 0)))
+                if (ImGui::Button(s.config ? u8"˄" : u8"˅", ImVec2(SC(16), 0)))
                     s.config ^= 1;
                 ImGui::SameLine();
-                if (ImGui::Button("x", ImVec2(16, 0))) {
+                if (ImGui::Button("x", ImVec2(SC(16), 0))) {
                     sliders.erase(sliders.begin() + i);
                     update_all_functions = true;
                     ImGui::EndChild();
                     continue;
                 }
                 if (s.config) {
-                    float inputWidth = (vMax.x - vMin.x) / 3.f - 3.5f;
+                    float inputWidth = (vMax.x - vMin.x) / 3.f - SC(3.5f);
                     ImGui::PushItemWidth(inputWidth);
                     auto charFilter = [](ImGuiInputTextCallbackData* data) -> int {
                         const char* forbiddenChars = "!'^+%&/()=?_*-<>£#$½{[]}\\|.:,;\" ";
@@ -1646,7 +1671,7 @@ public:
                     ImGui::PopItemWidth();
                 }
                 if (!s.valid && strlen(s.infoLog) > 0) {
-                    ImGui::InputTextMultiline("##errorlist", s.infoLog, 512, ImVec2((vMax.x - vMin.x), 17), ImGuiInputTextFlags_ReadOnly);
+                    ImGui::InputTextMultiline("##errorlist", s.infoLog, 512, ImVec2((vMax.x - vMin.x), SC(17)), ImGuiInputTextFlags_ReadOnly);
                 }
                 ImGui::EndChild();
             }
@@ -1675,13 +1700,12 @@ public:
                 zoomx = zoomy = zoomz = 8.f;
                 zoomSpeed = 1.f;
             }
-            buttonWidth = (vMax.x - vMin.x - 61.f) / 4.f + 0.7f;
 
             bool update_zoom = false;
             ImGui::BeginChild(ImGui::GetID("xrange"), ImVec2((vMax.x - vMin.x) / 3.f - 4.f, 0), ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
             float inputWidth = (ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos() - ImGui::GetWindowContentRegionMin() - ImGui::GetWindowPos()).x;
             ImGui::PushItemWidth(inputWidth);
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (inputWidth - 38.f) / 2.f);
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (inputWidth - SC(38.f)) / 2.f);
             ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(150, 150, 150, 255));
             ImGui::Text("X-Range");
             ImGui::PopStyleColor();
@@ -1692,7 +1716,7 @@ public:
             ImGui::SameLine();
             ImGui::BeginChild(ImGui::GetID("yrange"), ImVec2((vMax.x - vMin.x) / 3.f - 4.f, 0), ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
             ImGui::PushItemWidth(inputWidth);
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (inputWidth - 38.f) / 2.f);
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (inputWidth - SC(38.f)) / 2.f);
             ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(150, 150, 150, 255));
             ImGui::Text("Y-Range");
             ImGui::PopStyleColor();
@@ -1703,7 +1727,7 @@ public:
             ImGui::SameLine();
             ImGui::BeginChild(ImGui::GetID("zrange"), ImVec2((vMax.x - vMin.x) / 3.f - 4.f, 0), ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
             ImGui::PushItemWidth(inputWidth);
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (inputWidth - 38.f) / 2.f);
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (inputWidth - SC(38.f)) / 2.f);
             ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(150, 150, 150, 255));
             ImGui::Text("Z-Range");
             ImGui::PopStyleColor();
@@ -1738,9 +1762,10 @@ public:
                 integral = show_integral_result = apply_integral = second_corner = false;
                 if (integrand_index != -1 && integrand_index < graphs.size()) graphs[integrand_index].upload_definition(sliders);
             }
+            buttonWidth = (vMax.x - vMin.x - 61.f) / 4.f;
             ImGui::BeginDisabled(none_active);
             if (gradient_vector) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
-            if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)gradVec_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+            if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)gradVec_texture, ImVec2(buttonWidth, SC(30)), ImVec2(-(buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 0.0f), ImVec2(1.f + (buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 gradient_vector ^= 1;
                 tangent_plane = false;
                 normal_vector = false;
@@ -1755,7 +1780,7 @@ public:
 
             ImGui::SameLine();
             if (tangent_plane) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
-            if (ImGui::ImageButton("tangent_plane", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+            if (ImGui::ImageButton("tangent_plane", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, SC(30)), ImVec2(-(buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 0.0f), ImVec2(1.f + (buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 tangent_plane ^= 1;
                 gradient_vector = false;
                 normal_vector = false;
@@ -1770,7 +1795,7 @@ public:
 
             ImGui::SameLine();
             if (normal_vector) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
-            if (ImGui::ImageButton("normal_vector", (void*)(intptr_t)normVec_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+            if (ImGui::ImageButton("normal_vector", (void*)(intptr_t)normVec_texture, ImVec2(buttonWidth, SC(30)), ImVec2(-(buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 0.0f), ImVec2(1.f + (buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 normal_vector ^= 1;
                 tangent_plane = false;
                 gradient_vector = false;
@@ -1785,7 +1810,7 @@ public:
 
             ImGui::SameLine();
             if (integral) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
-            if (ImGui::ImageButton("integral", (void*)(intptr_t)integral_texture, ImVec2(buttonWidth, 30), ImVec2(-(buttonWidth - 30.f) / 60.f, 0.0f), ImVec2(1.f + (buttonWidth - 30.f) / 60.f, 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+            if (ImGui::ImageButton("integral", (void*)(intptr_t)integral_texture, ImVec2(buttonWidth, SC(30)), ImVec2(-(buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 0.0f), ImVec2(1.f + (buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 if (!integral) {
                     glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
                     integral = show_integral_result = apply_integral = second_corner = false;
@@ -2027,13 +2052,13 @@ public:
                     if (pos.y < 5) pos.y = 5;
                     ImGui::SetWindowPos(pos);
                     vec4 c = graphs[graph_index].color * 1.3f;
-                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 9.f);
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + SC(9.f));
                     ImGui::ColorEdit4("##infocolor", value_ptr(c), ImGuiColorEditFlags_NoInputs);
                     ImGui::SameLine();
-                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 11.f);
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - SC(11.f));
                     ImGui::Text(u8"X=% 06.4f\nY=% 06.4f\nZ=% 06.4f", fragPos.x, fragPos.y, fragPos.z);
                     ImGui::SameLine();
-                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5.f);
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - SC(5.f));
                     ImGui::Text(u8"\u2202z/\u2202x=% 06.4f\n\u2202z/\u2202y=% 06.4f", gradient.x, gradient.y);
                     prevWindowSize = ImGui::GetWindowSize();
                     ImGui::End();
@@ -2181,7 +2206,7 @@ public:
                 }
             }
 
-            if (rightClickPressed) {
+            if (cursor_on_point && rightClickPressed) {
                 ImGui::OpenPopup("context_menu");
             }
 
