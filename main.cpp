@@ -409,7 +409,7 @@ public:
         dpi_scale = xscale;
         glfwSetWindowSize(window, SC(1000), SC(600));
         if (window == nullptr) {
-            std::cerr << "Failed to create OpenGL window" << std::endl;
+            MessageBoxA(NULL, "Failed to create window.", "Fatal Error", MB_ICONERROR | MB_OK);
             return;
         }
         glfwSetWindowUserPointer(window, this);
@@ -453,7 +453,7 @@ public:
         ImGui_ImplOpenGL3_Init("#version 460");
 
         if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
-            std::cerr << "Failed to create OpenGL window" << std::endl;
+            MessageBoxA(NULL, "Failed to create OpenGL context. Make sure your GPU supports OpenGL 4.6", "Fatal Error", MB_ICONERROR | MB_OK);
             return;
         }
 
@@ -475,7 +475,7 @@ public:
         glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
         if (!success) {
             glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-            std::cerr << infoLog << std::endl;
+            MessageBoxA(NULL, infoLog, "Vertex shader compilation error", MB_ICONERROR | MB_OK);
             return;
         }
 
@@ -486,7 +486,7 @@ public:
         glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
         if (!success) {
             glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-            std::cerr << infoLog << std::endl;
+            MessageBoxA(NULL, "Failed to create window.", "Fragment shader compilation error", MB_ICONERROR | MB_OK);
             return;
         }
 
@@ -940,7 +940,7 @@ void main() {
         glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
         if (!success) {
             glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-            std::cerr << infoLog << std::endl;
+            MessageBoxA(NULL, infoLog, "Arrow vertex shader compilation error", MB_ICONERROR | MB_OK);
             return;
         }
 
@@ -973,7 +973,7 @@ void main() {
         glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
         if (!success) {
             glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-            std::cerr << infoLog << std::endl;
+            MessageBoxA(NULL, infoLog, "Arrow fragment shader compilation error", MB_ICONERROR | MB_OK);
             return;
         }
 
@@ -1841,14 +1841,14 @@ public:
             
             if ((integral || show_integral_result)) {
                 ImGui::SetNextWindowBgAlpha(0.5f);
-                ImGui::SetNextWindowPos(ImVec2(sidebarWidth + 10.f, 24.f));
-                ImGui::SetNextWindowSize(ImVec2(350.f, 0.f));
+                ImGui::SetNextWindowPos(ImVec2(sidebarWidth + SC(10.f), SC(24.f)));
+                ImGui::SetNextWindowSize(ImVec2(SC(350.f), 0.f));
                 if (ImGui::Begin("##doubleintegral", nullptr,
                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav)) {
 
                     vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
                     vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
-                    ImGui::BeginChild(ImGui::GetID("region_type"), ImVec2(100, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+                    ImGui::BeginChild(ImGui::GetID("region_type"), ImVec2(SC(100), 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
                     ImGui::BeginDisabled(show_integral_result || second_corner);
                     if (ImGui::RadioButton("Rectangle", region_type == CartesianRectangle)) region_type = CartesianRectangle;
                     if (ImGui::RadioButton("Type I", region_type == Type1)) region_type = Type1;
@@ -1979,8 +1979,8 @@ public:
 
             if (coloring == Elevation) {
                 ImGui::SetNextWindowBgAlpha(0.5f);
-                ImGui::SetNextWindowPos(ImVec2(sidebarWidth + 10.f, wHeight - 120.f - 10.f));
-                ImGui::SetNextWindowSize(ImVec2(0.f, 120.f));
+                ImGui::SetNextWindowPos(ImVec2(sidebarWidth + SC(10.f), wHeight - SC(120.f) - SC(10.f)));
+                ImGui::SetNextWindowSize(ImVec2(0.f, SC(120.f)));
                 if (ImGui::Begin("##scale", nullptr,
                     ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav)) {
 
@@ -1997,17 +1997,17 @@ public:
                     for (int i = 1; i < graphs.size(); i++) {
                         Graph g = graphs[i];
                         if (!g.enabled) continue;
-                        draw_list->AddRectFilledMultiColor(corner + ImVec2(8 + nActive * 12, 6), corner + ImVec2(14 + nActive * 12, 114), to_imu32(g.color), to_imu32(g.color), to_imu32(g.secondary_color), to_imu32(g.secondary_color));
+                        draw_list->AddRectFilledMultiColor(corner + ImVec2(SC(8) + nActive * SC(12), SC(6)), corner + ImVec2(SC(14) + nActive * SC(12), SC(114)), to_imu32(g.color), to_imu32(g.color), to_imu32(g.secondary_color), to_imu32(g.secondary_color));
                         nActive += 1;
                     }
-                    ImGui::SetCursorPos(ImVec2(nActive * 12 + 4, 5));
+                    ImGui::SetCursorPos(ImVec2(nActive * SC(12) + SC(4), SC(5)));
                     ImGui::Text("% 04.3f", zrange[0]);
-                    ImGui::SetCursorPos(ImVec2(nActive * 12 + 4, 104));
+                    ImGui::SetCursorPos(ImVec2(nActive * SC(12) + SC(4), SC(104)));
                     ImGui::Text("% 04.3f", zrange[1]);
                     if (cursor_on_point) {
                         float t = (fragPos.z - zrange.x) / (zrange.y - zrange.x);
-                        ImVec2 point = corner + ImVec2(10 + nActive * 12, 6) + ImVec2(0, 108 * t);
-                        draw_list->AddTriangleFilled(point, point + ImVec2(7, -5), point + ImVec2(7, 5), to_imu32(vec4(0.8f)));
+                        ImVec2 point = corner + ImVec2(SC(10) + nActive * SC(12), SC(6)) + ImVec2(0, SC(108) * t);
+                        draw_list->AddTriangleFilled(point, point + ImVec2(SC(7), SC(-5)), point + ImVec2(SC(7), SC(5)), to_imu32(vec4(0.8f)));
                     }
                 }
                 ImGui::End();
