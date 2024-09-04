@@ -11,11 +11,15 @@
 #define _USE_MATH_DEFINES
 #define IMGUI_DEFINE_MATH_OPERATORS
 #define STB_IMAGE_WRITE_IMPLEMENTATION
+#define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_EXPOSE_NATIVE_WGL
+#define GLFW_NATIVE_INCLUDE_NONE
 
 #include <Windows.h>
 #include <objidl.h>
 #include <gdiplus.h>
 #include <shlwapi.h>
+#include <dwmapi.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -25,6 +29,7 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "glm/gtx/string_cast.hpp"
@@ -40,6 +45,7 @@
 #include <regex>
 
 #include "resource.h"
+
 
 #pragma comment(lib, "Gdiplus.lib")
 #pragma comment(lib, "Shlwapi.lib")
@@ -415,6 +421,9 @@ public:
         glfwSetWindowUserPointer(window, this);
         glfwSwapInterval(1);
         glfwMakeContextCurrent(window);
+
+        BOOL use_darkmode = true;
+        DwmSetWindowAttribute(glfwGetWin32Window(window), DWMWINDOWATTRIBUTE::DWMWA_USE_IMMERSIVE_DARK_MODE, &use_darkmode, sizeof(use_darkmode));
 
         glfwSetCursorPosCallback(window, on_mouseMove);
         glfwSetScrollCallback(window, on_mouseScroll);
@@ -1410,7 +1419,7 @@ public:
             ImGuiIO& io = ImGui::GetIO();
             if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
                 ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
-                ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
+                ImGui::DockSpace(dockspace_id, ImVec2(0.f, 0.f), dockspace_flags);
 
                 static bool init = true;
                 if (init) {
@@ -1419,10 +1428,10 @@ public:
                     ImGui::DockBuilderRemoveNode(dockspace_id);
                     ImGui::DockBuilderAddNode(dockspace_id, dockspace_flags | ImGuiDockNodeFlags_DockSpace | ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoResize | ImGuiDockNodeFlags_NoResizeX);
                     ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
-
+                    
                     auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.3f, nullptr, &dockspace_id);
+                    auto dock_id_down = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 175 / (viewport->Size.y / dpi_scale - 14), nullptr, &dock_id_left);
                     auto dock_id_middle = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 0.6f, nullptr, &dock_id_left);
-                    auto dock_id_down = ImGui::DockBuilderSplitNode(dock_id_middle, ImGuiDir_Down, 0.51f, nullptr, &dock_id_middle);
 
                     ImGui::DockBuilderDockWindow("Symbolic View", dock_id_left);
                     ImGui::DockBuilderDockWindow("Variables", dock_id_middle);
