@@ -423,7 +423,8 @@ public:
         glfwMakeContextCurrent(window);
 
         BOOL use_darkmode = true;
-        DwmSetWindowAttribute(glfwGetWin32Window(window), DWMWINDOWATTRIBUTE::DWMWA_USE_IMMERSIVE_DARK_MODE, &use_darkmode, sizeof(use_darkmode));
+        HWND wHandle = glfwGetWin32Window(window);
+        DwmSetWindowAttribute(wHandle, DWMWINDOWATTRIBUTE::DWMWA_USE_IMMERSIVE_DARK_MODE, &use_darkmode, sizeof(int));
 
         glfwSetCursorPosCallback(window, on_mouseMove);
         glfwSetScrollCallback(window, on_mouseScroll);
@@ -1430,7 +1431,7 @@ public:
                     ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
                     
                     auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.3f, nullptr, &dockspace_id);
-                    auto dock_id_down = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 175 / (viewport->Size.y / dpi_scale - 14), nullptr, &dock_id_left);
+                    auto dock_id_down = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 175 / ((viewport->Size.y - 14) / dpi_scale), nullptr, &dock_id_left);
                     auto dock_id_middle = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 0.6f, nullptr, &dock_id_left);
 
                     ImGui::DockBuilderDockWindow("Symbolic View", dock_id_left);
@@ -1502,7 +1503,8 @@ public:
                     ImGui::ColorEdit4(std::format("##color2{}", i).c_str(), value_ptr(g.secondary_color), ImGuiColorEditFlags_NoInputs);
                     ImGui::SameLine();
                 }
-                ImGui::PushItemWidth((vMax.x - vMin.x) - SC(86) - ((coloring != SingleColor && coloring != NormalMap) ? SC(21) : 0));
+                int offset = 5 + (int)SC(19) + 5 + (int)SC(19) + 5 + ((coloring != SingleColor && coloring != NormalMap) ? (int)SC(19) + 5 : 0);
+                ImGui::PushItemWidth((vMax.x - vMin.x) - offset - (int)SC(17) - (int)SC(17));
                 if (i == graphs.size() - 1 && set_focus) {
                     ImGui::SetKeyboardFocusHere(0);
                 }
