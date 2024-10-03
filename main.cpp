@@ -615,7 +615,6 @@ public:
 private:
     static inline void on_windowResize(GLFWwindow* window, int width, int height) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
-        float dpi_scale = app->dpi_scale;
         glBindTexture(GL_TEXTURE_2D, app->depthMap);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width * app->ssaa_factor, height * app->ssaa_factor, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glBindTexture(GL_TEXTURE_2D, app->frameTex);
@@ -1277,9 +1276,8 @@ public:
         do {
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
-            ImGui::NewFrame();
-
             glfwPollEvents();
+            ImGui::NewFrame();
 
             int wWidth, wHeight;
             glfwGetWindowSize(window, &wWidth, &wHeight);
@@ -1298,7 +1296,7 @@ public:
             glUniform1f(glGetUniformLocation(shaderProgram, "zoomy"), zoomy);
             glUniform1f(glGetUniformLocation(shaderProgram, "zoomz"), zoomz);
             zoomSpeed -= (zoomSpeed - 1.f) * min(timeStep * 10.f, 1.0);
-            if (currentTime - zoomTimestamp > 0.8) zoomSpeed = 1.f; 
+            if (currentTime - zoomTimestamp > 0.8) zoomSpeed = 1.f;
 
             if (centerPos != next_centerPos) {
                 vec3 v = next_centerPos - temp_centerPos;
@@ -1431,7 +1429,7 @@ public:
                     ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
                     
                     auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.3f, nullptr, &dockspace_id);
-                    auto dock_id_down = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 175 / ((viewport->Size.y - 14) / dpi_scale), nullptr, &dock_id_left);
+                    auto dock_id_down = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, -0.08f * dpi_scale + 0.3767, nullptr, &dock_id_left);
                     auto dock_id_middle = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 0.6f, nullptr, &dock_id_left);
 
                     ImGui::DockBuilderDockWindow("Symbolic View", dock_id_left);
