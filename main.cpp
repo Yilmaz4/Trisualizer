@@ -410,14 +410,15 @@ public:
         glfwWindowHint(GLFW_SAMPLES, 4);
 
         window = glfwCreateWindow(1000, 600, "Trisualizer", NULL, NULL);
-        float xscale, yscale;
-        glfwGetWindowContentScale(window, &xscale, &yscale);
-        dpi_scale = xscale;
-        glfwSetWindowSize(window, SC(1000), SC(600));
+        //float xscale, yscale;
+        //glfwGetWindowContentScale(window, &xscale, &yscale);
+        //dpi_scale = xscale;
+        //glfwSetWindowSize(window, SC(1000), SC(600));
         if (window == nullptr) {
             MessageBoxA(NULL, "Failed to create window.", "Fatal Error", MB_ICONERROR | MB_OK);
             return;
         }
+        dpi_scale = 1.f;
         glfwSetWindowUserPointer(window, this);
         glfwSwapInterval(1);
         glfwMakeContextCurrent(window);
@@ -1430,7 +1431,7 @@ public:
                     
                     auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.3f, nullptr, &dockspace_id);
                     auto dock_id_down = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, -0.08f * dpi_scale + 0.3767, nullptr, &dock_id_left);
-                    auto dock_id_middle = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 0.6f, nullptr, &dock_id_left);
+                    auto dock_id_middle = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 0.4f, nullptr, &dock_id_left);
 
                     ImGui::DockBuilderDockWindow("Symbolic View", dock_id_left);
                     ImGui::DockBuilderDockWindow("Variables", dock_id_middle);
@@ -1866,11 +1867,11 @@ public:
                     ImGui::EndDisabled();
                     ImGui::EndChild();
                     ImGui::SameLine();
-                    ImGui::BeginChild(ImGui::GetID("region_bounds"), ImVec2(vMax.x - vMin.x - 106.f, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+                    ImGui::BeginChild(ImGui::GetID("region_bounds"), ImVec2(SC(228), 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
                     ImGui::BeginDisabled(show_integral_result || second_corner);
                     vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
                     vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
-                    ImGui::PushItemWidth((vMax.x - vMin.x - 42.f) / 2.f);
+                    ImGui::PushItemWidth((vMax.x - vMin.x - SC(42.f)) / 2.f);
                     bool ready = true;
                     switch (region_type) {
                     case CartesianRectangle:
@@ -1926,7 +1927,7 @@ public:
                         break;
                     }
                     ImGui::PopItemWidth();
-                    ImGui::SetNextItemWidth(vMax.x - vMin.x - 81.f);
+                    ImGui::SetNextItemWidth(vMax.x - vMin.x - SC(81.f));
 
                     const char* preview = graphs[integrand_index].defn;
                     auto to_imcol32 = [](const glm::vec4& color) {
@@ -1952,7 +1953,7 @@ public:
                         ImGui::SetTooltip("Integrand", ImGui::GetStyle().HoverDelayNormal);
                     ImGui::SameLine();
 
-                    ImGui::SetNextItemWidth(75.f);
+                    ImGui::SetNextItemWidth(SC(75.f));
                     if (ImGui::InputInt("##precision", &integral_precision, 50, 100))
                         if (integral_precision < 50) integral_precision = 50;
                     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
