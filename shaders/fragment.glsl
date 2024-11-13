@@ -70,6 +70,7 @@ void main() {
 	vec2 zrange = vec2(zoomz / 2.f, -zoomz / 2.f) + centerPos.z;
 	vec3 grad3d = vec3(gradient, partialx * partialx + partialy * partialy);
 	float angle = acos(length(gradient) / length(grad3d));
+	if (isinf(length(gradient))) angle = 1.57079632f;
 	
 	switch (coloring) {
 	case 0:
