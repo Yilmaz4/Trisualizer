@@ -373,7 +373,7 @@ public:
     bool integral = false, second_corner = false, apply_integral = false, show_integral_result = false;
     int integrand_index = 1, region_type = CartesianRectangle, integral_precision = 2000, erroring_eq = -1;
     float x_min, x_max, y_min, y_max, theta_min, theta_max, t_min, t_max;
-    char x_min_eq[32], x_max_eq[32], y_min_eq[32], y_max_eq[32], r_min_eq[32], r_max_eq[32], x_param_eq[32], y_param_eq[32], integral_infoLog[512];
+    char x_min_eq[32], x_max_eq[32], y_min_eq[32], y_max_eq[32], r_min_eq[32], r_max_eq[32], x_param_eq[32], y_param_eq[32], scalar_field_eq[32], integral_infoLog[512];
     float x_min_eq_min, x_max_eq_max, y_min_eq_min, y_max_eq_max;
     vec3 center_of_region;
     float integral_result, dx, dy;
@@ -1871,8 +1871,8 @@ public:
             if ((integral || show_integral_result)) {
                 ImGui::SetNextWindowBgAlpha(0.5f);
                 ImGui::SetNextWindowPos(ImVec2(sidebarWidth + SC(10.f), SC(24.f)));
-                ImGui::SetNextWindowSize(ImVec2(SC(350.f), 0.f));
-                if (ImGui::Begin("##doubleintegral", nullptr,
+                ImGui::SetNextWindowSize(ImVec2(SC(360.f), 0.f));
+                if (ImGui::Begin("##integral", nullptr,
                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav)) {
 
                     vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
@@ -1898,7 +1898,7 @@ public:
                             ImGui::EndDisabled();
                             ImGui::EndChild();
                             ImGui::SameLine();
-                            ImGui::BeginChild(ImGui::GetID("region_bounds"), ImVec2(SC(228), 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+                            ImGui::BeginChild(ImGui::GetID("region_bounds"), ImVec2(ImGui::GetContentRegionAvail().x, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
                             ImGui::BeginDisabled(show_integral_result || second_corner);
                             vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
                             vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
@@ -2000,7 +2000,120 @@ public:
                             ImGui::EndTabItem();
                         }
                         if (ImGui::BeginTabItem("Surface Integral")) {
-                            ImGui::Text("Surface Integral - WIP");
+                            ImGui::BeginChild(ImGui::GetID("region_type"), ImVec2(SC(100), 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+                            ImGui::BeginDisabled(show_integral_result || second_corner);
+                            if (ImGui::RadioButton("Rectangle", region_type == CartesianRectangle)) region_type = CartesianRectangle;
+                            if (ImGui::RadioButton("Type I", region_type == Type1)) region_type = Type1;
+                            if (ImGui::RadioButton("Type II", region_type == Type2)) region_type = Type2;
+                            if (ImGui::RadioButton("Polar", region_type == Polar)) region_type = Polar;
+                            ImGui::EndDisabled();
+                            ImGui::EndChild();
+                            ImGui::SameLine();
+                            ImGui::BeginChild(ImGui::GetID("region_bounds"), ImVec2(ImGui::GetContentRegionAvail().x, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+                            ImGui::BeginDisabled(show_integral_result || second_corner);
+                            vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
+                            vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
+                            ImGui::PushItemWidth((vMax.x - vMin.x - SC(42.f)) / 2.f);
+                            bool ready = true;
+                            switch (region_type) {
+                            case CartesianRectangle:
+                                ImGui::InputFloat(u8"\u2264 x \u2264", &x_min, 0.f, 0.f, "%g");
+                                ImGui::SameLine();
+                                ImGui::InputFloat("##x_max", &x_max, 0.f, 0.f, "%g");
+
+                                ImGui::InputFloat(u8"\u2264 y \u2264", &y_min, 0.f, 0.f, "%g");
+                                ImGui::SameLine();
+                                ImGui::InputFloat("##y_max", &y_max, 0.f, 0.f, "%g");
+                                break;
+                            case Type1:
+                                ImGui::InputFloat(u8"\u2264 x \u2264", &x_min, 0.f, 0.f, "%g");
+                                ImGui::SameLine();
+                                ImGui::InputFloat("##x_max", &x_max, 0.f, 0.f, "%g");
+
+                                ImGui::InputText(u8"\u2264 y \u2264", y_min_eq, 32);
+                                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                    ImGui::SetTooltip("Enter a function of x", ImGui::GetStyle().HoverDelayNormal);
+                                ImGui::SameLine();
+                                ImGui::InputText("##y_max", y_max_eq, 32);
+                                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                    ImGui::SetTooltip("Enter a function of x", ImGui::GetStyle().HoverDelayNormal);
+                                if (strlen(y_min_eq) == 0 || strlen(y_max_eq) == 0) ready = false;
+                                break;
+                            case Type2:
+                                ImGui::InputText(u8"\u2264 x \u2264", x_min_eq, 32);
+                                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                    ImGui::SetTooltip("Enter a function of y", ImGui::GetStyle().HoverDelayNormal);
+                                ImGui::SameLine();
+                                ImGui::InputText("##x_max", x_max_eq, 32);
+                                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                    ImGui::SetTooltip("Enter a function of y", ImGui::GetStyle().HoverDelayNormal);
+                                if (strlen(x_min_eq) == 0 || strlen(x_max_eq) == 0) ready = false;
+
+                                ImGui::InputFloat(u8"\u2264 y \u2264", &y_min, 0.f, 0.f, "%g");
+                                ImGui::SameLine();
+                                ImGui::InputFloat("##y_max", &y_max, 0.f, 0.f, "%g");
+                                break;
+                            case Polar:
+                                ImGui::InputFloat(u8"\u2264 \u03b8 \u2264", &theta_min, 0.f, 0.f, "%g");
+                                ImGui::SameLine();
+                                ImGui::InputFloat("##theta_max", &theta_max, 0.f, 0.f, "%g");
+
+                                ImGui::InputText(u8"\u2264 r \u2264", r_min_eq, 32);
+                                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                    ImGui::SetTooltip(u8"Enter a function of \u03b8 (alias: t)", ImGui::GetStyle().HoverDelayNormal);
+                                ImGui::SameLine();
+                                ImGui::InputText("##r_max", r_max_eq, 32);
+                                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                    ImGui::SetTooltip(u8"Enter a function of \u03b8 (alias: t)", ImGui::GetStyle().HoverDelayNormal);
+                                if (strlen(r_min_eq) == 0 || strlen(r_max_eq) == 0) ready = false;
+                                break;
+                            }
+                            ImGui::PopItemWidth();
+                            
+                            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - SC(81.f));
+                            ImGui::InputText("Scalar field", scalar_field_eq, 32);
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                ImGui::SetTooltip(u8"Enter a function of x, y and z", ImGui::GetStyle().HoverDelayNormal);
+                            if (strlen(scalar_field_eq) == 0) ready = false;
+
+                            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - SC(81.f));
+                            if (ImGui::BeginCombo("##integrand", preview)) {
+                                for (int n = 1; n < graphs.size(); n++) {
+                                    if (!graphs[n].enabled) continue;
+                                    const bool is_selected = (integrand_index == n);
+                                    ImGui::PushStyleColor(ImGuiCol_Text, to_imcol32(graphs[n].color * 1.1f));
+                                    if (ImGui::Selectable(graphs[n].defn, is_selected))
+                                        integrand_index = n;
+                                    ImGui::PopStyleColor();
+                                    if (is_selected) ImGui::SetItemDefaultFocus();
+                                }
+                                ImGui::EndCombo();
+                            }
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                ImGui::SetTooltip("Integrand", ImGui::GetStyle().HoverDelayNormal);
+                            ImGui::SameLine();
+
+                            ImGui::SetNextItemWidth(SC(75.f));
+                            if (ImGui::InputInt("##precision", &integral_precision, 50, 100))
+                                if (integral_precision < 50) integral_precision = 50;
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                ImGui::SetTooltip("Precision, higher the better", ImGui::GetStyle().HoverDelayNormal);
+
+                            ImGui::EndDisabled();
+                            ImGui::BeginDisabled(!ready || show_integral_result || second_corner);
+                            if (ImGui::Button("Compute", ImVec2(vMax.x - vMin.x, 0.f))) {
+                                glUniform1i(glGetUniformLocation(shaderProgram, "integral"), true);
+                                glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), integrand_index);
+                                glUniform1i(glGetUniformLocation(shaderProgram, "region_type"), region_type);
+                                int error = compute_integral(integral_infoLog);
+                                if (error != -1) erroring_eq = error;
+                                else {
+                                    erroring_eq = -1;
+                                    show_integral_result = true;
+                                }
+                            }
+                            ImGui::EndDisabled();
+                            ImGui::EndChild();
                             ImGui::EndTabItem();
                         }
                         if (ImGui::BeginTabItem("Line Integral")) {
@@ -2032,17 +2145,11 @@ public:
                             ImGui::PopItemWidth();
 
                             ImGui::PushItemWidth((vMax.x - vMin.x - SC(67.f)) / 2.f);
-                            //ImGui::Text("x(t):");
-                            //ImGui::SameLine();
-                            //ImGui::SetCursorPos(ImGui::GetCursorPos() + ImVec2(SC(-5.f), SC(-2.f)));
                             ImGui::InputText("x(t)", x_param_eq, 32);
                             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                                 ImGui::SetTooltip("Enter a parametric function of t for x", ImGui::GetStyle().HoverDelayNormal);
                             ImGui::SameLine();
                             ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 2.f);
-                            //ImGui::Text("y(t):");
-                            //ImGui::SameLine();
-                            //ImGui::SetCursorPos(ImGui::GetCursorPos() + ImVec2(SC(-5.f), SC(-2.f)));
                             ImGui::InputText("y(t)", y_param_eq, 32);
                             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                                 ImGui::SetTooltip("Enter a parametric function of t for y", ImGui::GetStyle().HoverDelayNormal);
