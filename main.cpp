@@ -327,6 +327,24 @@ enum ColoringStyle {
     NormalMap,
 };
 
+enum ExpressionType {
+    Explicit,
+    Implicit,
+};
+
+enum IntegralType {
+    DoubleIntegral,
+    SurfaceIntegral,
+    LineIntegral,
+};
+
+
+// https://www.youtube.com/watch?v=KvwVYJY_IZ4
+
+const int triang[256 * 15]{
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 1, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 8, 3, 9, 8, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 2, 10, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 8, 3, 1, 2, 10, -1, -1, -1, -1, -1, -1, -1, -1, -1,9, 2, 10, 0, 2, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1,2, 8, 3, 2, 10, 8, 10, 9, 8, -1, -1, -1, -1, -1, -1,3, 11, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 11, 2, 8, 11, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 9, 0, 2, 3, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 11, 2, 1, 9, 11, 9, 8, 11, -1, -1, -1, -1, -1, -1,3, 10, 1, 11, 10, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 10, 1, 0, 8, 10, 8, 11, 10, -1, -1, -1, -1, -1, -1,3, 9, 0, 3, 11, 9, 11, 10, 9, -1, -1, -1, -1, -1, -1,9, 8, 10, 10, 8, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 7, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 3, 0, 7, 3, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 1, 9, 8, 4, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 1, 9, 4, 7, 1, 7, 3, 1, -1, -1, -1, -1, -1, -1,1, 2, 10, 8, 4, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1,3, 4, 7, 3, 0, 4, 1, 2, 10, -1, -1, -1, -1, -1, -1,9, 2, 10, 9, 0, 2, 8, 4, 7, -1, -1, -1, -1, -1, -1,2, 10, 9, 2, 9, 7, 2, 7, 3, 7, 9, 4, -1, -1, -1,8, 4, 7, 3, 11, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1,11, 4, 7, 11, 2, 4, 2, 0, 4, -1, -1, -1, -1, -1, -1,9, 0, 1, 8, 4, 7, 2, 3, 11, -1, -1, -1, -1, -1, -1,4, 7, 11, 9, 4, 11, 9, 11, 2, 9, 2, 1, -1, -1, -1,3, 10, 1, 3, 11, 10, 7, 8, 4, -1, -1, -1, -1, -1, -1,1, 11, 10, 1, 4, 11, 1, 0, 4, 7, 11, 4, -1, -1, -1,4, 7, 8, 9, 0, 11, 9, 11, 10, 11, 0, 3, -1, -1, -1,4, 7, 11, 4, 11, 9, 9, 11, 10, -1, -1, -1, -1, -1, -1,9, 5, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,9, 5, 4, 0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 5, 4, 1, 5, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1,8, 5, 4, 8, 3, 5, 3, 1, 5, -1, -1, -1, -1, -1, -1,1, 2, 10, 9, 5, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1,3, 0, 8, 1, 2, 10, 4, 9, 5, -1, -1, -1, -1, -1, -1,5, 2, 10, 5, 4, 2, 4, 0, 2, -1, -1, -1, -1, -1, -1,2, 10, 5, 3, 2, 5, 3, 5, 4, 3, 4, 8, -1, -1, -1,9, 5, 4, 2, 3, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 11, 2, 0, 8, 11, 4, 9, 5, -1, -1, -1, -1, -1, -1,0, 5, 4, 0, 1, 5, 2, 3, 11, -1, -1, -1, -1, -1, -1,2, 1, 5, 2, 5, 8, 2, 8, 11, 4, 8, 5, -1, -1, -1,10, 3, 11, 10, 1, 3, 9, 5, 4, -1, -1, -1, -1, -1, -1,4, 9, 5, 0, 8, 1, 8, 10, 1, 8, 11, 10, -1, -1, -1,5, 4, 0, 5, 0, 11, 5, 11, 10, 11, 0, 3, -1, -1, -1,5, 4, 8, 5, 8, 10, 10, 8, 11, -1, -1, -1, -1, -1, -1,9, 7, 8, 5, 7, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1,9, 3, 0, 9, 5, 3, 5, 7, 3, -1, -1, -1, -1, -1, -1,0, 7, 8, 0, 1, 7, 1, 5, 7, -1, -1, -1, -1, -1, -1,1, 5, 3, 3, 5, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1,9, 7, 8, 9, 5, 7, 10, 1, 2, -1, -1, -1, -1, -1, -1,10, 1, 2, 9, 5, 0, 5, 3, 0, 5, 7, 3, -1, -1, -1,8, 0, 2, 8, 2, 5, 8, 5, 7, 10, 5, 2, -1, -1, -1,2, 10, 5, 2, 5, 3, 3, 5, 7, -1, -1, -1, -1, -1, -1,7, 9, 5, 7, 8, 9, 3, 11, 2, -1, -1, -1, -1, -1, -1,9, 5, 7, 9, 7, 2, 9, 2, 0, 2, 7, 11, -1, -1, -1,2, 3, 11, 0, 1, 8, 1, 7, 8, 1, 5, 7, -1, -1, -1,11, 2, 1, 11, 1, 7, 7, 1, 5, -1, -1, -1, -1, -1, -1,9, 5, 8, 8, 5, 7, 10, 1, 3, 10, 3, 11, -1, -1, -1,5, 7, 0, 5, 0, 9, 7, 11, 0, 1, 0, 10, 11, 10, 0,11, 10, 0, 11, 0, 3, 10, 5, 0, 8, 0, 7, 5, 7, 0,11, 10, 5, 7, 11, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1,10, 6, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 8, 3, 5, 10, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1,9, 0, 1, 5, 10, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 8, 3, 1, 9, 8, 5, 10, 6, -1, -1, -1, -1, -1, -1,1, 6, 5, 2, 6, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 6, 5, 1, 2, 6, 3, 0, 8, -1, -1, -1, -1, -1, -1,9, 6, 5, 9, 0, 6, 0, 2, 6, -1, -1, -1, -1, -1, -1,5, 9, 8, 5, 8, 2, 5, 2, 6, 3, 2, 8, -1, -1, -1,2, 3, 11, 10, 6, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1,11, 0, 8, 11, 2, 0, 10, 6, 5, -1, -1, -1, -1, -1, -1,0, 1, 9, 2, 3, 11, 5, 10, 6, -1, -1, -1, -1, -1, -1,5, 10, 6, 1, 9, 2, 9, 11, 2, 9, 8, 11, -1, -1, -1,6, 3, 11, 6, 5, 3, 5, 1, 3, -1, -1, -1, -1, -1, -1,0, 8, 11, 0, 11, 5, 0, 5, 1, 5, 11, 6, -1, -1, -1,3, 11, 6, 0, 3, 6, 0, 6, 5, 0, 5, 9, -1, -1, -1,6, 5, 9, 6, 9, 11, 11, 9, 8, -1, -1, -1, -1, -1, -1,5, 10, 6, 4, 7, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 3, 0, 4, 7, 3, 6, 5, 10, -1, -1, -1, -1, -1, -1,1, 9, 0, 5, 10, 6, 8, 4, 7, -1, -1, -1, -1, -1, -1,10, 6, 5, 1, 9, 7, 1, 7, 3, 7, 9, 4, -1, -1, -1,6, 1, 2, 6, 5, 1, 4, 7, 8, -1, -1, -1, -1, -1, -1,1, 2, 5, 5, 2, 6, 3, 0, 4, 3, 4, 7, -1, -1, -1,8, 4, 7, 9, 0, 5, 0, 6, 5, 0, 2, 6, -1, -1, -1,7, 3, 9, 7, 9, 4, 3, 2, 9, 5, 9, 6, 2, 6, 9,3, 11, 2, 7, 8, 4, 10, 6, 5, -1, -1, -1, -1, -1, -1,5, 10, 6, 4, 7, 2, 4, 2, 0, 2, 7, 11, -1, -1, -1,0, 1, 9, 4, 7, 8, 2, 3, 11, 5, 10, 6, -1, -1, -1,9, 2, 1, 9, 11, 2, 9, 4, 11, 7, 11, 4, 5, 10, 6,8, 4, 7, 3, 11, 5, 3, 5, 1, 5, 11, 6, -1, -1, -1,5, 1, 11, 5, 11, 6, 1, 0, 11, 7, 11, 4, 0, 4, 11,0, 5, 9, 0, 6, 5, 0, 3, 6, 11, 6, 3, 8, 4, 7,6, 5, 9, 6, 9, 11, 4, 7, 9, 7, 11, 9, -1, -1, -1,10, 4, 9, 6, 4, 10, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 10, 6, 4, 9, 10, 0, 8, 3, -1, -1, -1, -1, -1, -1,10, 0, 1, 10, 6, 0, 6, 4, 0, -1, -1, -1, -1, -1, -1,8, 3, 1, 8, 1, 6, 8, 6, 4, 6, 1, 10, -1, -1, -1,1, 4, 9, 1, 2, 4, 2, 6, 4, -1, -1, -1, -1, -1, -1,3, 0, 8, 1, 2, 9, 2, 4, 9, 2, 6, 4, -1, -1, -1,0, 2, 4, 4, 2, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1,8, 3, 2, 8, 2, 4, 4, 2, 6, -1, -1, -1, -1, -1, -1,10, 4, 9, 10, 6, 4, 11, 2, 3, -1, -1, -1, -1, -1, -1,0, 8, 2, 2, 8, 11, 4, 9, 10, 4, 10, 6, -1, -1, -1,3, 11, 2, 0, 1, 6, 0, 6, 4, 6, 1, 10, -1, -1, -1,6, 4, 1, 6, 1, 10, 4, 8, 1, 2, 1, 11, 8, 11, 1,9, 6, 4, 9, 3, 6, 9, 1, 3, 11, 6, 3, -1, -1, -1,8, 11, 1, 8, 1, 0, 11, 6, 1, 9, 1, 4, 6, 4, 1,3, 11, 6, 3, 6, 0, 0, 6, 4, -1, -1, -1, -1, -1, -1,6, 4, 8, 11, 6, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1,7, 10, 6, 7, 8, 10, 8, 9, 10, -1, -1, -1, -1, -1, -1,0, 7, 3, 0, 10, 7, 0, 9, 10, 6, 7, 10, -1, -1, -1,10, 6, 7, 1, 10, 7, 1, 7, 8, 1, 8, 0, -1, -1, -1,10, 6, 7, 10, 7, 1, 1, 7, 3, -1, -1, -1, -1, -1, -1,1, 2, 6, 1, 6, 8, 1, 8, 9, 8, 6, 7, -1, -1, -1,2, 6, 9, 2, 9, 1, 6, 7, 9, 0, 9, 3, 7, 3, 9,7, 8, 0, 7, 0, 6, 6, 0, 2, -1, -1, -1, -1, -1, -1,7, 3, 2, 6, 7, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1,2, 3, 11, 10, 6, 8, 10, 8, 9, 8, 6, 7, -1, -1, -1,2, 0, 7, 2, 7, 11, 0, 9, 7, 6, 7, 10, 9, 10, 7,1, 8, 0, 1, 7, 8, 1, 10, 7, 6, 7, 10, 2, 3, 11,11, 2, 1, 11, 1, 7, 10, 6, 1, 6, 7, 1, -1, -1, -1,8, 9, 6, 8, 6, 7, 9, 1, 6, 11, 6, 3, 1, 3, 6,0, 9, 1, 11, 6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1,7, 8, 0, 7, 0, 6, 3, 11, 0, 11, 6, 0, -1, -1, -1,7, 11, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,7, 6, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,3, 0, 8, 11, 7, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 1, 9, 11, 7, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1,8, 1, 9, 8, 3, 1, 11, 7, 6, -1, -1, -1, -1, -1, -1,10, 1, 2, 6, 11, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 2, 10, 3, 0, 8, 6, 11, 7, -1, -1, -1, -1, -1, -1,2, 9, 0, 2, 10, 9, 6, 11, 7, -1, -1, -1, -1, -1, -1,6, 11, 7, 2, 10, 3, 10, 8, 3, 10, 9, 8, -1, -1, -1,7, 2, 3, 6, 2, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1,7, 0, 8, 7, 6, 0, 6, 2, 0, -1, -1, -1, -1, -1, -1,2, 7, 6, 2, 3, 7, 0, 1, 9, -1, -1, -1, -1, -1, -1,1, 6, 2, 1, 8, 6, 1, 9, 8, 8, 7, 6, -1, -1, -1,10, 7, 6, 10, 1, 7, 1, 3, 7, -1, -1, -1, -1, -1, -1,10, 7, 6, 1, 7, 10, 1, 8, 7, 1, 0, 8, -1, -1, -1,0, 3, 7, 0, 7, 10, 0, 10, 9, 6, 10, 7, -1, -1, -1,7, 6, 10, 7, 10, 8, 8, 10, 9, -1, -1, -1, -1, -1, -1,6, 8, 4, 11, 8, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1,3, 6, 11, 3, 0, 6, 0, 4, 6, -1, -1, -1, -1, -1, -1,8, 6, 11, 8, 4, 6, 9, 0, 1, -1, -1, -1, -1, -1, -1,9, 4, 6, 9, 6, 3, 9, 3, 1, 11, 3, 6, -1, -1, -1,6, 8, 4, 6, 11, 8, 2, 10, 1, -1, -1, -1, -1, -1, -1,1, 2, 10, 3, 0, 11, 0, 6, 11, 0, 4, 6, -1, -1, -1,4, 11, 8, 4, 6, 11, 0, 2, 9, 2, 10, 9, -1, -1, -1,10, 9, 3, 10, 3, 2, 9, 4, 3, 11, 3, 6, 4, 6, 3,8, 2, 3, 8, 4, 2, 4, 6, 2, -1, -1, -1, -1, -1, -1,0, 4, 2, 4, 6, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 9, 0, 2, 3, 4, 2, 4, 6, 4, 3, 8, -1, -1, -1,1, 9, 4, 1, 4, 2, 2, 4, 6, -1, -1, -1, -1, -1, -1,8, 1, 3, 8, 6, 1, 8, 4, 6, 6, 10, 1, -1, -1, -1,10, 1, 0, 10, 0, 6, 6, 0, 4, -1, -1, -1, -1, -1, -1,4, 6, 3, 4, 3, 8, 6, 10, 3, 0, 3, 9, 10, 9, 3,10, 9, 4, 6, 10, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 9, 5, 7, 6, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 8, 3, 4, 9, 5, 11, 7, 6, -1, -1, -1, -1, -1, -1,5, 0, 1, 5, 4, 0, 7, 6, 11, -1, -1, -1, -1, -1, -1,11, 7, 6, 8, 3, 4, 3, 5, 4, 3, 1, 5, -1, -1, -1,9, 5, 4, 10, 1, 2, 7, 6, 11, -1, -1, -1, -1, -1, -1,6, 11, 7, 1, 2, 10, 0, 8, 3, 4, 9, 5, -1, -1, -1,7, 6, 11, 5, 4, 10, 4, 2, 10, 4, 0, 2, -1, -1, -1,3, 4, 8, 3, 5, 4, 3, 2, 5, 10, 5, 2, 11, 7, 6,7, 2, 3, 7, 6, 2, 5, 4, 9, -1, -1, -1, -1, -1, -1,9, 5, 4, 0, 8, 6, 0, 6, 2, 6, 8, 7, -1, -1, -1,3, 6, 2, 3, 7, 6, 1, 5, 0, 5, 4, 0, -1, -1, -1,6, 2, 8, 6, 8, 7, 2, 1, 8, 4, 8, 5, 1, 5, 8,9, 5, 4, 10, 1, 6, 1, 7, 6, 1, 3, 7, -1, -1, -1,1, 6, 10, 1, 7, 6, 1, 0, 7, 8, 7, 0, 9, 5, 4,4, 0, 10, 4, 10, 5, 0, 3, 10, 6, 10, 7, 3, 7, 10,7, 6, 10, 7, 10, 8, 5, 4, 10, 4, 8, 10, -1, -1, -1,6, 9, 5, 6, 11, 9, 11, 8, 9, -1, -1, -1, -1, -1, -1,3, 6, 11, 0, 6, 3, 0, 5, 6, 0, 9, 5, -1, -1, -1,0, 11, 8, 0, 5, 11, 0, 1, 5, 5, 6, 11, -1, -1, -1,6, 11, 3, 6, 3, 5, 5, 3, 1, -1, -1, -1, -1, -1, -1,1, 2, 10, 9, 5, 11, 9, 11, 8, 11, 5, 6, -1, -1, -1,0, 11, 3, 0, 6, 11, 0, 9, 6, 5, 6, 9, 1, 2, 10,11, 8, 5, 11, 5, 6, 8, 0, 5, 10, 5, 2, 0, 2, 5,6, 11, 3, 6, 3, 5, 2, 10, 3, 10, 5, 3, -1, -1, -1,5, 8, 9, 5, 2, 8, 5, 6, 2, 3, 8, 2, -1, -1, -1,9, 5, 6, 9, 6, 0, 0, 6, 2, -1, -1, -1, -1, -1, -1,1, 5, 8, 1, 8, 0, 5, 6, 8, 3, 8, 2, 6, 2, 8,1, 5, 6, 2, 1, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 3, 6, 1, 6, 10, 3, 8, 6, 5, 6, 9, 8, 9, 6,10, 1, 0, 10, 0, 6, 9, 5, 0, 5, 6, 0, -1, -1, -1,0, 3, 8, 5, 6, 10, -1, -1, -1, -1, -1, -1, -1, -1, -1,10, 5, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,11, 5, 10, 7, 5, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1,11, 5, 10, 11, 7, 5, 8, 3, 0, -1, -1, -1, -1, -1, -1,5, 11, 7, 5, 10, 11, 1, 9, 0, -1, -1, -1, -1, -1, -1,10, 7, 5, 10, 11, 7, 9, 8, 1, 8, 3, 1, -1, -1, -1,11, 1, 2, 11, 7, 1, 7, 5, 1, -1, -1, -1, -1, -1, -1,0, 8, 3, 1, 2, 7, 1, 7, 5, 7, 2, 11, -1, -1, -1,9, 7, 5, 9, 2, 7, 9, 0, 2, 2, 11, 7, -1, -1, -1,7, 5, 2, 7, 2, 11, 5, 9, 2, 3, 2, 8, 9, 8, 2,2, 5, 10, 2, 3, 5, 3, 7, 5, -1, -1, -1, -1, -1, -1,8, 2, 0, 8, 5, 2, 8, 7, 5, 10, 2, 5, -1, -1, -1,9, 0, 1, 5, 10, 3, 5, 3, 7, 3, 10, 2, -1, -1, -1,9, 8, 2, 9, 2, 1, 8, 7, 2, 10, 2, 5, 7, 5, 2,1, 3, 5, 3, 7, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 8, 7, 0, 7, 1, 1, 7, 5, -1, -1, -1, -1, -1, -1,9, 0, 3, 9, 3, 5, 5, 3, 7, -1, -1, -1, -1, -1, -1,9, 8, 7, 5, 9, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1,5, 8, 4, 5, 10, 8, 10, 11, 8, -1, -1, -1, -1, -1, -1,5, 0, 4, 5, 11, 0, 5, 10, 11, 11, 3, 0, -1, -1, -1,0, 1, 9, 8, 4, 10, 8, 10, 11, 10, 4, 5, -1, -1, -1,10, 11, 4, 10, 4, 5, 11, 3, 4, 9, 4, 1, 3, 1, 4,2, 5, 1, 2, 8, 5, 2, 11, 8, 4, 5, 8, -1, -1, -1,0, 4, 11, 0, 11, 3, 4, 5, 11, 2, 11, 1, 5, 1, 11,0, 2, 5, 0, 5, 9, 2, 11, 5, 4, 5, 8, 11, 8, 5,9, 4, 5, 2, 11, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1,2, 5, 10, 3, 5, 2, 3, 4, 5, 3, 8, 4, -1, -1, -1,5, 10, 2, 5, 2, 4, 4, 2, 0, -1, -1, -1, -1, -1, -1,3, 10, 2, 3, 5, 10, 3, 8, 5, 4, 5, 8, 0, 1, 9,5, 10, 2, 5, 2, 4, 1, 9, 2, 9, 4, 2, -1, -1, -1,8, 4, 5, 8, 5, 3, 3, 5, 1, -1, -1, -1, -1, -1, -1,0, 4, 5, 1, 0, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1,8, 4, 5, 8, 5, 3, 9, 0, 5, 0, 3, 5, -1, -1, -1,9, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 11, 7, 4, 9, 11, 9, 10, 11, -1, -1, -1, -1, -1, -1,0, 8, 3, 4, 9, 7, 9, 11, 7, 9, 10, 11, -1, -1, -1,1, 10, 11, 1, 11, 4, 1, 4, 0, 7, 4, 11, -1, -1, -1,3, 1, 4, 3, 4, 8, 1, 10, 4, 7, 4, 11, 10, 11, 4,4, 11, 7, 9, 11, 4, 9, 2, 11, 9, 1, 2, -1, -1, -1,9, 7, 4, 9, 11, 7, 9, 1, 11, 2, 11, 1, 0, 8, 3,11, 7, 4, 11, 4, 2, 2, 4, 0, -1, -1, -1, -1, -1, -1,11, 7, 4, 11, 4, 2, 8, 3, 4, 3, 2, 4, -1, -1, -1,2, 9, 10, 2, 7, 9, 2, 3, 7, 7, 4, 9, -1, -1, -1,9, 10, 7, 9, 7, 4, 10, 2, 7, 8, 7, 0, 2, 0, 7,3, 7, 10, 3, 10, 2, 7, 4, 10, 1, 10, 0, 4, 0, 10,1, 10, 2, 8, 7, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 9, 1, 4, 1, 7, 7, 1, 3, -1, -1, -1, -1, -1, -1,4, 9, 1, 4, 1, 7, 0, 8, 1, 8, 7, 1, -1, -1, -1,4, 0, 3, 7, 4, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 8, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,9, 10, 8, 10, 11, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1,3, 0, 9, 3, 9, 11, 11, 9, 10, -1, -1, -1, -1, -1, -1,0, 1, 10, 0, 10, 8, 8, 10, 11, -1, -1, -1, -1, -1, -1,3, 1, 10, 11, 3, 10, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 2, 11, 1, 11, 9, 9, 11, 8, -1, -1, -1, -1, -1, -1,3, 0, 9, 3, 9, 11, 1, 2, 9, 2, 11, 9, -1, -1, -1,0, 2, 11, 8, 0, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1,3, 2, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,2, 3, 8, 2, 8, 10, 10, 8, 9, -1, -1, -1, -1, -1, -1,9, 10, 2, 0, 9, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1,2, 3, 8, 2, 8, 10, 0, 1, 8, 1, 10, 8, -1, -1, -1,1, 10, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 3, 8, 9, 1, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 9, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 3, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+};
+
 class Trisualizer {
     GLFWwindow* window = nullptr;
     ImFont* font_title = nullptr;
@@ -354,8 +372,8 @@ public:
 
     bool integral = false, second_corner = false, apply_integral = false, show_integral_result = false;
     int integrand_index = 1, region_type = CartesianRectangle, integral_precision = 2000, erroring_eq = -1;
-    float x_min, x_max, y_min, y_max, theta_min, theta_max;
-    char x_min_eq[32], x_max_eq[32], y_min_eq[32], y_max_eq[32], r_min_eq[32], r_max_eq[32], integral_infoLog[512];
+    float x_min, x_max, y_min, y_max, theta_min, theta_max, t_min, t_max;
+    char x_min_eq[32], x_max_eq[32], y_min_eq[32], y_max_eq[32], r_min_eq[32], r_max_eq[32], x_param_eq[32], y_param_eq[32], integral_infoLog[512];
     float x_min_eq_min, x_max_eq_max, y_min_eq_min, y_max_eq_max;
     vec3 center_of_region;
     float integral_result, dx, dy;
@@ -418,7 +436,7 @@ public:
             MessageBoxA(NULL, "Failed to create window.", "Fatal Error", MB_ICONERROR | MB_OK);
             return;
         }
-        dpi_scale = 1.f;
+        
         glfwSetWindowUserPointer(window, this);
         glfwSwapInterval(1);
         glfwMakeContextCurrent(window);
@@ -1858,76 +1876,6 @@ public:
 
                     vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
                     vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
-                    ImGui::BeginChild(ImGui::GetID("region_type"), ImVec2(SC(100), 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
-                    ImGui::BeginDisabled(show_integral_result || second_corner);
-                    if (ImGui::RadioButton("Rectangle", region_type == CartesianRectangle)) region_type = CartesianRectangle;
-                    if (ImGui::RadioButton("Type I", region_type == Type1)) region_type = Type1;
-                    if (ImGui::RadioButton("Type II", region_type == Type2)) region_type = Type2;
-                    if (ImGui::RadioButton("Polar", region_type == Polar)) region_type = Polar;
-                    ImGui::EndDisabled();
-                    ImGui::EndChild();
-                    ImGui::SameLine();
-                    ImGui::BeginChild(ImGui::GetID("region_bounds"), ImVec2(SC(228), 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
-                    ImGui::BeginDisabled(show_integral_result || second_corner);
-                    vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
-                    vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
-                    ImGui::PushItemWidth((vMax.x - vMin.x - SC(42.f)) / 2.f);
-                    bool ready = true;
-                    switch (region_type) {
-                    case CartesianRectangle:
-                        ImGui::InputFloat(u8"\u2264 x \u2264", &x_min, 0.f, 0.f, "%g");
-                        ImGui::SameLine();
-                        ImGui::InputFloat("##x_max", &x_max, 0.f, 0.f, "%g");
-
-                        ImGui::InputFloat(u8"\u2264 y \u2264", &y_min, 0.f, 0.f, "%g");
-                        ImGui::SameLine();
-                        ImGui::InputFloat("##y_max", &y_max, 0.f, 0.f, "%g");
-                        break;
-                    case Type1:
-                        ImGui::InputFloat(u8"\u2264 x \u2264", &x_min, 0.f, 0.f, "%g");
-                        ImGui::SameLine();
-                        ImGui::InputFloat("##x_max", &x_max, 0.f, 0.f, "%g");
-
-                        ImGui::InputText(u8"\u2264 y \u2264", y_min_eq, 32);
-                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                            ImGui::SetTooltip("Enter a function of x", ImGui::GetStyle().HoverDelayNormal);
-                        ImGui::SameLine();
-                        ImGui::InputText("##y_max", y_max_eq, 32);
-                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                            ImGui::SetTooltip("Enter a function of x", ImGui::GetStyle().HoverDelayNormal);
-                        if (strlen(y_min_eq) == 0 || strlen(y_max_eq) == 0) ready = false;
-                        break;
-                    case Type2:
-                        ImGui::InputText(u8"\u2264 x \u2264", x_min_eq, 32);
-                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                            ImGui::SetTooltip("Enter a function of y", ImGui::GetStyle().HoverDelayNormal);
-                        ImGui::SameLine();
-                        ImGui::InputText("##x_max", x_max_eq, 32);
-                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                            ImGui::SetTooltip("Enter a function of y", ImGui::GetStyle().HoverDelayNormal);
-                        if (strlen(x_min_eq) == 0 || strlen(x_max_eq) == 0) ready = false;
-
-                        ImGui::InputFloat(u8"\u2264 y \u2264", &y_min, 0.f, 0.f, "%g");
-                        ImGui::SameLine();
-                        ImGui::InputFloat("##y_max", &y_max, 0.f, 0.f, "%g");
-                        break;
-                    case Polar:
-                        ImGui::InputFloat(u8"\u2264 \u03b8 \u2264", &theta_min, 0.f, 0.f, "%g");
-                        ImGui::SameLine();
-                        ImGui::InputFloat("##theta_max", &theta_max, 0.f, 0.f, "%g");
-
-                        ImGui::InputText(u8"\u2264 r \u2264", r_min_eq, 32);
-                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                            ImGui::SetTooltip(u8"Enter a function of \u03b8 (alias: t)", ImGui::GetStyle().HoverDelayNormal);
-                        ImGui::SameLine();
-                        ImGui::InputText("##r_max", r_max_eq, 32);
-                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                            ImGui::SetTooltip(u8"Enter a function of \u03b8 (alias: t)", ImGui::GetStyle().HoverDelayNormal);
-                        if (strlen(r_min_eq) == 0 || strlen(r_max_eq) == 0) ready = false;
-                        break;
-                    }
-                    ImGui::PopItemWidth();
-                    ImGui::SetNextItemWidth(vMax.x - vMin.x - SC(81.f));
 
                     const char* preview = graphs[integrand_index].defn;
                     auto to_imcol32 = [](const glm::vec4& color) {
@@ -1936,44 +1884,183 @@ public:
                         ImU8 b = static_cast<ImU8>(clamp(color.b, 0.f, 1.f) * 255.f);
                         ImU8 a = static_cast<ImU8>(clamp(color.w, 0.f, 1.f) * 255.f);
                         return IM_COL32(r, g, b, a);
-                        };
-                    if (ImGui::BeginCombo("##integrand", preview)) {
-                        for (int n = 1; n < graphs.size(); n++) {
-                            if (!graphs[n].enabled) continue;
-                            const bool is_selected = (integrand_index == n);
-                            ImGui::PushStyleColor(ImGuiCol_Text, to_imcol32(graphs[n].color * 1.1f));
-                            if (ImGui::Selectable(graphs[n].defn, is_selected))
-                                integrand_index = n;
-                            ImGui::PopStyleColor();
-                            if (is_selected) ImGui::SetItemDefaultFocus();
-                        }
-                        ImGui::EndCombo();
-                    }
-                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                        ImGui::SetTooltip("Integrand", ImGui::GetStyle().HoverDelayNormal);
-                    ImGui::SameLine();
+                    };
 
-                    ImGui::SetNextItemWidth(SC(75.f));
-                    if (ImGui::InputInt("##precision", &integral_precision, 50, 100))
-                        if (integral_precision < 50) integral_precision = 50;
-                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                        ImGui::SetTooltip("Precision, higher the better", ImGui::GetStyle().HoverDelayNormal);
+                    if (ImGui::BeginTabBar("IntegrationTypes")) {
+                        if (ImGui::BeginTabItem("Double Integral")) {
+                            ImGui::BeginChild(ImGui::GetID("region_type"), ImVec2(SC(100), 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+                            ImGui::BeginDisabled(show_integral_result || second_corner);
+                            if (ImGui::RadioButton("Rectangle", region_type == CartesianRectangle)) region_type = CartesianRectangle;
+                            if (ImGui::RadioButton("Type I", region_type == Type1)) region_type = Type1;
+                            if (ImGui::RadioButton("Type II", region_type == Type2)) region_type = Type2;
+                            if (ImGui::RadioButton("Polar", region_type == Polar)) region_type = Polar;
+                            ImGui::EndDisabled();
+                            ImGui::EndChild();
+                            ImGui::SameLine();
+                            ImGui::BeginChild(ImGui::GetID("region_bounds"), ImVec2(SC(228), 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
+                            ImGui::BeginDisabled(show_integral_result || second_corner);
+                            vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
+                            vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
+                            ImGui::PushItemWidth((vMax.x - vMin.x - SC(42.f)) / 2.f);
+                            bool ready = true;
+                            switch (region_type) {
+                            case CartesianRectangle:
+                                ImGui::InputFloat(u8"\u2264 x \u2264", &x_min, 0.f, 0.f, "%g");
+                                ImGui::SameLine();
+                                ImGui::InputFloat("##x_max", &x_max, 0.f, 0.f, "%g");
 
-                    ImGui::EndDisabled();
-                    ImGui::BeginDisabled(!ready || show_integral_result || second_corner);
-                    if (ImGui::Button("Compute", ImVec2(vMax.x - vMin.x, 0.f))) {
-                        glUniform1i(glGetUniformLocation(shaderProgram, "integral"), true);
-                        glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), integrand_index);
-                        glUniform1i(glGetUniformLocation(shaderProgram, "region_type"), region_type);
-                        int error = compute_integral(integral_infoLog);
-                        if (error != -1) erroring_eq = error;
-                        else {
-                            erroring_eq = -1;
-                            show_integral_result = true;
+                                ImGui::InputFloat(u8"\u2264 y \u2264", &y_min, 0.f, 0.f, "%g");
+                                ImGui::SameLine();
+                                ImGui::InputFloat("##y_max", &y_max, 0.f, 0.f, "%g");
+                                break;
+                            case Type1:
+                                ImGui::InputFloat(u8"\u2264 x \u2264", &x_min, 0.f, 0.f, "%g");
+                                ImGui::SameLine();
+                                ImGui::InputFloat("##x_max", &x_max, 0.f, 0.f, "%g");
+
+                                ImGui::InputText(u8"\u2264 y \u2264", y_min_eq, 32);
+                                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                    ImGui::SetTooltip("Enter a function of x", ImGui::GetStyle().HoverDelayNormal);
+                                ImGui::SameLine();
+                                ImGui::InputText("##y_max", y_max_eq, 32);
+                                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                    ImGui::SetTooltip("Enter a function of x", ImGui::GetStyle().HoverDelayNormal);
+                                if (strlen(y_min_eq) == 0 || strlen(y_max_eq) == 0) ready = false;
+                                break;
+                            case Type2:
+                                ImGui::InputText(u8"\u2264 x \u2264", x_min_eq, 32);
+                                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                    ImGui::SetTooltip("Enter a function of y", ImGui::GetStyle().HoverDelayNormal);
+                                ImGui::SameLine();
+                                ImGui::InputText("##x_max", x_max_eq, 32);
+                                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                    ImGui::SetTooltip("Enter a function of y", ImGui::GetStyle().HoverDelayNormal);
+                                if (strlen(x_min_eq) == 0 || strlen(x_max_eq) == 0) ready = false;
+
+                                ImGui::InputFloat(u8"\u2264 y \u2264", &y_min, 0.f, 0.f, "%g");
+                                ImGui::SameLine();
+                                ImGui::InputFloat("##y_max", &y_max, 0.f, 0.f, "%g");
+                                break;
+                            case Polar:
+                                ImGui::InputFloat(u8"\u2264 \u03b8 \u2264", &theta_min, 0.f, 0.f, "%g");
+                                ImGui::SameLine();
+                                ImGui::InputFloat("##theta_max", &theta_max, 0.f, 0.f, "%g");
+
+                                ImGui::InputText(u8"\u2264 r \u2264", r_min_eq, 32);
+                                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                    ImGui::SetTooltip(u8"Enter a function of \u03b8 (alias: t)", ImGui::GetStyle().HoverDelayNormal);
+                                ImGui::SameLine();
+                                ImGui::InputText("##r_max", r_max_eq, 32);
+                                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                    ImGui::SetTooltip(u8"Enter a function of \u03b8 (alias: t)", ImGui::GetStyle().HoverDelayNormal);
+                                if (strlen(r_min_eq) == 0 || strlen(r_max_eq) == 0) ready = false;
+                                break;
+                            }
+                            ImGui::PopItemWidth();
+                            ImGui::SetNextItemWidth(vMax.x - vMin.x - SC(81.f));
+
+                            if (ImGui::BeginCombo("##integrand", preview)) {
+                                for (int n = 1; n < graphs.size(); n++) {
+                                    if (!graphs[n].enabled) continue;
+                                    const bool is_selected = (integrand_index == n);
+                                    ImGui::PushStyleColor(ImGuiCol_Text, to_imcol32(graphs[n].color * 1.1f));
+                                    if (ImGui::Selectable(graphs[n].defn, is_selected))
+                                        integrand_index = n;
+                                    ImGui::PopStyleColor();
+                                    if (is_selected) ImGui::SetItemDefaultFocus();
+                                }
+                                ImGui::EndCombo();
+                            }
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                ImGui::SetTooltip("Integrand", ImGui::GetStyle().HoverDelayNormal);
+                            ImGui::SameLine();
+
+                            ImGui::SetNextItemWidth(SC(75.f));
+                            if (ImGui::InputInt("##precision", &integral_precision, 50, 100))
+                                if (integral_precision < 50) integral_precision = 50;
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                ImGui::SetTooltip("Precision, higher the better", ImGui::GetStyle().HoverDelayNormal);
+
+                            ImGui::EndDisabled();
+                            ImGui::BeginDisabled(!ready || show_integral_result || second_corner);
+                            if (ImGui::Button("Compute", ImVec2(vMax.x - vMin.x, 0.f))) {
+                                glUniform1i(glGetUniformLocation(shaderProgram, "integral"), true);
+                                glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), integrand_index);
+                                glUniform1i(glGetUniformLocation(shaderProgram, "region_type"), region_type);
+                                int error = compute_integral(integral_infoLog);
+                                if (error != -1) erroring_eq = error;
+                                else {
+                                    erroring_eq = -1;
+                                    show_integral_result = true;
+                                }
+                            }
+                            ImGui::EndDisabled();
+                            ImGui::EndChild();
+                            ImGui::EndTabItem();
                         }
+                        if (ImGui::BeginTabItem("Surface Integral")) {
+                            ImGui::Text("Surface Integral - WIP");
+                            ImGui::EndTabItem();
+                        }
+                        if (ImGui::BeginTabItem("Line Integral")) {
+                            ImGui::SetNextItemWidth(140.f);
+                            if (ImGui::BeginCombo("##integrand", preview)) {
+                                for (int n = 1; n < graphs.size(); n++) {
+                                    if (!graphs[n].enabled) continue;
+                                    const bool is_selected = (integrand_index == n);
+                                    ImGui::PushStyleColor(ImGuiCol_Text, to_imcol32(graphs[n].color * 1.1f));
+                                    if (ImGui::Selectable(graphs[n].defn, is_selected))
+                                        integrand_index = n;
+                                    ImGui::PopStyleColor();
+                                    if (is_selected) ImGui::SetItemDefaultFocus();
+                                }
+                                ImGui::EndCombo();
+                            }
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                ImGui::SetTooltip("Integrand", ImGui::GetStyle().HoverDelayNormal);
+                            ImGui::SameLine();
+
+                            ImGui::PushItemWidth((ImGui::GetContentRegionAvail().x - SC(43.f)) / 2.f);
+                            ImGui::InputFloat(u8"\u2264 t \u2264", &t_min, 0.f, 0.f, "%g");
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                ImGui::SetTooltip("Lower limit for the parameter t", ImGui::GetStyle().HoverDelayNormal);
+                            ImGui::SameLine();
+                            ImGui::InputFloat("##t_max", &t_max, 0.f, 0.f, "%g");
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                ImGui::SetTooltip("Upper limit for the parameter t", ImGui::GetStyle().HoverDelayNormal);
+                            ImGui::PopItemWidth();
+
+                            ImGui::PushItemWidth((vMax.x - vMin.x - SC(67.f)) / 2.f);
+                            //ImGui::Text("x(t):");
+                            //ImGui::SameLine();
+                            //ImGui::SetCursorPos(ImGui::GetCursorPos() + ImVec2(SC(-5.f), SC(-2.f)));
+                            ImGui::InputText("x(t)", x_param_eq, 32);
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                ImGui::SetTooltip("Enter a parametric function of t for x", ImGui::GetStyle().HoverDelayNormal);
+                            ImGui::SameLine();
+                            ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 2.f);
+                            //ImGui::Text("y(t):");
+                            //ImGui::SameLine();
+                            //ImGui::SetCursorPos(ImGui::GetCursorPos() + ImVec2(SC(-5.f), SC(-2.f)));
+                            ImGui::InputText("y(t)", y_param_eq, 32);
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                ImGui::SetTooltip("Enter a parametric function of t for y", ImGui::GetStyle().HoverDelayNormal);
+                            ImGui::PopItemWidth();
+
+                            ImGui::SetNextItemWidth(SC(140.f));
+                            if (ImGui::InputInt("##precision", &integral_precision, 50, 100))
+                                if (integral_precision < 50) integral_precision = 50;
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
+                                ImGui::SetTooltip("Precision, higher the better", ImGui::GetStyle().HoverDelayNormal);
+                            ImGui::SameLine();
+                            ImGui::BeginDisabled(strlen(x_param_eq) == 0 || strlen(y_param_eq) == 0);
+                            ImGui::Button("Compute", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+                            ImGui::EndDisabled();
+
+                            ImGui::EndTabItem();
+                        }
+                        ImGui::EndTabBar();
                     }
-                    ImGui::EndDisabled();
-                    ImGui::EndChild();
                 }
                 if (erroring_eq != -1) {
                     vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
