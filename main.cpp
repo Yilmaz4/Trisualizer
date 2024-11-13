@@ -1716,8 +1716,9 @@ public:
             vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
             vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
             ImGui::SetNextItemWidth(vMax.x - vMin.x);
-            if (ImGui::InputFloat3("##goto", value_ptr(centerPos)))
-                glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
+            if (ImGui::InputFloat3("##goto", value_ptr(next_centerPos))) {
+                move_to(next_centerPos);
+            }
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                 ImGui::SetTooltip("Center position", ImGui::GetStyle().HoverDelayNormal);
             if (ImGui::Button("Center on origin", ImVec2((vMax.x - vMin.x) / 2.f - 5.f, 0))) {
