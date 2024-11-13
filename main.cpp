@@ -1794,7 +1794,7 @@ public:
             buttonWidth = (vMax.x - vMin.x - 61.f) / 4.f;
             ImGui::BeginDisabled(none_active);
             if (gradient_vector) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
-            if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)gradVec_texture, ImVec2(buttonWidth, SC(30)), ImVec2(-(buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 0.0f), ImVec2(1.f + (buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+            if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)gradVec_texture, ImVec2(buttonWidth, SC(30)), ImVec2(0.5f - buttonWidth / SC(60), 0.f), ImVec2(0.5f + buttonWidth / SC(60), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 gradient_vector ^= 1;
                 tangent_plane = false;
                 normal_vector = false;
@@ -1809,7 +1809,7 @@ public:
 
             ImGui::SameLine();
             if (tangent_plane) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
-            if (ImGui::ImageButton("tangent_plane", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, SC(30)), ImVec2(-(buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 0.0f), ImVec2(1.f + (buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+            if (ImGui::ImageButton("tangent_plane", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, SC(30)), ImVec2(0.5f - buttonWidth / SC(60), 0.f), ImVec2(0.5f + buttonWidth / SC(60), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 tangent_plane ^= 1;
                 gradient_vector = false;
                 normal_vector = false;
@@ -1824,7 +1824,7 @@ public:
 
             ImGui::SameLine();
             if (normal_vector) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
-            if (ImGui::ImageButton("normal_vector", (void*)(intptr_t)normVec_texture, ImVec2(buttonWidth, SC(30)), ImVec2(-(buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 0.0f), ImVec2(1.f + (buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+            if (ImGui::ImageButton("normal_vector", (void*)(intptr_t)normVec_texture, ImVec2(buttonWidth, SC(30)), ImVec2(0.5f - buttonWidth / SC(60), 0.f), ImVec2(0.5f + buttonWidth / SC(60), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 normal_vector ^= 1;
                 tangent_plane = false;
                 gradient_vector = false;
@@ -1839,7 +1839,7 @@ public:
 
             ImGui::SameLine();
             if (integral) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
-            if (ImGui::ImageButton("integral", (void*)(intptr_t)integral_texture, ImVec2(buttonWidth, SC(30)), ImVec2(-(buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 0.0f), ImVec2(1.f + (buttonWidth - SC(30)) / 2.f / (buttonWidth - SC(30)), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+            if (ImGui::ImageButton("integral", (void*)(intptr_t)integral_texture, ImVec2(buttonWidth, SC(30)), ImVec2(0.5f - buttonWidth / SC(60), 0.f), ImVec2(0.5f + buttonWidth / SC(60), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 if (!integral) {
                     glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
                     integral = show_integral_result = apply_integral = second_corner = false;
