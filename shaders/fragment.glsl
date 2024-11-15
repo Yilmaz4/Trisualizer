@@ -34,7 +34,7 @@ uniform vec3 centerPos;
 uniform bool tangent_plane;
 uniform bool shading;
 
-uniform bool integral;
+uniform int integral;
 uniform int region_type;
 uniform vec2 corner1;
 uniform vec2 corner2;
@@ -120,9 +120,9 @@ void main() {
 		}
 	}
 
-	if (integral) {
-		if (index != integrand_idx) {
-			fragColor = vec4(fragColor.rgb, fragColor.w * 0.1f);
+	if (bool(integral)) {
+		if (integral == 3 || index != integrand_idx) {
+			fragColor = vec4(fragColor.rgb, fragColor.w * 0.2f);
 		} else if (region_type == -1) {
 			vec2 s = step(min(corner1, corner2), gridCoord) * step(gridCoord, max(corner1, corner2));
 			fragColor = vec4(fragColor.rgb * (1.f - (1.f - s.x * s.y) * 0.8f), fragColor.w);
@@ -133,7 +133,7 @@ void main() {
 
 	float prevDepth = texture(prevZBuffer, (gl_FragCoord.xy) / windowSize).r;
 	if (!tangent_plane && int(gl_FragCoord.x) % radius == 0 && int(gl_FragCoord.y) % radius == 0 && gl_FragCoord.z == prevDepth) {
-		if (integral && index != integrand_idx) return;
+		if (bool(integral) && index != integrand_idx) return;
 		float x = floor((gl_FragCoord.x - windowSize.x + regionSize.x) / radius);
 		float y = floor(gl_FragCoord.y / radius);
 		float w = floor(regionSize.x / radius);

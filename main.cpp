@@ -37,6 +37,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 #include <vector>
 #include <iomanip>
 #include <ctime>
@@ -263,7 +264,7 @@ public:
         
         unsigned int computeShader = glCreateShader(GL_COMPUTE_SHADER);
         char* computeSource = read_resource(IDR_CMPT);
-        size_t size = strlen(computeSource) + 512;
+        size_t size = strlen(computeSource) + pdefn.capacity() + 7;
         char* modifiedSource = new char[size];
         sprintf_s(modifiedSource, size, computeSource, polar ? "" : "//", pdefn.c_str(), regionBool);
         glShaderSource(computeShader, 1, &modifiedSource, NULL);
@@ -333,14 +334,13 @@ enum ExpressionType {
 };
 
 enum IntegralType {
+    None,
     DoubleIntegral,
     SurfaceIntegral,
     LineIntegral,
 };
 
-
 // https://www.youtube.com/watch?v=KvwVYJY_IZ4
-
 const int triang[256 * 15]{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 1, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 8, 3, 9, 8, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 2, 10, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 8, 3, 1, 2, 10, -1, -1, -1, -1, -1, -1, -1, -1, -1,9, 2, 10, 0, 2, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1,2, 8, 3, 2, 10, 8, 10, 9, 8, -1, -1, -1, -1, -1, -1,3, 11, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 11, 2, 8, 11, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 9, 0, 2, 3, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 11, 2, 1, 9, 11, 9, 8, 11, -1, -1, -1, -1, -1, -1,3, 10, 1, 11, 10, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 10, 1, 0, 8, 10, 8, 11, 10, -1, -1, -1, -1, -1, -1,3, 9, 0, 3, 11, 9, 11, 10, 9, -1, -1, -1, -1, -1, -1,9, 8, 10, 10, 8, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 7, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 3, 0, 7, 3, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 1, 9, 8, 4, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 1, 9, 4, 7, 1, 7, 3, 1, -1, -1, -1, -1, -1, -1,1, 2, 10, 8, 4, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1,3, 4, 7, 3, 0, 4, 1, 2, 10, -1, -1, -1, -1, -1, -1,9, 2, 10, 9, 0, 2, 8, 4, 7, -1, -1, -1, -1, -1, -1,2, 10, 9, 2, 9, 7, 2, 7, 3, 7, 9, 4, -1, -1, -1,8, 4, 7, 3, 11, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1,11, 4, 7, 11, 2, 4, 2, 0, 4, -1, -1, -1, -1, -1, -1,9, 0, 1, 8, 4, 7, 2, 3, 11, -1, -1, -1, -1, -1, -1,4, 7, 11, 9, 4, 11, 9, 11, 2, 9, 2, 1, -1, -1, -1,3, 10, 1, 3, 11, 10, 7, 8, 4, -1, -1, -1, -1, -1, -1,1, 11, 10, 1, 4, 11, 1, 0, 4, 7, 11, 4, -1, -1, -1,4, 7, 8, 9, 0, 11, 9, 11, 10, 11, 0, 3, -1, -1, -1,4, 7, 11, 4, 11, 9, 9, 11, 10, -1, -1, -1, -1, -1, -1,9, 5, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,9, 5, 4, 0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 5, 4, 1, 5, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1,8, 5, 4, 8, 3, 5, 3, 1, 5, -1, -1, -1, -1, -1, -1,1, 2, 10, 9, 5, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1,3, 0, 8, 1, 2, 10, 4, 9, 5, -1, -1, -1, -1, -1, -1,5, 2, 10, 5, 4, 2, 4, 0, 2, -1, -1, -1, -1, -1, -1,2, 10, 5, 3, 2, 5, 3, 5, 4, 3, 4, 8, -1, -1, -1,9, 5, 4, 2, 3, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 11, 2, 0, 8, 11, 4, 9, 5, -1, -1, -1, -1, -1, -1,0, 5, 4, 0, 1, 5, 2, 3, 11, -1, -1, -1, -1, -1, -1,2, 1, 5, 2, 5, 8, 2, 8, 11, 4, 8, 5, -1, -1, -1,10, 3, 11, 10, 1, 3, 9, 5, 4, -1, -1, -1, -1, -1, -1,4, 9, 5, 0, 8, 1, 8, 10, 1, 8, 11, 10, -1, -1, -1,5, 4, 0, 5, 0, 11, 5, 11, 10, 11, 0, 3, -1, -1, -1,5, 4, 8, 5, 8, 10, 10, 8, 11, -1, -1, -1, -1, -1, -1,9, 7, 8, 5, 7, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1,9, 3, 0, 9, 5, 3, 5, 7, 3, -1, -1, -1, -1, -1, -1,0, 7, 8, 0, 1, 7, 1, 5, 7, -1, -1, -1, -1, -1, -1,1, 5, 3, 3, 5, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1,9, 7, 8, 9, 5, 7, 10, 1, 2, -1, -1, -1, -1, -1, -1,10, 1, 2, 9, 5, 0, 5, 3, 0, 5, 7, 3, -1, -1, -1,8, 0, 2, 8, 2, 5, 8, 5, 7, 10, 5, 2, -1, -1, -1,2, 10, 5, 2, 5, 3, 3, 5, 7, -1, -1, -1, -1, -1, -1,7, 9, 5, 7, 8, 9, 3, 11, 2, -1, -1, -1, -1, -1, -1,9, 5, 7, 9, 7, 2, 9, 2, 0, 2, 7, 11, -1, -1, -1,2, 3, 11, 0, 1, 8, 1, 7, 8, 1, 5, 7, -1, -1, -1,11, 2, 1, 11, 1, 7, 7, 1, 5, -1, -1, -1, -1, -1, -1,9, 5, 8, 8, 5, 7, 10, 1, 3, 10, 3, 11, -1, -1, -1,5, 7, 0, 5, 0, 9, 7, 11, 0, 1, 0, 10, 11, 10, 0,11, 10, 0, 11, 0, 3, 10, 5, 0, 8, 0, 7, 5, 7, 0,11, 10, 5, 7, 11, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1,10, 6, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 8, 3, 5, 10, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1,9, 0, 1, 5, 10, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 8, 3, 1, 9, 8, 5, 10, 6, -1, -1, -1, -1, -1, -1,1, 6, 5, 2, 6, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 6, 5, 1, 2, 6, 3, 0, 8, -1, -1, -1, -1, -1, -1,9, 6, 5, 9, 0, 6, 0, 2, 6, -1, -1, -1, -1, -1, -1,5, 9, 8, 5, 8, 2, 5, 2, 6, 3, 2, 8, -1, -1, -1,2, 3, 11, 10, 6, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1,11, 0, 8, 11, 2, 0, 10, 6, 5, -1, -1, -1, -1, -1, -1,0, 1, 9, 2, 3, 11, 5, 10, 6, -1, -1, -1, -1, -1, -1,5, 10, 6, 1, 9, 2, 9, 11, 2, 9, 8, 11, -1, -1, -1,6, 3, 11, 6, 5, 3, 5, 1, 3, -1, -1, -1, -1, -1, -1,0, 8, 11, 0, 11, 5, 0, 5, 1, 5, 11, 6, -1, -1, -1,3, 11, 6, 0, 3, 6, 0, 6, 5, 0, 5, 9, -1, -1, -1,6, 5, 9, 6, 9, 11, 11, 9, 8, -1, -1, -1, -1, -1, -1,5, 10, 6, 4, 7, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 3, 0, 4, 7, 3, 6, 5, 10, -1, -1, -1, -1, -1, -1,1, 9, 0, 5, 10, 6, 8, 4, 7, -1, -1, -1, -1, -1, -1,10, 6, 5, 1, 9, 7, 1, 7, 3, 7, 9, 4, -1, -1, -1,6, 1, 2, 6, 5, 1, 4, 7, 8, -1, -1, -1, -1, -1, -1,1, 2, 5, 5, 2, 6, 3, 0, 4, 3, 4, 7, -1, -1, -1,8, 4, 7, 9, 0, 5, 0, 6, 5, 0, 2, 6, -1, -1, -1,7, 3, 9, 7, 9, 4, 3, 2, 9, 5, 9, 6, 2, 6, 9,3, 11, 2, 7, 8, 4, 10, 6, 5, -1, -1, -1, -1, -1, -1,5, 10, 6, 4, 7, 2, 4, 2, 0, 2, 7, 11, -1, -1, -1,0, 1, 9, 4, 7, 8, 2, 3, 11, 5, 10, 6, -1, -1, -1,9, 2, 1, 9, 11, 2, 9, 4, 11, 7, 11, 4, 5, 10, 6,8, 4, 7, 3, 11, 5, 3, 5, 1, 5, 11, 6, -1, -1, -1,5, 1, 11, 5, 11, 6, 1, 0, 11, 7, 11, 4, 0, 4, 11,0, 5, 9, 0, 6, 5, 0, 3, 6, 11, 6, 3, 8, 4, 7,6, 5, 9, 6, 9, 11, 4, 7, 9, 7, 11, 9, -1, -1, -1,10, 4, 9, 6, 4, 10, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 10, 6, 4, 9, 10, 0, 8, 3, -1, -1, -1, -1, -1, -1,10, 0, 1, 10, 6, 0, 6, 4, 0, -1, -1, -1, -1, -1, -1,8, 3, 1, 8, 1, 6, 8, 6, 4, 6, 1, 10, -1, -1, -1,1, 4, 9, 1, 2, 4, 2, 6, 4, -1, -1, -1, -1, -1, -1,3, 0, 8, 1, 2, 9, 2, 4, 9, 2, 6, 4, -1, -1, -1,0, 2, 4, 4, 2, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1,8, 3, 2, 8, 2, 4, 4, 2, 6, -1, -1, -1, -1, -1, -1,10, 4, 9, 10, 6, 4, 11, 2, 3, -1, -1, -1, -1, -1, -1,0, 8, 2, 2, 8, 11, 4, 9, 10, 4, 10, 6, -1, -1, -1,3, 11, 2, 0, 1, 6, 0, 6, 4, 6, 1, 10, -1, -1, -1,6, 4, 1, 6, 1, 10, 4, 8, 1, 2, 1, 11, 8, 11, 1,9, 6, 4, 9, 3, 6, 9, 1, 3, 11, 6, 3, -1, -1, -1,8, 11, 1, 8, 1, 0, 11, 6, 1, 9, 1, 4, 6, 4, 1,3, 11, 6, 3, 6, 0, 0, 6, 4, -1, -1, -1, -1, -1, -1,6, 4, 8, 11, 6, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1,7, 10, 6, 7, 8, 10, 8, 9, 10, -1, -1, -1, -1, -1, -1,0, 7, 3, 0, 10, 7, 0, 9, 10, 6, 7, 10, -1, -1, -1,10, 6, 7, 1, 10, 7, 1, 7, 8, 1, 8, 0, -1, -1, -1,10, 6, 7, 10, 7, 1, 1, 7, 3, -1, -1, -1, -1, -1, -1,1, 2, 6, 1, 6, 8, 1, 8, 9, 8, 6, 7, -1, -1, -1,2, 6, 9, 2, 9, 1, 6, 7, 9, 0, 9, 3, 7, 3, 9,7, 8, 0, 7, 0, 6, 6, 0, 2, -1, -1, -1, -1, -1, -1,7, 3, 2, 6, 7, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1,2, 3, 11, 10, 6, 8, 10, 8, 9, 8, 6, 7, -1, -1, -1,2, 0, 7, 2, 7, 11, 0, 9, 7, 6, 7, 10, 9, 10, 7,1, 8, 0, 1, 7, 8, 1, 10, 7, 6, 7, 10, 2, 3, 11,11, 2, 1, 11, 1, 7, 10, 6, 1, 6, 7, 1, -1, -1, -1,8, 9, 6, 8, 6, 7, 9, 1, 6, 11, 6, 3, 1, 3, 6,0, 9, 1, 11, 6, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1,7, 8, 0, 7, 0, 6, 3, 11, 0, 11, 6, 0, -1, -1, -1,7, 11, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,7, 6, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,3, 0, 8, 11, 7, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 1, 9, 11, 7, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1,8, 1, 9, 8, 3, 1, 11, 7, 6, -1, -1, -1, -1, -1, -1,10, 1, 2, 6, 11, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 2, 10, 3, 0, 8, 6, 11, 7, -1, -1, -1, -1, -1, -1,2, 9, 0, 2, 10, 9, 6, 11, 7, -1, -1, -1, -1, -1, -1,6, 11, 7, 2, 10, 3, 10, 8, 3, 10, 9, 8, -1, -1, -1,7, 2, 3, 6, 2, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1,7, 0, 8, 7, 6, 0, 6, 2, 0, -1, -1, -1, -1, -1, -1,2, 7, 6, 2, 3, 7, 0, 1, 9, -1, -1, -1, -1, -1, -1,1, 6, 2, 1, 8, 6, 1, 9, 8, 8, 7, 6, -1, -1, -1,10, 7, 6, 10, 1, 7, 1, 3, 7, -1, -1, -1, -1, -1, -1,10, 7, 6, 1, 7, 10, 1, 8, 7, 1, 0, 8, -1, -1, -1,0, 3, 7, 0, 7, 10, 0, 10, 9, 6, 10, 7, -1, -1, -1,7, 6, 10, 7, 10, 8, 8, 10, 9, -1, -1, -1, -1, -1, -1,6, 8, 4, 11, 8, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1,3, 6, 11, 3, 0, 6, 0, 4, 6, -1, -1, -1, -1, -1, -1,8, 6, 11, 8, 4, 6, 9, 0, 1, -1, -1, -1, -1, -1, -1,9, 4, 6, 9, 6, 3, 9, 3, 1, 11, 3, 6, -1, -1, -1,6, 8, 4, 6, 11, 8, 2, 10, 1, -1, -1, -1, -1, -1, -1,1, 2, 10, 3, 0, 11, 0, 6, 11, 0, 4, 6, -1, -1, -1,4, 11, 8, 4, 6, 11, 0, 2, 9, 2, 10, 9, -1, -1, -1,10, 9, 3, 10, 3, 2, 9, 4, 3, 11, 3, 6, 4, 6, 3,8, 2, 3, 8, 4, 2, 4, 6, 2, -1, -1, -1, -1, -1, -1,0, 4, 2, 4, 6, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 9, 0, 2, 3, 4, 2, 4, 6, 4, 3, 8, -1, -1, -1,1, 9, 4, 1, 4, 2, 2, 4, 6, -1, -1, -1, -1, -1, -1,8, 1, 3, 8, 6, 1, 8, 4, 6, 6, 10, 1, -1, -1, -1,10, 1, 0, 10, 0, 6, 6, 0, 4, -1, -1, -1, -1, -1, -1,4, 6, 3, 4, 3, 8, 6, 10, 3, 0, 3, 9, 10, 9, 3,10, 9, 4, 6, 10, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 9, 5, 7, 6, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 8, 3, 4, 9, 5, 11, 7, 6, -1, -1, -1, -1, -1, -1,5, 0, 1, 5, 4, 0, 7, 6, 11, -1, -1, -1, -1, -1, -1,11, 7, 6, 8, 3, 4, 3, 5, 4, 3, 1, 5, -1, -1, -1,9, 5, 4, 10, 1, 2, 7, 6, 11, -1, -1, -1, -1, -1, -1,6, 11, 7, 1, 2, 10, 0, 8, 3, 4, 9, 5, -1, -1, -1,7, 6, 11, 5, 4, 10, 4, 2, 10, 4, 0, 2, -1, -1, -1,3, 4, 8, 3, 5, 4, 3, 2, 5, 10, 5, 2, 11, 7, 6,7, 2, 3, 7, 6, 2, 5, 4, 9, -1, -1, -1, -1, -1, -1,9, 5, 4, 0, 8, 6, 0, 6, 2, 6, 8, 7, -1, -1, -1,3, 6, 2, 3, 7, 6, 1, 5, 0, 5, 4, 0, -1, -1, -1,6, 2, 8, 6, 8, 7, 2, 1, 8, 4, 8, 5, 1, 5, 8,9, 5, 4, 10, 1, 6, 1, 7, 6, 1, 3, 7, -1, -1, -1,1, 6, 10, 1, 7, 6, 1, 0, 7, 8, 7, 0, 9, 5, 4,4, 0, 10, 4, 10, 5, 0, 3, 10, 6, 10, 7, 3, 7, 10,7, 6, 10, 7, 10, 8, 5, 4, 10, 4, 8, 10, -1, -1, -1,6, 9, 5, 6, 11, 9, 11, 8, 9, -1, -1, -1, -1, -1, -1,3, 6, 11, 0, 6, 3, 0, 5, 6, 0, 9, 5, -1, -1, -1,0, 11, 8, 0, 5, 11, 0, 1, 5, 5, 6, 11, -1, -1, -1,6, 11, 3, 6, 3, 5, 5, 3, 1, -1, -1, -1, -1, -1, -1,1, 2, 10, 9, 5, 11, 9, 11, 8, 11, 5, 6, -1, -1, -1,0, 11, 3, 0, 6, 11, 0, 9, 6, 5, 6, 9, 1, 2, 10,11, 8, 5, 11, 5, 6, 8, 0, 5, 10, 5, 2, 0, 2, 5,6, 11, 3, 6, 3, 5, 2, 10, 3, 10, 5, 3, -1, -1, -1,5, 8, 9, 5, 2, 8, 5, 6, 2, 3, 8, 2, -1, -1, -1,9, 5, 6, 9, 6, 0, 0, 6, 2, -1, -1, -1, -1, -1, -1,1, 5, 8, 1, 8, 0, 5, 6, 8, 3, 8, 2, 6, 2, 8,1, 5, 6, 2, 1, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 3, 6, 1, 6, 10, 3, 8, 6, 5, 6, 9, 8, 9, 6,10, 1, 0, 10, 0, 6, 9, 5, 0, 5, 6, 0, -1, -1, -1,0, 3, 8, 5, 6, 10, -1, -1, -1, -1, -1, -1, -1, -1, -1,10, 5, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,11, 5, 10, 7, 5, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1,11, 5, 10, 11, 7, 5, 8, 3, 0, -1, -1, -1, -1, -1, -1,5, 11, 7, 5, 10, 11, 1, 9, 0, -1, -1, -1, -1, -1, -1,10, 7, 5, 10, 11, 7, 9, 8, 1, 8, 3, 1, -1, -1, -1,11, 1, 2, 11, 7, 1, 7, 5, 1, -1, -1, -1, -1, -1, -1,0, 8, 3, 1, 2, 7, 1, 7, 5, 7, 2, 11, -1, -1, -1,9, 7, 5, 9, 2, 7, 9, 0, 2, 2, 11, 7, -1, -1, -1,7, 5, 2, 7, 2, 11, 5, 9, 2, 3, 2, 8, 9, 8, 2,2, 5, 10, 2, 3, 5, 3, 7, 5, -1, -1, -1, -1, -1, -1,8, 2, 0, 8, 5, 2, 8, 7, 5, 10, 2, 5, -1, -1, -1,9, 0, 1, 5, 10, 3, 5, 3, 7, 3, 10, 2, -1, -1, -1,9, 8, 2, 9, 2, 1, 8, 7, 2, 10, 2, 5, 7, 5, 2,1, 3, 5, 3, 7, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 8, 7, 0, 7, 1, 1, 7, 5, -1, -1, -1, -1, -1, -1,9, 0, 3, 9, 3, 5, 5, 3, 7, -1, -1, -1, -1, -1, -1,9, 8, 7, 5, 9, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1,5, 8, 4, 5, 10, 8, 10, 11, 8, -1, -1, -1, -1, -1, -1,5, 0, 4, 5, 11, 0, 5, 10, 11, 11, 3, 0, -1, -1, -1,0, 1, 9, 8, 4, 10, 8, 10, 11, 10, 4, 5, -1, -1, -1,10, 11, 4, 10, 4, 5, 11, 3, 4, 9, 4, 1, 3, 1, 4,2, 5, 1, 2, 8, 5, 2, 11, 8, 4, 5, 8, -1, -1, -1,0, 4, 11, 0, 11, 3, 4, 5, 11, 2, 11, 1, 5, 1, 11,0, 2, 5, 0, 5, 9, 2, 11, 5, 4, 5, 8, 11, 8, 5,9, 4, 5, 2, 11, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1,2, 5, 10, 3, 5, 2, 3, 4, 5, 3, 8, 4, -1, -1, -1,5, 10, 2, 5, 2, 4, 4, 2, 0, -1, -1, -1, -1, -1, -1,3, 10, 2, 3, 5, 10, 3, 8, 5, 4, 5, 8, 0, 1, 9,5, 10, 2, 5, 2, 4, 1, 9, 2, 9, 4, 2, -1, -1, -1,8, 4, 5, 8, 5, 3, 3, 5, 1, -1, -1, -1, -1, -1, -1,0, 4, 5, 1, 0, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1,8, 4, 5, 8, 5, 3, 9, 0, 5, 0, 3, 5, -1, -1, -1,9, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 11, 7, 4, 9, 11, 9, 10, 11, -1, -1, -1, -1, -1, -1,0, 8, 3, 4, 9, 7, 9, 11, 7, 9, 10, 11, -1, -1, -1,1, 10, 11, 1, 11, 4, 1, 4, 0, 7, 4, 11, -1, -1, -1,3, 1, 4, 3, 4, 8, 1, 10, 4, 7, 4, 11, 10, 11, 4,4, 11, 7, 9, 11, 4, 9, 2, 11, 9, 1, 2, -1, -1, -1,9, 7, 4, 9, 11, 7, 9, 1, 11, 2, 11, 1, 0, 8, 3,11, 7, 4, 11, 4, 2, 2, 4, 0, -1, -1, -1, -1, -1, -1,11, 7, 4, 11, 4, 2, 8, 3, 4, 3, 2, 4, -1, -1, -1,2, 9, 10, 2, 7, 9, 2, 3, 7, 7, 4, 9, -1, -1, -1,9, 10, 7, 9, 7, 4, 10, 2, 7, 8, 7, 0, 2, 0, 7,3, 7, 10, 3, 10, 2, 7, 4, 10, 1, 10, 0, 4, 0, 10,1, 10, 2, 8, 7, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 9, 1, 4, 1, 7, 7, 1, 3, -1, -1, -1, -1, -1, -1,4, 9, 1, 4, 1, 7, 0, 8, 1, 8, 7, 1, -1, -1, -1,4, 0, 3, 7, 4, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1,4, 8, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,9, 10, 8, 10, 11, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1,3, 0, 9, 3, 9, 11, 11, 9, 10, -1, -1, -1, -1, -1, -1,0, 1, 10, 0, 10, 8, 8, 10, 11, -1, -1, -1, -1, -1, -1,3, 1, 10, 11, 3, 10, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 2, 11, 1, 11, 9, 9, 11, 8, -1, -1, -1, -1, -1, -1,3, 0, 9, 3, 9, 11, 1, 2, 9, 2, 11, 9, -1, -1, -1,0, 2, 11, 8, 0, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1,3, 2, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,2, 3, 8, 2, 8, 10, 10, 8, 9, -1, -1, -1, -1, -1, -1,9, 10, 2, 0, 9, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1,2, 3, 8, 2, 8, 10, 0, 1, 8, 1, 10, 8, -1, -1, -1,1, 10, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,1, 3, 8, 9, 1, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 9, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,0, 3, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
 };
@@ -376,7 +376,11 @@ public:
     char x_min_eq[32], x_max_eq[32], y_min_eq[32], y_max_eq[32], r_min_eq[32], r_max_eq[32], x_param_eq[32], y_param_eq[32], scalar_field_eq[32], integral_infoLog[512];
     float x_min_eq_min, x_max_eq_max, y_min_eq_min, y_max_eq_max;
     vec3 center_of_region;
-    float integral_result, dx, dy;
+    float integral_result, dx, dy, dt;
+    IntegralType last_integration_type;
+    float* li_data = nullptr;
+    float* li_data_ws = nullptr;
+    size_t li_samplecount = 0;
 
     vec3 vector_start = vec3(0.f), vector_end = vec3(0.f, 0.5f, 0.f);
 
@@ -886,6 +890,104 @@ private:
         in.close();
     }
 
+    void draw_lineintegral(vec3 color, mat4 view, mat4 proj) {
+        int success;
+        char infoLog[512];
+
+        unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+        const char* vertexSource = R"glsl(
+#version 460 core
+
+layout (location = 0) in vec3 aPos;
+
+uniform mat4 view;
+uniform mat4 proj;
+
+out vec3 fragPos;
+out vec3 normal;
+
+void main() {
+    fragPos = aPos;
+    gl_Position = proj * view * vec4(aPos, 1.f);
+})glsl";
+        glShaderSource(vertexShader, 1, &vertexSource, NULL);
+        glCompileShader(vertexShader);
+        glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+            MessageBoxA(NULL, infoLog, "Line integral shader compilation error", MB_ICONERROR | MB_OK);
+            return;
+        }
+
+        unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        const char* fragmentSource = R"glsl(
+#version 460 core
+
+in vec3 fragPos;
+out vec4 fragColor;
+
+uniform vec3 color;
+
+void main() {
+    fragColor = vec4(color, 1.0);
+})glsl";
+        glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
+        glCompileShader(fragmentShader);
+        glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+            MessageBoxA(NULL, infoLog, "Arrow fragment shader compilation error", MB_ICONERROR | MB_OK);
+            return;
+        }
+
+        GLuint vectorShaderProgram = glCreateProgram();
+        glAttachShader(vectorShaderProgram, vertexShader);
+        glAttachShader(vectorShaderProgram, fragmentShader);
+        glLinkProgram(vectorShaderProgram);
+        glDeleteShader(fragmentShader);
+        glDeleteShader(vertexShader);
+        glUseProgram(vectorShaderProgram);
+
+        GLuint vao, vbo;
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glBindVertexArray(vao);
+
+
+        for (int i = 0; i < li_samplecount; i++) {
+            vec3 cvu = to_worldspace(vec3(li_data[i * 3], li_data[i * 3 + 1], li_data[i * 3 + 2]));
+            vec3 cvd = to_worldspace(vec3(li_data[i * 3], li_data[i * 3 + 1], 0.f));
+
+            li_data_ws[i * 6 + 0] = cvu.x;
+            li_data_ws[i * 6 + 1] = cvu.y;
+            li_data_ws[i * 6 + 2] = cvu.z;
+            li_data_ws[i * 6 + 3] = cvd.x;
+            li_data_ws[i * 6 + 4] = cvd.y;
+            li_data_ws[i * 6 + 5] = cvd.z;
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, li_samplecount * 6 * sizeof(float), li_data_ws, GL_STATIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
+        glEnableVertexAttribArray(0);
+
+        glUniformMatrix4fv(glGetUniformLocation(vectorShaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(glGetUniformLocation(vectorShaderProgram, "proj"), 1, GL_FALSE, glm::value_ptr(proj));
+
+        glUniform3fv(glGetUniformLocation(vectorShaderProgram, "color"), 1, value_ptr(color));
+        
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, li_samplecount * 2);
+
+        glDeleteProgram(vectorShaderProgram);
+        glDeleteBuffers(1, &vbo);
+        glDeleteVertexArrays(1, &vao);
+
+        glUseProgram(shaderProgram);
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    }
+
     // TODO: add shadows under arrow
     void draw_vector(vec3 start, vec3 end, vec3 color, mat4 view, mat4 proj, float thickness = 1.f) {
         const float factor = graph_size / 1.3f;
@@ -994,7 +1096,6 @@ void main() {
     vec3 diffuse = diff * color;
 
     fragColor = vec4(ambient + diffuse, 1.f);
-    //fragColor = vec4(normal * 0.5f + 0.5f, 1.f);
 })glsl";
         glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
         glCompileShader(fragmentShader);
@@ -1068,7 +1169,7 @@ void main() {
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-layout(std430, binding = 4) volatile buffer samplebuffer {
+layout(std430, binding = 4) volatile buffer sbuf1 {
 	float samples[];
 };
 uniform int samplesize;
@@ -1089,7 +1190,7 @@ void main() {
 	float %c = rbegin + ((rend - rbegin) / samplesize) * float(gl_GlobalInvocationID.x);
     samples[gl_GlobalInvocationID.x] = float(%s);
 })glsl";
-        size_t size = strlen(computeSource) + 256;
+        size_t size = strlen(computeSource) + strlen(func) + 1;
         char* modifiedSource = new char[size];
         sprintf_s(modifiedSource, size, computeSource, var, func);
         glShaderSource(computeShader, 1, &modifiedSource, NULL);
@@ -1119,7 +1220,7 @@ void main() {
         glGenBuffers(1, &sampleBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, sampleBuffer);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, sampleBuffer);
-        glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "samplebuffer"), 4);
+        glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "sbuf1"), 4);
         glBufferData(GL_SHADER_STORAGE_BUFFER, samplesize * sizeof(float), nullptr, GL_STATIC_DRAW);
 
         glUniform1i(glGetUniformLocation(computeProgram, "samplesize"), samplesize);
@@ -1128,6 +1229,7 @@ void main() {
 
         glDispatchCompute(samplesize, 1, 1);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
         float* data = new float[samplesize]{};
         glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, samplesize * sizeof(float), data);
         float min = std::numeric_limits<float>::max(), max = std::numeric_limits<float>::min();
@@ -1143,7 +1245,7 @@ void main() {
         return std::pair(min, max);
     }
 
-    int compute_integral(char* infoLog) {
+    int compute_doubleintegral(char* infoLog) {
         Graph g = graphs[integrand_index];
         g.grid_res = integral_precision;
         float xmin{}, xmax{}, ymin{}, ymax{};
@@ -1194,7 +1296,7 @@ void main() {
         glBufferData(GL_SHADER_STORAGE_BUFFER, 2ull * g.grid_res * g.grid_res * (int)sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glDispatchCompute(g.grid_res, g.grid_res, 1);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-        float* data = new float[2ull * g.grid_res * g.grid_res]{};
+        float* data = new float[2ull * g.grid_res * g.grid_res] {};
         glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 2ull * g.grid_res * g.grid_res * sizeof(float), data);
         dx = abs(xmax - xmin) / g.grid_res;
         dy = abs(ymax - ymin) / g.grid_res;
@@ -1210,6 +1312,127 @@ void main() {
         delete[] data;
         graphs[integrand_index].upload_definition(sliders, regionBool, region_type == Polar);
         return -1;
+    }
+
+    int compute_surfaceintegral(char* infoLog);
+
+    int compute_lineintegral(char* infoLog) {
+        Graph g = graphs[integrand_index];
+        unsigned int computeShader = glCreateShader(GL_COMPUTE_SHADER);
+        const char* computeSource = R"glsl(
+#version 460 core
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(std430, binding = 5) volatile buffer sbuf2 {
+	float samples[];
+};
+uniform int samplesize;
+uniform float tbegin;
+uniform float tend;
+
+float cot(float x) {
+	return 1.f / tan(x);
+}
+float sec(float x) {
+	return 1.f / cos(x);
+}
+float csc(float x) {
+	return 1.f / sin(x);
+}
+
+float to_trange(float t) {
+    return tbegin + t / samplesize * (tend - tbegin);
+}
+
+void main() {
+    float next_t = to_trange(float(gl_GlobalInvocationID.x + 1));
+    float t = to_trange(float(gl_GlobalInvocationID.x));
+    float dt = next_t - t;
+    
+    float x = (%s);
+    float y = (%s);
+    t = next_t;
+    float dx = ((%s) - x);
+    float dy = ((%s) - y);
+    
+    samples[gl_GlobalInvocationID.x * 4] = float(%s);
+    samples[gl_GlobalInvocationID.x * 4 + 1] = length(vec2(dx / dt, dy / dt));
+    samples[gl_GlobalInvocationID.x * 4 + 2] = x;
+    samples[gl_GlobalInvocationID.x * 4 + 3] = y;
+})glsl";
+        size_t size = strlen(computeSource) + sizeof(x_param_eq) * 4 + sizeof(Graph::defn);
+        char* modifiedSource = new char[size];
+        sprintf_s(modifiedSource, size, computeSource, x_param_eq, y_param_eq, x_param_eq, y_param_eq, g.defn);
+        glShaderSource(computeShader, 1, &modifiedSource, NULL);
+        glCompileShader(computeShader);
+        int success;
+        glGetShaderiv(computeShader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            char temp[512];
+            glGetShaderInfoLog(computeShader, 512, NULL, temp);
+            int k = 0;
+            for (int i = 0, j = 0; i < strlen(temp); i++, j++) {
+                if (j < 21) continue;
+                infoLog[k++] = temp[i];
+                if (temp[i] == '\n') j = -1;
+            }
+            infoLog[k] = '\0';
+            return 1;
+        }
+        GLuint computeProgram = glCreateProgram();
+        glAttachShader(computeProgram, computeShader);
+        glLinkProgram(computeProgram);
+        glDeleteShader(computeShader);
+        glUseProgram(computeProgram);
+        delete[] modifiedSource;
+
+        GLuint sampleBuffer;
+        glGenBuffers(1, &sampleBuffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, sampleBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, sampleBuffer);
+        glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "sbuf2"), 5);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, integral_precision * 4ull * sizeof(float), nullptr, GL_STATIC_DRAW);
+
+        glUniform1i(glGetUniformLocation(computeProgram, "samplesize"), integral_precision);
+        glUniform1f(glGetUniformLocation(computeProgram, "tbegin"), t_min);
+        glUniform1f(glGetUniformLocation(computeProgram, "tend"), t_max);
+
+        glDispatchCompute(integral_precision, 1, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+        if (li_data) delete[] li_data;
+        li_data = new float[integral_precision * 3];
+        li_data_ws = new float[integral_precision * 6];
+        li_samplecount = integral_precision;
+
+        float* data = new float[integral_precision * 4];
+        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, integral_precision * 4ull * sizeof(float), data);
+        dt = (t_max - t_min) / integral_precision;
+        integral_result = 0.f;
+        center_of_region = vec3(0.f);
+
+        auto get_data = [&](int i) {
+            return vec4(data[i * 4 + 2], data[i * 4 + 3], data[i * 4], data[i * 4 + 1]);
+        };
+        auto add_vertex = [&](int i) {
+            vec3 cv = get_data(i);
+
+            li_data[i * 3 + 0] = cv.x;
+            li_data[i * 3 + 1] = cv.y;
+            li_data[i * 3 + 2] = cv.z;
+        };
+
+        for (int i = 0; i < integral_precision; i++) {
+            vec4 d = get_data(i);
+            integral_result += d.z * d.w * dt;
+            center_of_region += vec3(d) / static_cast<float>(integral_precision);
+            add_vertex(i);
+        }
+        delete[] data;
+        glDeleteProgram(computeProgram);
+        glDeleteBuffers(1, &sampleBuffer);
+        return 0;
     }
     
     // v: vector in cartesian space
@@ -1794,7 +2017,7 @@ public:
             buttonWidth = (vMax.x - vMin.x - 61.f) / 4.f;
             ImGui::BeginDisabled(none_active);
             if (gradient_vector) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
-            if (ImGui::ImageButton("gradient_vector", (void*)(intptr_t)gradVec_texture, ImVec2(buttonWidth, SC(30)), ImVec2(0.5f - buttonWidth / SC(60), 0.f), ImVec2(0.5f + buttonWidth / SC(60), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+            if (ImGui::ImageButton("gradient_vector", (void*)gradVec_texture, ImVec2(buttonWidth, SC(30)), ImVec2(0.5f - buttonWidth / SC(60), 0.f), ImVec2(0.5f + buttonWidth / SC(60), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 gradient_vector ^= 1;
                 tangent_plane = false;
                 normal_vector = false;
@@ -1809,7 +2032,7 @@ public:
 
             ImGui::SameLine();
             if (tangent_plane) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
-            if (ImGui::ImageButton("tangent_plane", (void*)(intptr_t)tangentPlane_texture, ImVec2(buttonWidth, SC(30)), ImVec2(0.5f - buttonWidth / SC(60), 0.f), ImVec2(0.5f + buttonWidth / SC(60), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+            if (ImGui::ImageButton("tangent_plane", (void*)tangentPlane_texture, ImVec2(buttonWidth, SC(30)), ImVec2(0.5f - buttonWidth / SC(60), 0.f), ImVec2(0.5f + buttonWidth / SC(60), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 tangent_plane ^= 1;
                 gradient_vector = false;
                 normal_vector = false;
@@ -1824,7 +2047,7 @@ public:
 
             ImGui::SameLine();
             if (normal_vector) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
-            if (ImGui::ImageButton("normal_vector", (void*)(intptr_t)normVec_texture, ImVec2(buttonWidth, SC(30)), ImVec2(0.5f - buttonWidth / SC(60), 0.f), ImVec2(0.5f + buttonWidth / SC(60), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+            if (ImGui::ImageButton("normal_vector", (void*)normVec_texture, ImVec2(buttonWidth, SC(30)), ImVec2(0.5f - buttonWidth / SC(60), 0.f), ImVec2(0.5f + buttonWidth / SC(60), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 normal_vector ^= 1;
                 tangent_plane = false;
                 gradient_vector = false;
@@ -1839,7 +2062,7 @@ public:
 
             ImGui::SameLine();
             if (integral) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.32f, 0.33f, 1.00f));
-            if (ImGui::ImageButton("integral", (void*)(intptr_t)integral_texture, ImVec2(buttonWidth, SC(30)), ImVec2(0.5f - buttonWidth / SC(60), 0.f), ImVec2(0.5f + buttonWidth / SC(60), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
+            if (ImGui::ImageButton("integral", (void*)integral_texture, ImVec2(buttonWidth, SC(30)), ImVec2(0.5f - buttonWidth / SC(60), 0.f), ImVec2(0.5f + buttonWidth / SC(60), 1.f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f))) {
                 if (!integral) {
                     glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
                     integral = show_integral_result = apply_integral = second_corner = false;
@@ -1869,7 +2092,7 @@ public:
             ImGui::End();
             
             if ((integral || show_integral_result)) {
-                ImGui::SetNextWindowBgAlpha(0.5f);
+                ImGui::SetNextWindowBgAlpha(0.8f);
                 ImGui::SetNextWindowPos(ImVec2(sidebarWidth + SC(10.f), SC(24.f)));
                 ImGui::SetNextWindowSize(ImVec2(SC(360.f), 0.f));
                 if (ImGui::Begin("##integral", nullptr,
@@ -1985,10 +2208,10 @@ public:
                             ImGui::EndDisabled();
                             ImGui::BeginDisabled(!ready || show_integral_result || second_corner);
                             if (ImGui::Button("Compute", ImVec2(vMax.x - vMin.x, 0.f))) {
-                                glUniform1i(glGetUniformLocation(shaderProgram, "integral"), true);
+                                glUniform1i(glGetUniformLocation(shaderProgram, "integral"), DoubleIntegral);
                                 glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), integrand_index);
                                 glUniform1i(glGetUniformLocation(shaderProgram, "region_type"), region_type);
-                                int error = compute_integral(integral_infoLog);
+                                int error = compute_doubleintegral(integral_infoLog);
                                 if (error != -1) erroring_eq = error;
                                 else {
                                     erroring_eq = -1;
@@ -2102,10 +2325,10 @@ public:
                             ImGui::EndDisabled();
                             ImGui::BeginDisabled(!ready || show_integral_result || second_corner);
                             if (ImGui::Button("Compute", ImVec2(vMax.x - vMin.x, 0.f))) {
-                                glUniform1i(glGetUniformLocation(shaderProgram, "integral"), true);
+                                glUniform1i(glGetUniformLocation(shaderProgram, "integral"), SurfaceIntegral);
                                 glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), integrand_index);
                                 glUniform1i(glGetUniformLocation(shaderProgram, "region_type"), region_type);
-                                int error = compute_integral(integral_infoLog);
+                                int error = compute_doubleintegral(integral_infoLog);
                                 if (error != -1) erroring_eq = error;
                                 else {
                                     erroring_eq = -1;
@@ -2118,6 +2341,7 @@ public:
                         }
                         if (ImGui::BeginTabItem("Line Integral")) {
                             ImGui::SetNextItemWidth(140.f);
+                            ImGui::BeginDisabled(show_integral_result || second_corner);
                             if (ImGui::BeginCombo("##integrand", preview)) {
                                 for (int n = 1; n < graphs.size(); n++) {
                                     if (!graphs[n].enabled) continue;
@@ -2161,8 +2385,21 @@ public:
                             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                                 ImGui::SetTooltip("Precision, higher the better", ImGui::GetStyle().HoverDelayNormal);
                             ImGui::SameLine();
-                            ImGui::BeginDisabled(strlen(x_param_eq) == 0 || strlen(y_param_eq) == 0);
-                            ImGui::Button("Compute", ImVec2(ImGui::GetContentRegionAvail().x, 0));
+
+                            ImGui::EndDisabled();
+                            ImGui::BeginDisabled(show_integral_result || second_corner || strlen(x_param_eq) == 0 || strlen(y_param_eq) == 0);
+                            if (ImGui::Button("Compute", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+                                glUniform1i(glGetUniformLocation(shaderProgram, "integral"), LineIntegral);
+                                glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), integrand_index);
+                                glUniform1i(glGetUniformLocation(shaderProgram, "region_type"), -2);
+                                int error = compute_lineintegral(integral_infoLog);
+                                if (error != 0) erroring_eq = error;
+                                else {
+                                    erroring_eq = -1;
+                                    show_integral_result = true;
+                                    last_integration_type = LineIntegral;
+                                }
+                            }
                             ImGui::EndDisabled();
 
                             ImGui::EndTabItem();
@@ -2344,7 +2581,8 @@ public:
                     if (!second_corner) {
                         integral_limits.first = vec3(fragPos.x, fragPos.y, fragPos.z);
                         integrand_index = graph_index;
-                        glUniform1i(glGetUniformLocation(shaderProgram, "integral"), true);
+                        last_integration_type = DoubleIntegral;
+                        glUniform1i(glGetUniformLocation(shaderProgram, "integral"), DoubleIntegral);
                         glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), graph_index);
                         glUniform1i(glGetUniformLocation(shaderProgram, "region_type"), -1);
                         glUniform2f(glGetUniformLocation(shaderProgram, "corner1"), fragPos.x, fragPos.y);
@@ -2360,7 +2598,7 @@ public:
                         x_max = max(integral_limits.first.x, integral_limits.second.x);
                         y_min = min(integral_limits.first.y, integral_limits.second.y);
                         y_max = max(integral_limits.first.y, integral_limits.second.y);
-                        compute_integral(integral_infoLog);
+                        compute_doubleintegral(integral_infoLog);
                         show_integral_result = true;
                     }
                     apply_integral = false;
@@ -2382,27 +2620,49 @@ public:
                 vec3 w = to_screenspace(center_of_region, { wWidth, wHeight }, view, proj);
                 ImGui::SetNextWindowPos(ImVec2(w.x, w.y));
                 static bool result_window = true;
-                ImGui::Begin("Volume under surface", &result_window,
-                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
-                    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing);
-                switch (region_type) {
-                case CartesianRectangle:
-                    ImGui::Text(u8"%.4g \u2264 x \u2264 %.4g, %.4g \u2264 y \u2264 %.4g", x_min, x_max, y_min, y_max);
+                switch (last_integration_type) {
+                case DoubleIntegral:
+                    ImGui::Begin("Volume under surface", &result_window,
+                        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                        ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing);
+                    switch (region_type) {
+                    case CartesianRectangle:
+                        ImGui::Text(u8"%.4g \u2264 x \u2264 %.4g, %.4g \u2264 y \u2264 %.4g", x_min, x_max, y_min, y_max);
+                        break;
+                    case Type1:
+                        ImGui::Text(u8"%.4g \u2264 x \u2264 %.4g, %s \u2264 y \u2264 %s", x_min, x_max, y_min_eq, y_max_eq);
+                        break;
+                    case Type2:
+                        ImGui::Text(u8"%.4g \u2264 y \u2264 %.4g, %s \u2264 x \u2264 %s", y_min, y_max, x_min_eq, x_max_eq);
+                        break;
+                    case Polar:
+                        ImGui::Text(u8"%.4g \u2264 \u03b8 \u2264 %.4g, %s \u2264 r \u2264 %s", theta_min, theta_max, r_min_eq, r_max_eq);
+                    }
+                    ImGui::Text("Signed volume \u2248 %.9f", integral_result);
+                    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(120, 120, 120, 255));
+                    ImGui::Text(u8"\u2206x = %.3e, \u2206y = %.3e", dx, dy);
+                    ImGui::PopStyleColor();
+                    ImGui::End();
                     break;
-                case Type1:
-                    ImGui::Text(u8"%.4g \u2264 x \u2264 %.4g, %s \u2264 y \u2264 %s", x_min, x_max, y_min_eq, y_max_eq);
+                case SurfaceIntegral:
                     break;
-                case Type2:
-                    ImGui::Text(u8"%.4g \u2264 y \u2264 %.4g, %s \u2264 x \u2264 %s", y_min, y_max, x_min_eq, x_max_eq);
-                    break;
-                case Polar:
-                    ImGui::Text(u8"%.4g \u2264 \u03b8 \u2264 %.4g, %s \u2264 r \u2264 %s", theta_min, theta_max, r_min_eq, r_max_eq);
+                case LineIntegral:
+                    ImGui::Begin("Line integral", &result_window,
+                        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                        ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing);
+                    std::string x_display = x_param_eq;
+                    std::string y_display = y_param_eq;
+                    x_display.erase(std::remove(x_display.begin(), x_display.end(), ' '), x_display.end());
+                    y_display.erase(std::remove(y_display.begin(), y_display.end(), ' '), y_display.end());
+                    ImGui::Text(u8"%.5g \u2264 t \u2264 %.5g", t_min, t_max);
+                    ImGui::Text(u8"x = %s  y = %s", x_display.c_str(), y_display.c_str());
+                    ImGui::Text("Total accumulation \u2248 %.9f", integral_result);
+                    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(120, 120, 120, 255));
+                    ImGui::Text(u8"\u2206t = %.3e", dt);
+                    ImGui::PopStyleColor();
+                    ImGui::End();
                 }
-                ImGui::Text("Signed volume \u2248 %.9f", integral_result);
-                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(120, 120, 120, 255));
-                ImGui::Text(u8"\u2206x = %.3e, \u2206y = %.3e", dx, dy);
-                ImGui::PopStyleColor();
-                ImGui::End();
+                
                 if (result_window == false) {
                     show_integral_result = apply_integral = second_corner = false;
                     glUniform1i(glGetUniformLocation(shaderProgram, "integral"), false);
@@ -2524,23 +2784,30 @@ public:
                     vec3(0.f, 0.5f, 1.f), view, proj, 0.7f);
             }
             
-            if (integral && second_corner || show_integral_result) {
+            if (integral && second_corner || show_integral_result && last_integration_type == DoubleIntegral) {
                 render_graph(integrand_index);
                 write_to_prevzbuf();
-            } 
+            } else if (show_integral_result && last_integration_type == SurfaceIntegral) {
+                // todo
+            } else if (show_integral_result && last_integration_type == LineIntegral) {
+                draw_lineintegral(graphs[integrand_index].color, view, proj);
+                glDisable(GL_DEPTH_TEST);
+                render_graph(integrand_index);
+                glEnable(GL_DEPTH_TEST);
+                write_to_prevzbuf();
+            }
             for (int i = 1; i < graphs.size(); i++) {
                 const Graph& g = graphs[i];
                 if (!g.enabled) continue;
                 if (i == integrand_index && (integral && second_corner || show_integral_result)) continue;
                 render_graph(i);
             }
-            if (!integral || !second_corner && !show_integral_result) {
+            if (!integral || !second_corner && !show_integral_result)
                 write_to_prevzbuf();
-            }
-            if (graphs[0].enabled) render_graph(0);
-
-            if ((gradient_vector || normal_vector) && cursor_on_point) draw_vector(vector_start, vector_end, graphs[graph_index].secondary_color, view, proj);
-            
+            if (graphs[0].enabled)
+                render_graph(0);
+            if ((gradient_vector || normal_vector) && cursor_on_point)
+                draw_vector(vector_start, vector_end, graphs[graph_index].secondary_color, view, proj);
 
             glViewport(sidebarWidth, 0, wWidth - sidebarWidth, wHeight);
 
