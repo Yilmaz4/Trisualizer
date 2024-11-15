@@ -2208,6 +2208,7 @@ public:
                             ImGui::EndDisabled();
                             ImGui::BeginDisabled(!ready || show_integral_result || second_corner);
                             if (ImGui::Button("Compute", ImVec2(vMax.x - vMin.x, 0.f))) {
+                                last_integration_type = DoubleIntegral;
                                 glUniform1i(glGetUniformLocation(shaderProgram, "integral"), DoubleIntegral);
                                 glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), integrand_index);
                                 glUniform1i(glGetUniformLocation(shaderProgram, "region_type"), region_type);
