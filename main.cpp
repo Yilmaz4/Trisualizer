@@ -44,6 +44,7 @@
 #include <cmath>
 #include <string>
 #include <regex>
+#include <bitset>
 
 #include "resource.h"
 
@@ -349,6 +350,8 @@ public:
     std::vector<Slider> sliders;
 
     float theta = 135, phi = 45;
+    vec2 cameraVelocity = vec2(0.f);
+    std::bitset<4> keys{ 0x0 };
     double zoomTimestamp = 0.f;
     float zoomSpeed = 1.f;
     float zoomx = 8.f;
@@ -683,12 +686,12 @@ private:
 
     static inline void on_mouseScroll(GLFWwindow* window, double x, double y) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
+        std::cout << glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) << std::endl;
         if (ImGui::GetIO().WantCaptureMouse) return;
         if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
             app->graph_size *= pow(0.9f, -y);
             glUniform1f(glGetUniformLocation(app->shaderProgram, "graph_size"), app->graph_size);
-        }
-        else {
+        } else {
             float factor = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ? 0.985f : 0.95f;
             app->zoomSpeed = pow(factor, y);
             app->zoomTimestamp = glfwGetTime();
@@ -713,20 +716,27 @@ private:
 
     static inline void on_keyPress(GLFWwindow* window, int key, int scancode, int action, int mods) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
+        float angle_r = app->phi * M_PI / 180.f;
         switch (action) {
         case GLFW_PRESS:
-            if (key == GLFW_KEY_F11) {
+            app->keys |= ((int)(key == GLFW_KEY_W) | (int)(key == GLFW_KEY_A) << 1 | (int)(key == GLFW_KEY_S) << 2 | (int)(key == GLFW_KEY_D) << 3);
+            switch (key) {
+            case GLFW_KEY_F11:
                 if (glfwGetWindowMonitor(window) == nullptr) {
                     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
                     const GLFWvidmode* mode = glfwGetVideoMode(monitor);
                     glfwGetWindowPos(window, &app->prevWindowPos.x, &app->prevWindowPos.y);
                     glfwGetWindowSize(window, &app->prevWindowSize.x, &app->prevWindowSize.y);
                     glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-                } else {
+                }
+                else {
                     glfwSetWindowMonitor(window, nullptr, app->prevWindowPos.x, app->prevWindowPos.y, app->prevWindowSize.x, app->prevWindowSize.y, 0);
                 }
+                break;
             }
             break;
+        case GLFW_RELEASE:
+            app->keys &= ((int)(key != GLFW_KEY_W) | (int)(key != GLFW_KEY_A) << 1 | (int)(key != GLFW_KEY_S) << 2 | (int)(key != GLFW_KEY_D) << 3);
         }
     }
 
@@ -1564,8 +1574,20 @@ public:
             glfwGetWindowSize(window, &wWidth, &wHeight);
 
             double currentTime = glfwGetTime();
-            double timeStep = currentTime - prevTime;
+            float timeStep = currentTime - prevTime;
             prevTime = currentTime;
+
+            cameraVelocity = vec2(
+                (keys[0] && !keys[2] ? zoomx / 4.f : (keys[2] && !keys[0] ? -zoomx / 4.f : cameraVelocity.x * pow(0.0001f, timeStep))),
+                (keys[1] && !keys[3] ? zoomy / 4.f : (keys[3] && !keys[1] ? -zoomy / 4.f : cameraVelocity.y * pow(0.0001f, timeStep)))
+            );
+            float yaw = phi * M_PI / 180.f;
+            centerPos += vec3(
+                cameraVelocity.x * timeStep * vec2(cos(yaw), sin(yaw)) +
+                cameraVelocity.y * timeStep * vec2(cos(yaw + M_PI / 2.f), sin(yaw + M_PI / 2.f)), 0.f
+            );
+            if (length(cameraVelocity) > 0.01f) next_centerPos = centerPos;
+            else cameraVelocity = vec2(0.f);
 
             zoomx *= pow(zoomSpeed, timeStep / 0.007f);
             zoomy *= pow(zoomSpeed, timeStep / 0.007f);
@@ -1576,7 +1598,7 @@ public:
             glUniform1f(glGetUniformLocation(shaderProgram, "zoomx"), zoomx);
             glUniform1f(glGetUniformLocation(shaderProgram, "zoomy"), zoomy);
             glUniform1f(glGetUniformLocation(shaderProgram, "zoomz"), zoomz);
-            zoomSpeed -= (zoomSpeed - 1.f) * min(timeStep * 10.f, 1.0);
+            zoomSpeed -= (zoomSpeed - 1.f) * min(timeStep * 10.f, 1.f);
             if (currentTime - zoomTimestamp > 0.8) zoomSpeed = 1.f;
 
             if (centerPos != next_centerPos) {
@@ -1584,8 +1606,8 @@ public:
                 float step = smoothstep(0.0, 0.3, currentTime - moveTimestamp);
                 centerPos = temp_centerPos + v * step;
                 if (step == 1.f) centerPos = next_centerPos;
-                glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
             }
+            glUniform3fv(glGetUniformLocation(shaderProgram, "centerPos"), 1, value_ptr(centerPos));
 
             frameCount++;
             fps_history[frameCount % 5] = 1.0 / timeStep;
