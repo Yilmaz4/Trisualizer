@@ -56,22 +56,18 @@
 /*
 TODO:
 
-- Parametric equations
+- Parametric surfaces
 - Implicit functions using marching cubes alg.
 - Curl and divergence visualization
 - Gradient vector fields
 - Keyboard controls
 - Preset views (top, front, sides)
-- Key axes
-- Right-click menu
 - Point of interest with label
 - Zoom onto region after integration
 - Center of mass w/ density function
-- Path and surface integrals
 - Higher-order partial derivatives
 - Local minima, maxima and saddle points
 - Slicing and cross sectional view
-- PBR rendering
 - Shadows under vector arrows
 - Export data to CSV
 - High-res image export (PNG & JPG)
@@ -243,7 +239,7 @@ public:
         }
     }
     
-    void upload_definition(std::vector<Slider>& sliders, const char* regionBool = "true", bool polar = false) {
+    void upload_definition(std::vector<Slider>& sliders, const char* regionBool = "true", const char* scalarField = "z", bool polar = false, bool partialderivatives = false) {
         int success;
 
         auto replace = [&](std::string& source, std::string x, std::string y) {
@@ -266,7 +262,7 @@ public:
         char* computeSource = read_resource(IDR_CMPT);
         size_t size = strlen(computeSource) + pdefn.capacity() + 7;
         char* modifiedSource = new char[size];
-        sprintf_s(modifiedSource, size, computeSource, polar ? "" : "//", pdefn.c_str(), regionBool);
+        sprintf_s(modifiedSource, size, computeSource, pdefn.c_str(), partialderivatives ? "true" : "false", polar ? "" : "//", scalarField, regionBool);
         glShaderSource(computeShader, 1, &modifiedSource, NULL);
         glCompileShader(computeShader);
         glGetShaderiv(computeShader, GL_COMPILE_STATUS, &success);
@@ -1245,15 +1241,11 @@ void main() {
         return std::pair(min, max);
     }
 
-    int compute_doubleintegral(char* infoLog) {
-        Graph g = graphs[integrand_index];
-        g.grid_res = integral_precision;
-        float xmin{}, xmax{}, ymin{}, ymax{};
-        char regionBool[256];
+    int compute_boundary(Graph& g, char regionBool[256], float& xmin, float& xmax, float& ymin, float& ymax, char* infoLog) {
         switch (region_type) {
         case CartesianRectangle:
             xmin = x_min, xmax = x_max, ymin = y_min, ymax = y_max;
-            sprintf_s(regionBool, "float(%.9f) <= x && x <= float(%.9f) && float(%.9f) <= y && y <= float(%.9f)", xmin, xmax, ymin, ymax);
+            snprintf(regionBool, 256, "float(%.9f) <= x && x <= float(%.9f) && float(%.9f) <= y && y <= float(%.9f)", xmin, xmax, ymin, ymax);
             break;
         case Type1: {
             xmin = x_min, xmax = x_max;
@@ -1262,7 +1254,7 @@ void main() {
             if (isnan(yminbounds.first)) return 0;
             if (isnan(ymaxbounds.first)) return 1;
             ymin = y_min_eq_min = yminbounds.first, ymax = y_max_eq_max = ymaxbounds.second;
-            sprintf_s(regionBool, "float(%s) <= y && y <= float(%s) && float(%.9f) <= x && x <= float(%.9f)", y_min_eq, y_max_eq, xmin, xmax);
+            snprintf(regionBool, 256, "float(%s) <= y && y <= float(%s) && float(%.9f) <= x && x <= float(%.9f)", y_min_eq, y_max_eq, xmin, xmax);
             break;
         }
         case Type2: {
@@ -1272,7 +1264,7 @@ void main() {
             if (isnan(xminbounds.first)) return 0;
             if (isnan(xmaxbounds.first)) return 1;
             xmin = x_min_eq_min = xminbounds.first, xmax = x_max_eq_max = xmaxbounds.second;
-            sprintf_s(regionBool, "float(%s) <= x && x <= float(%s) && float(%.9f) <= y && y <= float(%.9f)", x_min_eq, x_max_eq, ymin, ymax);
+            snprintf(regionBool, 256, "float(%s) <= x && x <= float(%s) && float(%.9f) <= y && y <= float(%.9f)", x_min_eq, x_max_eq, ymin, ymax);
             break;
         }
         case Polar: {
@@ -1282,9 +1274,19 @@ void main() {
             if (isnan(rmaxbounds.first)) return 1;
             xmax = ymax = rmaxbounds.second;
             xmin = ymin = -rmaxbounds.second;
-            sprintf_s(regionBool, "float(%s) <= sqrt(x*x+y*y) && sqrt(x*x+y*y) <= float(%s) && float(%.9f) <= t && t <= float(%.9f)", r_min_eq, r_max_eq, theta_min, theta_max);
-        }}
-        g.upload_definition(sliders, regionBool, region_type == Polar);
+            snprintf(regionBool, 256, "float(%s) <= sqrt(x*x+y*y) && sqrt(x*x+y*y) <= float(%s) && float(%.9f) <= t && t <= float(%.9f)", r_min_eq, r_max_eq, theta_min, theta_max);
+        } }
+        return -1;
+    }
+
+    int compute_doubleintegral(char* infoLog) {
+        Graph g = graphs[integrand_index];
+        g.grid_res = integral_precision;
+        float xmin{}, xmax{}, ymin{}, ymax{};
+        char regionBool[256];
+        
+        if (int err = compute_boundary(g, regionBool, xmin, xmax, ymin, ymax, infoLog) != -1) return err;
+        g.upload_definition(sliders, regionBool, "z", region_type == Polar);
 
         center_of_region = vec3((xmax + xmin) / 2.f, (ymax + ymin) / 2.f, 0.f);
         glUniform1f(glGetUniformLocation(g.computeProgram, "zoomx"), abs(xmax - xmin));
@@ -1310,11 +1312,48 @@ void main() {
             integral_result += val * dx * dy;
         }
         delete[] data;
-        graphs[integrand_index].upload_definition(sliders, regionBool, region_type == Polar);
+        graphs[integrand_index].upload_definition(sliders, regionBool, "z", region_type == Polar);
         return -1;
     }
 
-    int compute_surfaceintegral(char* infoLog);
+    int compute_surfaceintegral(char* infoLog) {
+        Graph g = graphs[integrand_index];
+        g.grid_res = integral_precision;
+        float xmin{}, xmax{}, ymin{}, ymax{};
+        char regionBool[256];
+
+        compute_boundary(g, regionBool, xmin, xmax, ymin, ymax, infoLog);
+        char scalarField[128];
+        sprintf_s(scalarField, "(%s) * sqrt(px * px + py * py + 1)", scalar_field_eq);
+        g.upload_definition(sliders, regionBool, scalarField, region_type == Polar, true);
+
+        center_of_region = vec3((xmax + xmin) / 2.f, (ymax + ymin) / 2.f, 0.f);
+        glUniform1f(glGetUniformLocation(g.computeProgram, "zoomx"), abs(xmax - xmin));
+        glUniform1f(glGetUniformLocation(g.computeProgram, "zoomy"), abs(ymax - ymin));
+        glUniform1f(glGetUniformLocation(g.computeProgram, "zoomz"), 1.f);
+        glUniform1i(glGetUniformLocation(g.computeProgram, "grid_res"), g.grid_res);
+        glUniform3fv(glGetUniformLocation(g.computeProgram, "centerPos"), 1, value_ptr(center_of_region));
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, g.SSBO);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 2ull * g.grid_res * g.grid_res * (int)sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glDispatchCompute(g.grid_res, g.grid_res, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        float* data = new float[2ull * g.grid_res * g.grid_res] {};
+        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 2ull * g.grid_res * g.grid_res * sizeof(float), data);
+        dx = abs(xmax - xmin) / g.grid_res;
+        dy = abs(ymax - ymin) / g.grid_res;
+        integral_result = 0.f;
+        for (int i = 0; i < 2 * g.grid_res * g.grid_res; i += 2) {
+            float x = (graph_size / g.grid_res) * (fmod(i / 2.f, g.grid_res) - g.grid_res / 2.f);
+            float y = (graph_size / g.grid_res) * ((g.grid_res - floor((i / 2.f) / g.grid_res)) - g.grid_res / 2.f);
+            float val = data[i];
+            bool in_region = static_cast<bool>(data[i + 1]);
+            if (isnan(val) || isinf(val) || !in_region) continue;
+            integral_result += val * dx * dy;
+        }
+        delete[] data;
+        graphs[integrand_index].upload_definition(sliders, regionBool, "z", region_type == Polar);
+        return -1;
+    }
 
     int compute_lineintegral(char* infoLog) {
         Graph g = graphs[integrand_index];
@@ -1324,7 +1363,7 @@ void main() {
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-layout(std430, binding = 5) volatile buffer sbuf2 {
+layout(std430, binding = 6) volatile buffer sbuf3 {
 	float samples[];
 };
 uniform int samplesize;
@@ -1390,8 +1429,8 @@ void main() {
         GLuint sampleBuffer;
         glGenBuffers(1, &sampleBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, sampleBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, sampleBuffer);
-        glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "sbuf2"), 5);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, sampleBuffer);
+        glShaderStorageBlockBinding(computeProgram, glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "sbuf3"), 6);
         glBufferData(GL_SHADER_STORAGE_BUFFER, integral_precision * 4ull * sizeof(float), nullptr, GL_STATIC_DRAW);
 
         glUniform1i(glGetUniformLocation(computeProgram, "samplesize"), integral_precision);
@@ -2326,10 +2365,11 @@ public:
                             ImGui::EndDisabled();
                             ImGui::BeginDisabled(!ready || show_integral_result || second_corner);
                             if (ImGui::Button("Compute", ImVec2(vMax.x - vMin.x, 0.f))) {
+                                last_integration_type = SurfaceIntegral;
                                 glUniform1i(glGetUniformLocation(shaderProgram, "integral"), SurfaceIntegral);
                                 glUniform1i(glGetUniformLocation(shaderProgram, "integrand_idx"), integrand_index);
                                 glUniform1i(glGetUniformLocation(shaderProgram, "region_type"), region_type);
-                                int error = compute_doubleintegral(integral_infoLog);
+                                int error = compute_surfaceintegral(integral_infoLog);
                                 if (error != -1) erroring_eq = error;
                                 else {
                                     erroring_eq = -1;
@@ -2621,6 +2661,7 @@ public:
                 vec3 w = to_screenspace(center_of_region, { wWidth, wHeight }, view, proj);
                 ImGui::SetNextWindowPos(ImVec2(w.x, w.y));
                 static bool result_window = true;
+                std::string x_display, y_display, s_display;
                 switch (last_integration_type) {
                 case DoubleIntegral:
                     ImGui::Begin("Volume under surface", &result_window,
@@ -2646,18 +2687,42 @@ public:
                     ImGui::End();
                     break;
                 case SurfaceIntegral:
+                    ImGui::Begin("Surface integral", &result_window,
+                        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                        ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing);
+                    switch (region_type) {
+                    case CartesianRectangle:
+                        ImGui::Text(u8"%.4g \u2264 x \u2264 %.4g, %.4g \u2264 y \u2264 %.4g", x_min, x_max, y_min, y_max);
+                        break;
+                    case Type1:
+                        ImGui::Text(u8"%.4g \u2264 x \u2264 %.4g, %s \u2264 y \u2264 %s", x_min, x_max, y_min_eq, y_max_eq);
+                        break;
+                    case Type2:
+                        ImGui::Text(u8"%.4g \u2264 y \u2264 %.4g, %s \u2264 x \u2264 %s", y_min, y_max, x_min_eq, x_max_eq);
+                        break;
+                    case Polar:
+                        ImGui::Text(u8"%.4g \u2264 \u03b8 \u2264 %.4g, %s \u2264 r \u2264 %s", theta_min, theta_max, r_min_eq, r_max_eq);
+                    }
+                    s_display = scalar_field_eq;
+                    s_display.erase(std::remove(s_display.begin(), s_display.end(), ' '), s_display.end());
+                    ImGui::Text("Scalar field: %s", s_display.c_str());
+                    ImGui::Text("Weighted surface area \u2248 %.9f", integral_result);
+                    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(120, 120, 120, 255));
+                    ImGui::Text(u8"\u2206x = %.3e, \u2206y = %.3e", dx, dy);
+                    ImGui::PopStyleColor();
+                    ImGui::End();
                     break;
                 case LineIntegral:
                     ImGui::Begin("Line integral", &result_window,
                         ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
                         ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing);
-                    std::string x_display = x_param_eq;
-                    std::string y_display = y_param_eq;
+                    x_display = x_param_eq;
+                    y_display = y_param_eq;
                     x_display.erase(std::remove(x_display.begin(), x_display.end(), ' '), x_display.end());
                     y_display.erase(std::remove(y_display.begin(), y_display.end(), ' '), y_display.end());
                     ImGui::Text(u8"%.5g \u2264 t \u2264 %.5g", t_min, t_max);
                     ImGui::Text(u8"x = %s  y = %s", x_display.c_str(), y_display.c_str());
-                    ImGui::Text("Total accumulation \u2248 %.9f", integral_result);
+                    ImGui::Text("Cross-sectional area \u2248 %.9f", integral_result);
                     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(120, 120, 120, 255));
                     ImGui::Text(u8"\u2206t = %.3e", dt);
                     ImGui::PopStyleColor();
@@ -2785,11 +2850,9 @@ public:
                     vec3(0.f, 0.5f, 1.f), view, proj, 0.7f);
             }
             
-            if (integral && second_corner || show_integral_result && last_integration_type == DoubleIntegral) {
+            if (integral && second_corner || show_integral_result && last_integration_type < 3) {
                 render_graph(integrand_index);
                 write_to_prevzbuf();
-            } else if (show_integral_result && last_integration_type == SurfaceIntegral) {
-                // todo
             } else if (show_integral_result && last_integration_type == LineIntegral) {
                 draw_lineintegral(graphs[integrand_index].color, view, proj);
                 glDisable(GL_DEPTH_TEST);

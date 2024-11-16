@@ -30,10 +30,19 @@ float csc(float x) {
 	return 1.f / sin(x);
 }
 
+float f(float x, float y) {
+	return (%s);
+}
 void main() {
 	float x = zoomx * ((gl_GlobalInvocationID.x - grid_res / 2.f) / grid_res) + centerPos.x;
     float y = zoomy * ((gl_GlobalInvocationID.y - grid_res / 2.f) / grid_res) + centerPos.y;
+	float px, py;
+	if (%s) {
+		px = (f(x + 0.001f, y) - f(x - 0.001f, y)) / 0.002f;
+		py = (f(x, y + 0.001f) - f(x, y - 0.001f)) / 0.002f;
+	}
 	%s float t = atan(-y, -x) + PI;
+	float z = f(x, y);
 	float val = (%s) / zoomz;
 	bool in_region = (%s);
     grid[2 * (gl_GlobalInvocationID.y * grid_res + gl_GlobalInvocationID.x)] = val;
