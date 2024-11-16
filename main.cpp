@@ -718,7 +718,7 @@ private:
         float angle_r = app->phi * M_PI / 180.f;
         switch (action) {
         case GLFW_PRESS:
-            app->keys |= ((int)(key == GLFW_KEY_W) | (int)(key == GLFW_KEY_A) << 1 | (int)(key == GLFW_KEY_S) << 2 | (int)(key == GLFW_KEY_D) << 3);
+            if (!ImGui::GetIO().WantCaptureKeyboard) app->keys |= ((int)(key == GLFW_KEY_W) | (int)(key == GLFW_KEY_A) << 1 | (int)(key == GLFW_KEY_S) << 2 | (int)(key == GLFW_KEY_D) << 3);
             switch (key) {
             case GLFW_KEY_F11:
                 if (glfwGetWindowMonitor(window) == nullptr) {
@@ -1708,7 +1708,7 @@ public:
             ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
             window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-            window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+            window_flags |= ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
             if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
                 window_flags |= ImGuiWindowFlags_NoBackground;
@@ -1747,7 +1747,7 @@ public:
             ImGuiWindowClass window_class;
             window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
             ImGui::SetNextWindowClass(&window_class);
-            ImGui::Begin("Symbolic View", nullptr, ImGuiWindowFlags_NoMove);
+            ImGui::Begin("Symbolic View", nullptr, ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoMove);
 
             float sw = ImGui::GetWindowSize().x;
             if (sw != sidebarWidth) {
@@ -1881,7 +1881,7 @@ public:
             ImGui::End();
 
             ImGui::SetNextWindowClass(&window_class);
-            ImGui::Begin("Variables", nullptr, ImGuiWindowFlags_NoMove);
+            ImGui::Begin("Variables", nullptr, ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoMove);
             vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
             vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
             bool update_all_functions = false;
@@ -1995,7 +1995,7 @@ public:
             ImGui::End();
 
             ImGui::SetNextWindowClass(&window_class);
-            ImGui::Begin("Tools", nullptr, ImGuiWindowFlags_NoMove);
+            ImGui::Begin("Tools", nullptr, ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoMove);
             vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
             vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
             ImGui::SetNextItemWidth(vMax.x - vMin.x);
@@ -2156,7 +2156,8 @@ public:
                 ImGui::SetNextWindowPos(ImVec2(sidebarWidth + SC(10.f), SC(24.f)));
                 ImGui::SetNextWindowSize(ImVec2(SC(360.f), 0.f));
                 if (ImGui::Begin("##integral", nullptr,
-                    ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav)) {
+                    ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoFocusOnAppearing |
+                    ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoNavInputs)) {
 
                     vMin = ImGui::GetWindowContentRegionMin() + ImGui::GetWindowPos();
                     vMax = ImGui::GetWindowContentRegionMax() + ImGui::GetWindowPos();
@@ -2486,7 +2487,8 @@ public:
                 ImGui::SetNextWindowPos(ImVec2(sidebarWidth + SC(10.f), wHeight - SC(120.f) - SC(10.f)));
                 ImGui::SetNextWindowSize(ImVec2(0.f, SC(120.f)));
                 if (ImGui::Begin("##scale", nullptr,
-                    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav)) {
+                    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking |
+                    ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoNav)) {
 
                     auto to_imu32 = [](vec4 v) -> ImU32 {
                         ImU32 r = static_cast<ImU32>(v.r * 255.0f);
@@ -2543,7 +2545,7 @@ public:
                 ImVec2 prevWindowSize;
                 if (!rightClickPressed) {
                     ImGui::Begin("info", nullptr,
-                        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+                        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoNavInputs |
                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
                         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoFocusOnAppearing);
                     ImVec2 size = ImGui::GetWindowSize();
@@ -2589,7 +2591,7 @@ public:
                     graphs[0].grid_lines = graphs[graph_index].grid_lines;
                     glUseProgram(shaderProgram);
                     ImGui::Begin("tooltip", nullptr,
-                        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+                        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoNavInputs |
                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
                         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoFocusOnAppearing);
                     ImVec2 size = ImGui::GetWindowSize();
@@ -2621,7 +2623,7 @@ public:
                 }
                 if (integral && !show_integral_result && !rightClickPressed) {
                     ImGui::Begin("tooltip", nullptr,
-                        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+                        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoNavInputs |
                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_AlwaysAutoResize |
                         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoFocusOnAppearing);
                     ImVec2 size = ImGui::GetWindowSize();
@@ -2686,7 +2688,7 @@ public:
                 switch (last_integration_type) {
                 case DoubleIntegral:
                     ImGui::Begin("Volume under surface", &result_window,
-                        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNavInputs |
                         ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing);
                     switch (region_type) {
                     case CartesianRectangle:
@@ -2709,7 +2711,7 @@ public:
                     break;
                 case SurfaceIntegral:
                     ImGui::Begin("Surface integral", &result_window,
-                        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNavInputs |
                         ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing);
                     switch (region_type) {
                     case CartesianRectangle:
@@ -2735,7 +2737,7 @@ public:
                     break;
                 case LineIntegral:
                     ImGui::Begin("Line integral", &result_window,
-                        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNavInputs |
                         ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing);
                     x_display = x_param_eq;
                     y_display = y_param_eq;
