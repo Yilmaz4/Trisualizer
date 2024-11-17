@@ -1585,7 +1585,7 @@ public:
                 cameraVelocity.x * timeStep * vec2(cos(yaw), sin(yaw)) +
                 cameraVelocity.y * timeStep * vec2(cos(yaw + M_PI / 2.f), sin(yaw + M_PI / 2.f)), 0.f
             );
-            if (length(cameraVelocity) > 0.01f) next_centerPos = centerPos;
+            if (length(cameraVelocity) > length(vec2(zoomx, zoomy)) * 0.001f) next_centerPos = centerPos;
             else cameraVelocity = vec2(0.f);
 
             zoomx *= pow(zoomSpeed, timeStep / 0.007f);
