@@ -627,7 +627,7 @@ public:
         graphs.push_back(Graph(0, TangentPlane, "plane_params[0]+plane_params[1]*(x-plane_params[2])+plane_params[3]*(y-plane_params[4])", 100, vec4(0.f), vec4(0.f), false, gridSSBO, EBO));
         graphs[0].setup();
         graphs[0].upload_definition(sliders);
-        graphs.push_back(Graph(1, UserDefined, "sin(x * y)", 500, colors[0], colors[1], true, gridSSBO, EBO));
+        graphs.push_back(Graph(1, UserDefined, "cos(x * y)", 500, colors[0], colors[1], true, gridSSBO, EBO));
         graphs[1].setup();
         graphs[1].upload_definition(sliders);
 
@@ -2682,14 +2682,24 @@ public:
 
             if (show_integral_result && !rightClickPressed) {
                 vec3 w = to_screenspace(center_of_region, { wWidth, wHeight }, view, proj);
-                ImGui::SetNextWindowPos(ImVec2(w.x, w.y));
+                //ImGui::SetNextWindowPos(ImVec2(w.x, w.y));
                 static bool result_window = true;
                 std::string x_display, y_display, s_display;
+                ImVec2 size;
+                ImVec2 pos = { w.x, w.y };
                 switch (last_integration_type) {
                 case DoubleIntegral:
                     ImGui::Begin("Volume under surface", &result_window,
                         ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNavInputs |
                         ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing);
+                    size = ImGui::GetWindowSize();
+                    if (size.x > wWidth - pos.x - 5)
+                        pos.x = wWidth - size.x - 5;
+                    if (size.y > wHeight - pos.y - 5)
+                        pos.y = wHeight - size.y - 5;
+                    if (pos.x < 5) pos.x = 5;
+                    if (pos.y < 5) pos.y = 5;
+                    ImGui::SetWindowPos(pos);
                     switch (region_type) {
                     case CartesianRectangle:
                         ImGui::Text(u8"%.4g \u2264 x \u2264 %.4g, %.4g \u2264 y \u2264 %.4g", x_min, x_max, y_min, y_max);
@@ -2713,6 +2723,14 @@ public:
                     ImGui::Begin("Surface integral", &result_window,
                         ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNavInputs |
                         ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing);
+                    size = ImGui::GetWindowSize();
+                    if (size.x > wWidth - pos.x - 5)
+                        pos.x = wWidth - size.x - 5;
+                    if (size.y > wHeight - pos.y - 5)
+                        pos.y = wHeight - size.y - 5;
+                    if (pos.x < 5) pos.x = 5;
+                    if (pos.y < 5) pos.y = 5;
+                    ImGui::SetWindowPos(pos);
                     switch (region_type) {
                     case CartesianRectangle:
                         ImGui::Text(u8"%.4g \u2264 x \u2264 %.4g, %.4g \u2264 y \u2264 %.4g", x_min, x_max, y_min, y_max);
@@ -2739,6 +2757,14 @@ public:
                     ImGui::Begin("Line integral", &result_window,
                         ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNavInputs |
                         ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoFocusOnAppearing);
+                    size = ImGui::GetWindowSize();
+                    if (size.x > wWidth - pos.x - 5)
+                        pos.x = wWidth - size.x - 5;
+                    if (size.y > wHeight - pos.y - 5)
+                        pos.y = wHeight - size.y - 5;
+                    if (pos.x < 5) pos.x = 5;
+                    if (pos.y < 5) pos.y = 5;
+                    ImGui::SetWindowPos(pos);
                     x_display = x_param_eq;
                     y_display = y_param_eq;
                     x_display.erase(std::remove(x_display.begin(), x_display.end(), ' '), x_display.end());
