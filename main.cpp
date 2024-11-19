@@ -368,6 +368,7 @@ public:
     vec2 xrange, yrange, zrange;
     vec3 light_pos = vec3(0.f, 50.f, 0.f);
 
+    bool dintegral = false;
     bool integral = false, second_corner = false, apply_integral = false, show_integral_result = false;
     int integrand_index = 1, region_type = CartesianRectangle, integral_precision = 2000, erroring_eq = -1;
     float x_min, x_max, y_min, y_max, theta_min, theta_max, t_min, t_max;
@@ -1544,16 +1545,40 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, normVec_icon.bmWidth, normVec_icon.bmHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)normVec_icon.bmBits);
         
-        BITMAP integral_icon = loadImageFromResource(INTEGRAL_ICON);
-        GLuint integral_texture = 0;
-        glGenTextures(1, &integral_texture);
-        glBindTexture(GL_TEXTURE_2D, integral_texture);
+        BITMAP dintegral_icon = loadImageFromResource(INTEGRAL_ICON);
+        GLuint dintegral_texture = 0;
+        glGenTextures(1, &dintegral_texture);
+        glBindTexture(GL_TEXTURE_2D, dintegral_texture);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, integral_icon.bmWidth, integral_icon.bmHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)integral_icon.bmBits);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dintegral_icon.bmWidth, dintegral_icon.bmHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)dintegral_icon.bmBits);
+
+        BITMAP sintegral_icon = loadImageFromResource(SINTEGRAL_ICON);
+        GLuint sintegral_texture = 0;
+        glGenTextures(1, &sintegral_texture);
+        glBindTexture(GL_TEXTURE_2D, sintegral_texture);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sintegral_icon.bmWidth, sintegral_icon.bmHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)sintegral_icon.bmBits);
+
+        BITMAP lintegral_icon = loadImageFromResource(LINTEGRAL_ICON);
+        GLuint lintegral_texture = 0;
+        glGenTextures(1, &lintegral_texture);
+        glBindTexture(GL_TEXTURE_2D, lintegral_texture);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, lintegral_icon.bmWidth, lintegral_icon.bmHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)lintegral_icon.bmBits);
+
+        GLuint integral_texture = dintegral_texture;
 
         GLuint srcFBO, dstFBO;
         glGenFramebuffers(1, &srcFBO);
@@ -2147,7 +2172,7 @@ public:
             else if (integral) ImGui::PopStyleColor();
         skip:
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                ImGui::SetTooltip("Double Integral", ImGui::GetStyle().HoverDelayNormal);
+                ImGui::SetTooltip("Integral", ImGui::GetStyle().HoverDelayNormal);
             ImGui::EndDisabled();
             ImGui::End();
             
@@ -2172,7 +2197,9 @@ public:
                     };
 
                     if (ImGui::BeginTabBar("IntegrationTypes")) {
-                        if (ImGui::BeginTabItem("Double Integral")) {
+                        if (ImGui::BeginTabItem("Double Integral", nullptr, dintegral ? ImGuiTabItemFlags_SetSelected : NULL)) {
+                            integral_texture = dintegral_texture;
+                            dintegral = false;
                             ImGui::BeginChild(ImGui::GetID("region_type"), ImVec2(SC(100), 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
                             ImGui::BeginDisabled(show_integral_result || second_corner);
                             if (ImGui::RadioButton("Rectangle", region_type == CartesianRectangle)) region_type = CartesianRectangle;
@@ -2284,7 +2311,8 @@ public:
                             ImGui::EndChild();
                             ImGui::EndTabItem();
                         }
-                        if (ImGui::BeginTabItem("Surface Integral")) {
+                        if (ImGui::BeginTabItem("Surface Integral", nullptr)) {
+                            integral_texture = sintegral_texture;
                             ImGui::BeginChild(ImGui::GetID("region_type"), ImVec2(SC(100), 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
                             ImGui::BeginDisabled(show_integral_result || second_corner);
                             if (ImGui::RadioButton("Rectangle", region_type == CartesianRectangle)) region_type = CartesianRectangle;
@@ -2402,7 +2430,8 @@ public:
                             ImGui::EndChild();
                             ImGui::EndTabItem();
                         }
-                        if (ImGui::BeginTabItem("Line Integral")) {
+                        if (ImGui::BeginTabItem("Line Integral", nullptr)) {
+                            integral_texture = lintegral_texture;
                             ImGui::SetNextItemWidth(140.f);
                             ImGui::BeginDisabled(show_integral_result || second_corner);
                             if (ImGui::BeginCombo("##integrand", preview)) {
@@ -2653,6 +2682,7 @@ public:
                         glUniform2f(glGetUniformLocation(shaderProgram, "corner2"), fragPos.x, fragPos.y);
                         second_corner = true;
                         region_type = CartesianRectangle;
+                        dintegral = true;
                     }
                     else {
                         integral_limits.second = vec3(fragPos.x, fragPos.y, fragPos.z);
@@ -2663,6 +2693,7 @@ public:
                         y_min = min(integral_limits.first.y, integral_limits.second.y);
                         y_max = max(integral_limits.first.y, integral_limits.second.y);
                         compute_doubleintegral(integral_infoLog);
+                        dintegral = true;
                         show_integral_result = true;
                     }
                     apply_integral = false;
