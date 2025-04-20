@@ -1,0 +1,302 @@
+[
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/imgui.dir/lib/imgui/backends/imgui_impl_glfw.cpp.o -c /home/yilmaz/Software/Trisualizer/lib/imgui/backends/imgui_impl_glfw.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/imgui/backends/imgui_impl_glfw.cpp",
+  "output": "CMakeFiles/imgui.dir/lib/imgui/backends/imgui_impl_glfw.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/imgui.dir/lib/imgui/backends/imgui_impl_opengl3.cpp.o -c /home/yilmaz/Software/Trisualizer/lib/imgui/backends/imgui_impl_opengl3.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/imgui/backends/imgui_impl_opengl3.cpp",
+  "output": "CMakeFiles/imgui.dir/lib/imgui/backends/imgui_impl_opengl3.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/imgui.dir/lib/imgui/imgui.cpp.o -c /home/yilmaz/Software/Trisualizer/lib/imgui/imgui.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/imgui/imgui.cpp",
+  "output": "CMakeFiles/imgui.dir/lib/imgui/imgui.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/imgui.dir/lib/imgui/imgui_demo.cpp.o -c /home/yilmaz/Software/Trisualizer/lib/imgui/imgui_demo.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/imgui/imgui_demo.cpp",
+  "output": "CMakeFiles/imgui.dir/lib/imgui/imgui_demo.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/imgui.dir/lib/imgui/imgui_draw.cpp.o -c /home/yilmaz/Software/Trisualizer/lib/imgui/imgui_draw.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/imgui/imgui_draw.cpp",
+  "output": "CMakeFiles/imgui.dir/lib/imgui/imgui_draw.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/imgui.dir/lib/imgui/imgui_tables.cpp.o -c /home/yilmaz/Software/Trisualizer/lib/imgui/imgui_tables.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/imgui/imgui_tables.cpp",
+  "output": "CMakeFiles/imgui.dir/lib/imgui/imgui_tables.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/imgui.dir/lib/imgui/imgui_widgets.cpp.o -c /home/yilmaz/Software/Trisualizer/lib/imgui/imgui_widgets.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/imgui/imgui_widgets.cpp",
+  "output": "CMakeFiles/imgui.dir/lib/imgui/imgui_widgets.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -DPLATFORM_LINUX -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -I/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/include -I/home/yilmaz/Software/Trisualizer/imgui -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/home/yilmaz/Software/Trisualizer/lib/glm -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/Trisualizer.dir/src/main.cpp.o -c /home/yilmaz/Software/Trisualizer/src/main.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/src/main.cpp",
+  "output": "CMakeFiles/Trisualizer.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DPLATFORM_LINUX -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -I/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/include -I/home/yilmaz/Software/Trisualizer/imgui -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/home/yilmaz/Software/Trisualizer/lib/glm -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -o CMakeFiles/Trisualizer.dir/lib/glad/src/glad.c.o -c /home/yilmaz/Software/Trisualizer/lib/glad/src/glad.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glad/src/glad.c",
+  "output": "CMakeFiles/Trisualizer.dir/lib/glad/src/glad.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -DPLATFORM_LINUX -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -I/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/include -I/home/yilmaz/Software/Trisualizer/imgui -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/home/yilmaz/Software/Trisualizer/lib/glm -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/Trisualizer.dir/lib/lodepng/lodepng.cpp.o -c /home/yilmaz/Software/Trisualizer/lib/lodepng/lodepng.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/lodepng/lodepng.cpp",
+  "output": "CMakeFiles/Trisualizer.dir/lib/lodepng/lodepng.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -DPLATFORM_LINUX -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -I/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/include -I/home/yilmaz/Software/Trisualizer/imgui -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/home/yilmaz/Software/Trisualizer/lib/glm -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_consola_ttf.cpp.o -c /home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_consola_ttf.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_consola_ttf.cpp",
+  "output": "CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_consola_ttf.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -DPLATFORM_LINUX -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -I/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/include -I/home/yilmaz/Software/Trisualizer/imgui -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/home/yilmaz/Software/Trisualizer/lib/glm -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/Trisualizer.dir/lib/embed/embed/embed_impl.cpp.o -c /home/yilmaz/Software/Trisualizer/build/lib/embed/embed/embed_impl.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/embed_impl.cpp",
+  "output": "CMakeFiles/Trisualizer.dir/lib/embed/embed/embed_impl.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -DPLATFORM_LINUX -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -I/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/include -I/home/yilmaz/Software/Trisualizer/imgui -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/home/yilmaz/Software/Trisualizer/lib/glm -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_main_bmp.cpp.o -c /home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_main_bmp.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_main_bmp.cpp",
+  "output": "CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_main_bmp.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -DPLATFORM_LINUX -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -I/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/include -I/home/yilmaz/Software/Trisualizer/imgui -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/home/yilmaz/Software/Trisualizer/lib/glm -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_gradient_vector_png.cpp.o -c /home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_gradient_vector_png.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_gradient_vector_png.cpp",
+  "output": "CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_gradient_vector_png.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -DPLATFORM_LINUX -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -I/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/include -I/home/yilmaz/Software/Trisualizer/imgui -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/home/yilmaz/Software/Trisualizer/lib/glm -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_integral_png.cpp.o -c /home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_integral_png.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_integral_png.cpp",
+  "output": "CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_integral_png.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -DPLATFORM_LINUX -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -I/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/include -I/home/yilmaz/Software/Trisualizer/imgui -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/home/yilmaz/Software/Trisualizer/lib/glm -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_line_integral_png.cpp.o -c /home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_line_integral_png.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_line_integral_png.cpp",
+  "output": "CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_line_integral_png.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -DPLATFORM_LINUX -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -I/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/include -I/home/yilmaz/Software/Trisualizer/imgui -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/home/yilmaz/Software/Trisualizer/lib/glm -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_normal_vector_png.cpp.o -c /home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_normal_vector_png.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_normal_vector_png.cpp",
+  "output": "CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_normal_vector_png.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -DPLATFORM_LINUX -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -I/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/include -I/home/yilmaz/Software/Trisualizer/imgui -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/home/yilmaz/Software/Trisualizer/lib/glm -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_surface_integral_png.cpp.o -c /home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_surface_integral_png.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_surface_integral_png.cpp",
+  "output": "CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_surface_integral_png.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -DPLATFORM_LINUX -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -I/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/include -I/home/yilmaz/Software/Trisualizer/imgui -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/home/yilmaz/Software/Trisualizer/lib/glm -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_tangent_plane_png.cpp.o -c /home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_tangent_plane_png.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_tangent_plane_png.cpp",
+  "output": "CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_assets_tangent_plane_png.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -DPLATFORM_LINUX -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -I/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/include -I/home/yilmaz/Software/Trisualizer/imgui -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/home/yilmaz/Software/Trisualizer/lib/glm -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_shaders_fragment_glsl.cpp.o -c /home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_shaders_fragment_glsl.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_shaders_fragment_glsl.cpp",
+  "output": "CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_shaders_fragment_glsl.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -DPLATFORM_LINUX -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -I/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/include -I/home/yilmaz/Software/Trisualizer/imgui -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/home/yilmaz/Software/Trisualizer/lib/glm -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_shaders_vertex_glsl.cpp.o -c /home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_shaders_vertex_glsl.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_shaders_vertex_glsl.cpp",
+  "output": "CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_shaders_vertex_glsl.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -DPLATFORM_LINUX -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING -I/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/include -I/home/yilmaz/Software/Trisualizer/imgui -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/home/yilmaz/Software/Trisualizer/lib/glm -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -isystem /home/yilmaz/Software/Trisualizer/lib/lodepng -isystem /home/yilmaz/Software/Trisualizer/lib/glad/include -isystem /home/yilmaz/Software/Trisualizer/include -isystem /home/yilmaz/Software/Trisualizer/lib/imgui -isystem /home/yilmaz/Software/Trisualizer/lib/imgui/backends -g -std=gnu++23 -o CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_shaders_compute_glsl.cpp.o -c /home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_shaders_compute_glsl.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/build/lib/embed/embed/autogen/trisualizer/src/trisualizer_shaders_compute_glsl.cpp",
+  "output": "CMakeFiles/Trisualizer.dir/lib/embed/embed/autogen/trisualizer/src/trisualizer_shaders_compute_glsl.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -I/home/yilmaz/Software/Trisualizer/lib/boxer/include -I/usr/include/gtk-3.0 -I/usr/include/pango-1.0 -I/usr/include/cloudproviders -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/at-spi2-atk/2.0 -I/usr/include/at-spi-2.0 -I/usr/include/atk-1.0 -I/usr/include/dbus-1.0 -I/usr/lib/dbus-1.0/include -I/usr/include/fribidi -I/usr/include/pixman-1 -I/usr/include/harfbuzz -I/usr/include/freetype2 -I/usr/include/libpng16 -I/usr/include/gio-unix-2.0 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/include/libmount -I/usr/include/blkid -I/usr/include/sysprof-6 -g -std=gnu++23 -o lib/boxer/CMakeFiles/Boxer.dir/src/boxer_linux.cpp.o -c /home/yilmaz/Software/Trisualizer/lib/boxer/src/boxer_linux.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/boxer/src/boxer_linux.cpp",
+  "output": "lib/boxer/CMakeFiles/Boxer.dir/src/boxer_linux.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/g++ -I/home/yilmaz/Software/Trisualizer/lib/glm -g -std=c++23 -o lib/glm/glm/CMakeFiles/glm.dir/detail/glm.cpp.o -c /home/yilmaz/Software/Trisualizer/lib/glm/glm/detail/glm.cpp",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glm/glm/detail/glm.cpp",
+  "output": "lib/glm/glm/CMakeFiles/glm.dir/detail/glm.cpp.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/context.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/context.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/context.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/context.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/init.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/init.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/init.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/init.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/input.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/input.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/input.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/input.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/monitor.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/monitor.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/monitor.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/monitor.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/platform.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/platform.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/platform.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/platform.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/vulkan.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/vulkan.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/vulkan.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/vulkan.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/window.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/window.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/window.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/window.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/egl_context.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/egl_context.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/egl_context.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/egl_context.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/osmesa_context.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/osmesa_context.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/osmesa_context.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/osmesa_context.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/null_init.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/null_init.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/null_init.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/null_init.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/null_monitor.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/null_monitor.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/null_monitor.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/null_monitor.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/null_window.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/null_window.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/null_window.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/null_window.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/null_joystick.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/null_joystick.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/null_joystick.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/null_joystick.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/posix_module.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/posix_module.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/posix_module.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/posix_module.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/posix_time.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/posix_time.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/posix_time.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/posix_time.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/posix_thread.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/posix_thread.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/posix_thread.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/posix_thread.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/x11_init.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/x11_init.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/x11_init.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/x11_init.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/x11_monitor.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/x11_monitor.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/x11_monitor.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/x11_monitor.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/x11_window.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/x11_window.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/x11_window.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/x11_window.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/xkb_unicode.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/xkb_unicode.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/xkb_unicode.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/xkb_unicode.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/glx_context.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/glx_context.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/glx_context.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/glx_context.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/wl_init.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/wl_init.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/wl_init.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/wl_init.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/wl_monitor.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/wl_monitor.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/wl_monitor.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/wl_monitor.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/wl_window.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/wl_window.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/wl_window.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/wl_window.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/linux_joystick.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/linux_joystick.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/linux_joystick.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/linux_joystick.c.o"
+},
+{
+  "directory": "/home/yilmaz/Software/Trisualizer/build",
+  "command": "/usr/bin/gcc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/yilmaz/Software/Trisualizer/lib/glfw/include -I/home/yilmaz/Software/Trisualizer/lib/glfw/src -I/home/yilmaz/Software/Trisualizer/build/lib/glfw/src -g -std=c99 -fPIC -Wall -o lib/glfw/src/CMakeFiles/glfw.dir/posix_poll.c.o -c /home/yilmaz/Software/Trisualizer/lib/glfw/src/posix_poll.c",
+  "file": "/home/yilmaz/Software/Trisualizer/lib/glfw/src/posix_poll.c",
+  "output": "lib/glfw/src/CMakeFiles/glfw.dir/posix_poll.c.o"
+}
+]

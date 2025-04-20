@@ -1,0 +1,273 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						2,
+						3,
+						5
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.21"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						1,
+						4
+					]
+				},
+				{
+					"build" : "lib/boxer",
+					"jsonFile" : "directory-lib.boxer-Debug-fca5b28467269cec12d1.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.10"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 1,
+					"source" : "lib/boxer",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"build" : "lib/embed",
+					"jsonFile" : "directory-lib.embed-Debug-8090865d2583de6ef813.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.21"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 2,
+					"source" : "lib/embed"
+				},
+				{
+					"build" : "lib/glm",
+					"childIndexes" : 
+					[
+						4
+					],
+					"jsonFile" : "directory-lib.glm-Debug-fc5ae29a04ce9baa3066.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.6"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 3,
+					"source" : "lib/glm"
+				},
+				{
+					"build" : "lib/glm/glm",
+					"jsonFile" : "directory-lib.glm.glm-Debug-f071b44a10c565ea5540.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.6"
+					},
+					"parentIndex" : 3,
+					"projectIndex" : 3,
+					"source" : "lib/glm/glm",
+					"targetIndexes" : 
+					[
+						3
+					]
+				},
+				{
+					"build" : "lib/glfw",
+					"childIndexes" : 
+					[
+						6,
+						7
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-lib.glfw-Debug-e22eaffb81955dcd9bfa.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 4,
+					"source" : "lib/glfw",
+					"targetIndexes" : 
+					[
+						5
+					]
+				},
+				{
+					"build" : "lib/glfw/src",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-lib.glfw.src-Debug-1923c1398b71da25ef1a.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 5,
+					"projectIndex" : 4,
+					"source" : "lib/glfw/src",
+					"targetIndexes" : 
+					[
+						2,
+						6
+					]
+				},
+				{
+					"build" : "lib/glfw/docs",
+					"jsonFile" : "directory-lib.glfw.docs-Debug-2b4d350e26b89cca1912.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 5,
+					"projectIndex" : 4,
+					"source" : "lib/glfw/docs"
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"childIndexes" : 
+					[
+						1,
+						2,
+						3,
+						4
+					],
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "Trisualizer",
+					"targetIndexes" : 
+					[
+						1,
+						4
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						1
+					],
+					"name" : "Boxer",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						2
+					],
+					"name" : "embed",
+					"parentIndex" : 0
+				},
+				{
+					"directoryIndexes" : 
+					[
+						3,
+						4
+					],
+					"name" : "glm",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						3
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						5,
+						6,
+						7
+					],
+					"name" : "GLFW",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						2,
+						5,
+						6
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 1,
+					"id" : "Boxer::@7ac0267871f81f3891da",
+					"jsonFile" : "target-Boxer-Debug-cf0c95f4b4fdcc823e4c.json",
+					"name" : "Boxer",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "Trisualizer::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-Trisualizer-Debug-02c4c6abf114ed470764.json",
+					"name" : "Trisualizer",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "glfw::@17f284a5fc0809a54549",
+					"jsonFile" : "target-glfw-Debug-63e8fb9a9a604fc14a2e.json",
+					"name" : "glfw",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "glm::@ff40cfcfb06a0006160e",
+					"jsonFile" : "target-glm-Debug-500c6fcb09f2be98b384.json",
+					"name" : "glm",
+					"projectIndex" : 3
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "imgui::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-imgui-Debug-c4e9b768069b206754a8.json",
+					"name" : "imgui",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 5,
+					"id" : "uninstall::@a7a2f639778f88e1b46d",
+					"jsonFile" : "target-uninstall-Debug-5f8465184c87c77be909.json",
+					"name" : "uninstall",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "update_mappings::@17f284a5fc0809a54549",
+					"jsonFile" : "target-update_mappings-Debug-eb07f2229391a97ce3a5.json",
+					"name" : "update_mappings",
+					"projectIndex" : 4
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/yilmaz/Software/Trisualizer/build",
+		"source" : "/home/yilmaz/Software/Trisualizer"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 8
+	}
+}
