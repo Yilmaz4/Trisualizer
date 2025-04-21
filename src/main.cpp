@@ -1,4 +1,4 @@
-#define VERSION "1.0"
+﻿#define VERSION "1.0"
 
 #ifdef PLATFORM_WINDOWS
     #pragma comment(linker, "/ENTRY:mainCRTStartup")
@@ -384,6 +384,7 @@ public:
     bool doubleClickPressed = false;
     bool rightClickPending = false;
     bool rightClickPressed = false;
+    float dpi_scale = 1.f;
     int ssaa_factor = 3; // change to 3 when enabling SSAA by default
     bool ssaa = true;
     bool ssaa_enabled_by_user = false;
@@ -419,6 +420,7 @@ public:
         glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
         glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
         glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+        //glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_FALSE); // makes content blurry, workaround for scaling in wayland
 
         glfwWindowHint(GLFW_SAMPLES, 4);
 
@@ -427,6 +429,16 @@ public:
             throw std::runtime_error("Failed to create window.");
         }
 
+#ifdef PLATFORM_LINUX
+        const char* wayland_display = std::getenv("WAYLAND_DISPLAY");
+        const char* x11_display = std::getenv("DISPLAY");
+
+        if (wayland_display) {
+            float xscale, yscale;
+            glfwGetWindowContentScale(window, &xscale, &yscale);
+            dpi_scale = xscale;
+        }
+#endif
         glfwSetWindowUserPointer(window, this);
         glfwSwapInterval(1);
         glfwMakeContextCurrent(window);
@@ -520,7 +532,7 @@ public:
 
         glGenBuffers(1, &posBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 6ull * 700.f * 600.f * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 6ull * 700 * dpi_scale * 600 * dpi_scale * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, posBuffer);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "posbuffer"), 1);
 
@@ -583,7 +595,7 @@ public:
 
         glGenTextures(1, &depthMap);
         glBindTexture(GL_TEXTURE_2D, depthMap);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 1000 * ssaa_factor, 600 * ssaa_factor, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 1000 * ssaa_factor * dpi_scale, 600 * ssaa_factor * dpi_scale, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -592,7 +604,7 @@ public:
 
         glGenTextures(1, &frameTex);
         glBindTexture(GL_TEXTURE_2D, frameTex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 1000 * ssaa_factor, 600 * ssaa_factor, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 1000 * ssaa_factor * dpi_scale, 600 * ssaa_factor * dpi_scale, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -601,7 +613,7 @@ public:
 
         glGenTextures(1, &prevZBuffer);
         glBindTexture(GL_TEXTURE_2D, prevZBuffer);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 1000 * ssaa_factor, 600 * ssaa_factor, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 1000 * ssaa_factor * dpi_scale, 600 * ssaa_factor * dpi_scale, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -610,7 +622,7 @@ public:
         graphs.push_back(Graph(0, TangentPlane, "plane_params[0]+plane_params[1]*(x-plane_params[2])+plane_params[3]*(y-plane_params[4])", 100, vec4(0.f), vec4(0.f), false, gridSSBO, EBO));
         graphs[0].setup();
         graphs[0].upload_definition(sliders);
-        graphs.push_back(Graph(1, UserDefined, "cos(x * y)", 500, colors[0], colors[1], true, gridSSBO, EBO));
+        graphs.push_back(Graph(1, UserDefined, "sin(x * y)", 500, colors[0], colors[1], true, gridSSBO, EBO));
         graphs[1].setup();
         graphs[1].upload_definition(sliders);
 
@@ -619,15 +631,14 @@ public:
 private:
     static inline void on_windowResize(GLFWwindow* window, int width, int height) {
         Trisualizer* app = static_cast<Trisualizer*>(glfwGetWindowUserPointer(window));
-        std::cout << "resize " << width << " " << height << " " << app->ssaa_factor << " " << app->sidebarWidth << std::endl;
         glBindTexture(GL_TEXTURE_2D, app->depthMap);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width * app->ssaa_factor, height * app->ssaa_factor, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width * app->ssaa_factor * app->dpi_scale, height * app->ssaa_factor * app->dpi_scale, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glBindTexture(GL_TEXTURE_2D, app->frameTex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width * app->ssaa_factor, height * app->ssaa_factor, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width * app->ssaa_factor * app->dpi_scale, height * app->ssaa_factor * app->dpi_scale, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glBindTexture(GL_TEXTURE_2D, app->prevZBuffer);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width * app->ssaa_factor, height * app->ssaa_factor, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width * app->ssaa_factor * app->dpi_scale, height * app->ssaa_factor * app->dpi_scale, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (size_t)(width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * (size_t)(width - app->sidebarWidth) * app->dpi_scale * height * app->dpi_scale * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
     }
 
     static inline void on_mouseButton(GLFWwindow* window, int button, int action, int mods) {
@@ -641,7 +652,7 @@ private:
                     int width, height;
                     glfwGetWindowSize(window, &width, &height);
                     glBindBuffer(GL_SHADER_STORAGE_BUFFER, app->posBuffer);
-                    glBufferData(GL_SHADER_STORAGE_BUFFER, 6ull * (width - app->sidebarWidth) * height * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+                    glBufferData(GL_SHADER_STORAGE_BUFFER, 6ull * (width - app->sidebarWidth) * app->dpi_scale * height * app->dpi_scale * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
                     app->updateBufferSize = false;
                 }
                 break;
@@ -2853,9 +2864,9 @@ public:
             glBindFramebuffer(GL_FRAMEBUFFER, FBO);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             
-            glViewport(sidebarWidth * ssaa_factor, 0, (wWidth - sidebarWidth) * ssaa_factor, wHeight * ssaa_factor);
-            glUniform2i(glGetUniformLocation(shaderProgram, "regionSize"), (wWidth - sidebarWidth) * ssaa_factor, wHeight * ssaa_factor);
-            glUniform2i(glGetUniformLocation(shaderProgram, "windowSize"), wWidth * ssaa_factor, wHeight * ssaa_factor);
+            glViewport(sidebarWidth * ssaa_factor * dpi_scale, 0, (wWidth - sidebarWidth) * ssaa_factor * dpi_scale, wHeight * ssaa_factor * dpi_scale);
+            glUniform2i(glGetUniformLocation(shaderProgram, "regionSize"), (wWidth - sidebarWidth) * ssaa_factor * dpi_scale, wHeight * ssaa_factor * dpi_scale);
+            glUniform2i(glGetUniformLocation(shaderProgram, "windowSize"), wWidth * ssaa_factor * dpi_scale, wHeight * ssaa_factor * dpi_scale);
 
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, sliderBuffer);
             std::vector<float> values(sliders.size());
@@ -2888,8 +2899,8 @@ public:
                 glBindFramebuffer(GL_READ_FRAMEBUFFER, srcFBO);
                 glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dstFBO);
                 glBlitFramebuffer(
-                    0, 0, ssaa_factor * wWidth, ssaa_factor * wHeight,
-                    0, 0, ssaa_factor * wWidth, ssaa_factor * wHeight,
+                    0, 0, ssaa_factor * wWidth * dpi_scale, ssaa_factor * wHeight * dpi_scale,
+                    0, 0, ssaa_factor * wWidth * dpi_scale, ssaa_factor * wHeight * dpi_scale,
                     GL_DEPTH_BUFFER_BIT, GL_NEAREST
                 );
                 glBindFramebuffer(GL_FRAMEBUFFER, FBO);
@@ -2930,7 +2941,7 @@ public:
             if ((gradient_vector || normal_vector) && cursor_on_point)
                 draw_vector(vector_start, vector_end, graphs[graph_index].secondary_color, view, proj);
 
-            glViewport(sidebarWidth, 0, wWidth - sidebarWidth, wHeight);
+            glViewport(sidebarWidth * dpi_scale, 0, (wWidth - sidebarWidth) * dpi_scale, wHeight * dpi_scale);
 
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, frameTex);
