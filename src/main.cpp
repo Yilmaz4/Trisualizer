@@ -27,6 +27,9 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#ifdef PLATFORM_WINDOWS
+    #include <GLFW/glfw3native.h>
+#endif
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
@@ -52,11 +55,6 @@
 #include <string>
 #include <regex>
 #include <bitset>
-
-#ifdef PLATFORM_WINDOWS
-    #pragma comment(lib, "Gdiplus.lib")
-    #pragma comment(lib, "Shlwapi.lib")
-#endif
 
 /*
 TODO:
@@ -475,6 +473,8 @@ public:
         font_title = io.Fonts->AddFontFromMemoryTTF((void*)font.data(), font.size(), 11.f, nullptr, ranges);
 #else
         font_title = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\consola.ttf", 11.f, nullptr, ranges);
+        BOOL use_dark_mode = true;
+        DwmSetWindowAttribute(glfwGetWin32Window(window), 20, &use_dark_mode, sizeof(use_dark_mode));
 #endif
         IM_ASSERT(font_title != NULL);
 
