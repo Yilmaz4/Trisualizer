@@ -45,7 +45,9 @@ target_link_libraries(imgui PRIVATE glfw)
 
 add_executable(${PROJECT_NAME} ${SOURCES} lib/glad/src/glad.c lib/lodepng/lodepng.cpp)
 
-b_embed(${PROJECT_NAME} assets/consola.ttf)
+if(NOT WIN32)
+    b_embed(${PROJECT_NAME} assets/consola.ttf)
+endif()
 b_embed(${PROJECT_NAME} assets/main.bmp)
 
 b_embed(${PROJECT_NAME} assets/gradient_vector.png)

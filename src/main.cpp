@@ -1,4 +1,4 @@
-﻿#define VERSION "1.0"
+#define VERSION "1.0"
 
 #ifdef PLATFORM_WINDOWS
     #pragma comment(linker, "/ENTRY:mainCRTStartup")
@@ -89,6 +89,8 @@ void GLAPIENTRY glMessageCallback(GLenum source, GLenum type, GLuint id, GLenum 
     fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n", "** GL ERROR **", type, severity, message);
 }
 #endif
+
+#define U8(t) reinterpret_cast<const char*>(t)
 
 class compilation_error : public std::exception {
     char* message;
@@ -429,12 +431,6 @@ public:
         glfwSwapInterval(1);
         glfwMakeContextCurrent(window);
 
-#ifdef PLATFORM_WINDOWS
-        BOOL use_darkmode = true;
-        HWND wHandle = glfwGetWin32Window(window);
-        DwmSetWindowAttribute(wHandle, DWMWINDOWATTRIBUTE::DWMWA_USE_IMMERSIVE_DARK_MODE, &use_darkmode, sizeof(int));
-#endif
-
         glfwSetCursorPosCallback(window, on_mouseMove);
         glfwSetScrollCallback(window, on_mouseScroll);
         glfwSetWindowSizeCallback(window, on_windowResize);
@@ -453,7 +449,7 @@ public:
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
-        auto font = b::embed<"assets/consola.ttf">();
+
         io.Fonts->Clear();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -462,8 +458,13 @@ public:
         static const ImWchar ranges[] = {
             0x0020, 0x2264, 0xFFFF
         };
-        ImFont* imfont = io.Fonts->AddFontFromMemoryTTF((void*)font.data(), font.size(), 11.f, nullptr, ranges);
-        IM_ASSERT(imfont != NULL);
+#ifndef PLATFORM_WINDOWS
+        auto font = b::embed<"assets/consola.ttf">();
+        font_title = io.Fonts->AddFontFromMemoryTTF((void*)font.data(), font.size(), 11.f, nullptr, ranges);
+#else
+        font_title = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\consola.ttf", 11.f, nullptr, ranges);
+#endif
+        IM_ASSERT(font_title != NULL);
 
         ImGuiStyle& style = ImGui::GetStyle();
         ImGui::StyleColorsDark();
@@ -2188,20 +2189,20 @@ public:
                             bool ready = true;
                             switch (region_type) {
                             case CartesianRectangle:
-                                ImGui::InputFloat("\u2264 x \u2264", &x_min, 0.f, 0.f, "%g");
+                                ImGui::InputFloat(U8(u8"\u2264 x \u2264"), &x_min, 0.f, 0.f, "%g");
                                 ImGui::SameLine();
                                 ImGui::InputFloat("##x_max", &x_max, 0.f, 0.f, "%g");
 
-                                ImGui::InputFloat("\u2264 y \u2264", &y_min, 0.f, 0.f, "%g");
+                                ImGui::InputFloat(U8(u8"\u2264 y \u2264"), &y_min, 0.f, 0.f, "%g");
                                 ImGui::SameLine();
                                 ImGui::InputFloat("##y_max", &y_max, 0.f, 0.f, "%g");
                                 break;
                             case Type1:
-                                ImGui::InputFloat("\u2264 x \u2264", &x_min, 0.f, 0.f, "%g");
+                                ImGui::InputFloat(U8(u8"\u2264 x \u2264"), &x_min, 0.f, 0.f, "%g");
                                 ImGui::SameLine();
                                 ImGui::InputFloat("##x_max", &x_max, 0.f, 0.f, "%g");
 
-                                ImGui::InputText("\u2264 y \u2264", y_min_eq, 32);
+                                ImGui::InputText(U8(u8"\u2264 y \u2264"), y_min_eq, 32);
                                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                                     ImGui::SetTooltip("Enter a function of x", ImGui::GetStyle().HoverDelayNormal);
                                 ImGui::SameLine();
@@ -2211,7 +2212,7 @@ public:
                                 if (strlen(y_min_eq) == 0 || strlen(y_max_eq) == 0) ready = false;
                                 break;
                             case Type2:
-                                ImGui::InputText("\u2264 x \u2264", x_min_eq, 32);
+                                ImGui::InputText(U8(u8"\u2264 x \u2264"), x_min_eq, 32);
                                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                                     ImGui::SetTooltip("Enter a function of y", ImGui::GetStyle().HoverDelayNormal);
                                 ImGui::SameLine();
@@ -2220,22 +2221,22 @@ public:
                                     ImGui::SetTooltip("Enter a function of y", ImGui::GetStyle().HoverDelayNormal);
                                 if (strlen(x_min_eq) == 0 || strlen(x_max_eq) == 0) ready = false;
 
-                                ImGui::InputFloat("\u2264 y \u2264", &y_min, 0.f, 0.f, "%g");
+                                ImGui::InputFloat(U8(u8"\u2264 y \u2264"), &y_min, 0.f, 0.f, "%g");
                                 ImGui::SameLine();
                                 ImGui::InputFloat("##y_max", &y_max, 0.f, 0.f, "%g");
                                 break;
                             case Polar:
-                                ImGui::InputFloat("\u2264 \u03b8 \u2264", &theta_min, 0.f, 0.f, "%g");
+                                ImGui::InputFloat(U8(u8"\u2264 \u03b8 \u2264"), &theta_min, 0.f, 0.f, "%g");
                                 ImGui::SameLine();
                                 ImGui::InputFloat("##theta_max", &theta_max, 0.f, 0.f, "%g");
 
-                                ImGui::InputText("\u2264 r \u2264", r_min_eq, 32);
+                                ImGui::InputText(U8(u8"\u2264 r \u2264"), r_min_eq, 32);
                                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                                    ImGui::SetTooltip("Enter a function of \u03b8 (alias: t)", ImGui::GetStyle().HoverDelayNormal);
+                                    ImGui::SetTooltip(U8(u8"Enter a function of \u03b8 (alias: t)"), ImGui::GetStyle().HoverDelayNormal);
                                 ImGui::SameLine();
                                 ImGui::InputText("##r_max", r_max_eq, 32);
                                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                                    ImGui::SetTooltip("Enter a function of \u03b8 (alias: t)", ImGui::GetStyle().HoverDelayNormal);
+                                    ImGui::SetTooltip(U8(u8"Enter a function of \u03b8 (alias: t)"), ImGui::GetStyle().HoverDelayNormal);
                                 if (strlen(r_min_eq) == 0 || strlen(r_max_eq) == 0) ready = false;
                                 break;
                             }
@@ -2301,20 +2302,20 @@ public:
                             bool ready = true;
                             switch (region_type) {
                             case CartesianRectangle:
-                                ImGui::InputFloat("\u2264 x \u2264", &x_min, 0.f, 0.f, "%g");
+                                ImGui::InputFloat(U8(u8"\u2264 x \u2264"), &x_min, 0.f, 0.f, "%g");
                                 ImGui::SameLine();
                                 ImGui::InputFloat("##x_max", &x_max, 0.f, 0.f, "%g");
 
-                                ImGui::InputFloat("\u2264 y \u2264", &y_min, 0.f, 0.f, "%g");
+                                ImGui::InputFloat(U8(u8"\u2264 y \u2264"), &y_min, 0.f, 0.f, "%g");
                                 ImGui::SameLine();
                                 ImGui::InputFloat("##y_max", &y_max, 0.f, 0.f, "%g");
                                 break;
                             case Type1:
-                                ImGui::InputFloat("\u2264 x \u2264", &x_min, 0.f, 0.f, "%g");
+                                ImGui::InputFloat(U8(u8"\u2264 x \u2264"), &x_min, 0.f, 0.f, "%g");
                                 ImGui::SameLine();
                                 ImGui::InputFloat("##x_max", &x_max, 0.f, 0.f, "%g");
 
-                                ImGui::InputText("\u2264 y \u2264", y_min_eq, 32);
+                                ImGui::InputText(U8(u8"\u2264 y \u2264"), y_min_eq, 32);
                                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                                     ImGui::SetTooltip("Enter a function of x", ImGui::GetStyle().HoverDelayNormal);
                                 ImGui::SameLine();
@@ -2324,7 +2325,7 @@ public:
                                 if (strlen(y_min_eq) == 0 || strlen(y_max_eq) == 0) ready = false;
                                 break;
                             case Type2:
-                                ImGui::InputText("\u2264 x \u2264", x_min_eq, 32);
+                                ImGui::InputText(U8(u8"\u2264 x \u2264"), x_min_eq, 32);
                                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                                     ImGui::SetTooltip("Enter a function of y", ImGui::GetStyle().HoverDelayNormal);
                                 ImGui::SameLine();
@@ -2333,22 +2334,22 @@ public:
                                     ImGui::SetTooltip("Enter a function of y", ImGui::GetStyle().HoverDelayNormal);
                                 if (strlen(x_min_eq) == 0 || strlen(x_max_eq) == 0) ready = false;
 
-                                ImGui::InputFloat("\u2264 y \u2264", &y_min, 0.f, 0.f, "%g");
+                                ImGui::InputFloat(U8(u8"\u2264 y \u2264"), &y_min, 0.f, 0.f, "%g");
                                 ImGui::SameLine();
                                 ImGui::InputFloat("##y_max", &y_max, 0.f, 0.f, "%g");
                                 break;
                             case Polar:
-                                ImGui::InputFloat("\u2264 \u03b8 \u2264", &theta_min, 0.f, 0.f, "%g");
+                                ImGui::InputFloat(U8(u8"\u2264 \u03b8 \u2264"), &theta_min, 0.f, 0.f, "%g");
                                 ImGui::SameLine();
                                 ImGui::InputFloat("##theta_max", &theta_max, 0.f, 0.f, "%g");
 
-                                ImGui::InputText("\u2264 r \u2264", r_min_eq, 32);
+                                ImGui::InputText(U8(u8"\u2264 r \u2264"), r_min_eq, 32);
                                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                                    ImGui::SetTooltip("Enter a function of \u03b8 (alias: t)", ImGui::GetStyle().HoverDelayNormal);
+                                    ImGui::SetTooltip(U8(u8"Enter a function of \u03b8 (alias: t)"), ImGui::GetStyle().HoverDelayNormal);
                                 ImGui::SameLine();
                                 ImGui::InputText("##r_max", r_max_eq, 32);
                                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
-                                    ImGui::SetTooltip("Enter a function of \u03b8 (alias: t)", ImGui::GetStyle().HoverDelayNormal);
+                                    ImGui::SetTooltip(U8(u8"Enter a function of \u03b8 (alias: t)"), ImGui::GetStyle().HoverDelayNormal);
                                 if (strlen(r_min_eq) == 0 || strlen(r_max_eq) == 0) ready = false;
                                 break;
                             }
@@ -2422,7 +2423,7 @@ public:
                             ImGui::SameLine();
 
                             ImGui::PushItemWidth((ImGui::GetContentRegionAvail().x - 43.f) / 2.f);
-                            ImGui::InputFloat("\u2264 t \u2264", &t_min, 0.f, 0.f, "%g");
+                            ImGui::InputFloat(U8(u8"\u2264 t \u2264"), &t_min, 0.f, 0.f, "%g");
                             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay))
                                 ImGui::SetTooltip("Lower limit for the parameter t", ImGui::GetStyle().HoverDelayNormal);
                             ImGui::SameLine();
@@ -2565,7 +2566,7 @@ public:
                     ImGui::Text("X=% 06.4f\nY=% 06.4f\nZ=% 06.4f", fragPos.x, fragPos.y, fragPos.z);
                     ImGui::SameLine();
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5.f);
-                    ImGui::Text("\u2202z/\u2202x=% 06.4f\n\u2202z/\u2202y=% 06.4f", gradient.x, gradient.y);
+                    ImGui::Text(U8(u8"\u2202z/\u2202x=% 06.4f\n\u2202z/\u2202y=% 06.4f"), gradient.x, gradient.y);
                     prevWindowSize = ImGui::GetWindowSize();
                     ImGui::End();
                 }
@@ -2704,20 +2705,20 @@ public:
                     ImGui::SetWindowPos(pos);
                     switch (region_type) {
                     case CartesianRectangle:
-                        ImGui::Text("%.4g \u2264 x \u2264 %.4g, %.4g \u2264 y \u2264 %.4g", x_min, x_max, y_min, y_max);
+                        ImGui::Text(U8(u8"%.4g \u2264 x \u2264 %.4g, %.4g \u2264 y \u2264 %.4g"), x_min, x_max, y_min, y_max);
                         break;
                     case Type1:
-                        ImGui::Text("%.4g \u2264 x \u2264 %.4g, %s \u2264 y \u2264 %s", x_min, x_max, y_min_eq, y_max_eq);
+                        ImGui::Text(U8(u8"%.4g \u2264 x \u2264 %.4g, %s \u2264 y \u2264 %s"), x_min, x_max, y_min_eq, y_max_eq);
                         break;
                     case Type2:
-                        ImGui::Text("%.4g \u2264 y \u2264 %.4g, %s \u2264 x \u2264 %s", y_min, y_max, x_min_eq, x_max_eq);
+                        ImGui::Text(U8(u8"%.4g \u2264 y \u2264 %.4g, %s \u2264 x \u2264 %s"), y_min, y_max, x_min_eq, x_max_eq);
                         break;
                     case Polar:
-                        ImGui::Text("%.4g \u2264 \u03b8 \u2264 %.4g, %s \u2264 r \u2264 %s", theta_min, theta_max, r_min_eq, r_max_eq);
+                        ImGui::Text(U8(u8"%.4g \u2264 \u03b8 \u2264 %.4g, %s \u2264 r \u2264 %s"), theta_min, theta_max, r_min_eq, r_max_eq);
                     }
-                    ImGui::Text("Signed volume \u2248 %.9f", integral_result);
+                    ImGui::Text(U8(u8"Signed volume \u2248 %.9f"), integral_result);
                     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(120, 120, 120, 255));
-                    ImGui::Text("\u2206x = %.3e, \u2206y = %.3e", dx, dy);
+                    ImGui::Text(U8(u8"\u2206x = %.3e, \u2206y = %.3e"), dx, dy);
                     ImGui::PopStyleColor();
                     ImGui::End();
                     break;
@@ -2735,23 +2736,23 @@ public:
                     ImGui::SetWindowPos(pos);
                     switch (region_type) {
                     case CartesianRectangle:
-                        ImGui::Text("%.4g \u2264 x \u2264 %.4g, %.4g \u2264 y \u2264 %.4g", x_min, x_max, y_min, y_max);
+                        ImGui::Text(U8(u8"%.4g \u2264 x \u2264 %.4g, %.4g \u2264 y \u2264 %.4g"), x_min, x_max, y_min, y_max);
                         break;
                     case Type1:
-                        ImGui::Text("%.4g \u2264 x \u2264 %.4g, %s \u2264 y \u2264 %s", x_min, x_max, y_min_eq, y_max_eq);
+                        ImGui::Text(U8(u8"%.4g \u2264 x \u2264 %.4g, %s \u2264 y \u2264 %s"), x_min, x_max, y_min_eq, y_max_eq);
                         break;
                     case Type2:
-                        ImGui::Text("%.4g \u2264 y \u2264 %.4g, %s \u2264 x \u2264 %s", y_min, y_max, x_min_eq, x_max_eq);
+                        ImGui::Text(U8(u8"%.4g \u2264 y \u2264 %.4g, %s \u2264 x \u2264 %s"), y_min, y_max, x_min_eq, x_max_eq);
                         break;
                     case Polar:
-                        ImGui::Text("%.4g \u2264 \u03b8 \u2264 %.4g, %s \u2264 r \u2264 %s", theta_min, theta_max, r_min_eq, r_max_eq);
+                        ImGui::Text(U8(u8"%.4g \u2264 \u03b8 \u2264 %.4g, %s \u2264 r \u2264 %s"), theta_min, theta_max, r_min_eq, r_max_eq);
                     }
                     s_display = scalar_field_eq;
                     s_display.erase(std::remove(s_display.begin(), s_display.end(), ' '), s_display.end());
                     ImGui::Text("Scalar field: %s", s_display.c_str());
-                    ImGui::Text("Weighted surface area \u2248 %.9f", integral_result);
+                    ImGui::Text(U8(u8"Weighted surface area \u2248 %.9f"), integral_result);
                     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(120, 120, 120, 255));
-                    ImGui::Text("\u2206x = %.3e, \u2206y = %.3e", dx, dy);
+                    ImGui::Text(U8(u8"\u2206x = %.3e, \u2206y = %.3e"), dx, dy);
                     ImGui::PopStyleColor();
                     ImGui::End();
                     break;
@@ -2771,11 +2772,11 @@ public:
                     y_display = y_param_eq;
                     x_display.erase(std::remove(x_display.begin(), x_display.end(), ' '), x_display.end());
                     y_display.erase(std::remove(y_display.begin(), y_display.end(), ' '), y_display.end());
-                    ImGui::Text("%.5g \u2264 t \u2264 %.5g", t_min, t_max);
+                    ImGui::Text(U8(u8"%.5g \u2264 t \u2264 %.5g"), t_min, t_max);
                     ImGui::Text("x = %s  y = %s", x_display.c_str(), y_display.c_str());
-                    ImGui::Text("Cross-sectional area \u2248 %.9f", integral_result);
+                    ImGui::Text(U8(u8"Cross-sectional area \u2248 %.9f"), integral_result);
                     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(120, 120, 120, 255));
-                    ImGui::Text("\u2206t = %.3e", dt);
+                    ImGui::Text(U8(u8"\u2206t = %.3e"), dt);
                     ImGui::PopStyleColor();
                     ImGui::End();
                 }
