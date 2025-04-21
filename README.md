@@ -1,16 +1,36 @@
-<img src="https://github.com/user-attachments/assets/0ec19ded-d4a9-43e5-900d-3fe81c879c5d" height="180px" />
+# Trisualizer
 
-<br>
-<br>
+Trisualizer is an advanced two-variable function grapher that allows users to visualize and interact with multivariable mathematical functions in real-time.
 
-**Trisualizer** is an advanced two-variable function grapher that allows users to visualize and interact with multivariable mathematical functions in real-time.
-
-It features capabilities for displaying the partial derivatives, gradient vector, normal vector, and tangent plane at any selected point on the surface, and computing double integrals over general regions using high-precision numerical methods.
+It features capabilities for displaying the partial derivatives, the gradient vector, the normal vector, and the tangent plane at any selected point on the surface, computing double and surface integrals over general regions and line integrals of parametric curves using numerical methods.
 
 ![ui](https://github.com/user-attachments/assets/6ed5c52a-f31e-4f20-a0f4-bfa13ceffeba)
 
-Users can define custom variables, values of which can be easily adjusted with sliders, allowing for dynamic exploration of the function's properties. The grapher features realistic shading using the Blinn-Phong lighting model alongside 5 different coloring methods, enhancing the depth and realism of the rendered surface. Grid lines can also be displayed to aid in spatial orientation.
+Users can define custom variables, values of which can be adjusted with sliders. The grapher features realistic shading using the Blinn-Phong lighting model alongside 5 different coloring methods. Grid lines can also be displayed.
 
-![shading](https://github.com/user-attachments/assets/75725ee2-2fd4-453b-a91e-24f08dfca553)
+The project is written in C++ and uses OpenGL. Compute shaders running the GPU are utilized for computations.
 
-OpenGL compute shaders are used for high-performance computations, ensuring smooth and responsive interaction. 
+## Building
+
+### Dependencies
+
+- Git
+- CMake version >= 3.21
+- C++ build system (Make, Ninja, MSBuild, etc.)
+- C++ compiler (GCC, Clang, MSVC, etc.)
+
+Clone the repository with `--recurse-submodules`, then go into the directory
+```
+git clone --recurse-submodules https://github.com/Yilmaz4/Trisualizer.git
+cd Trisualizer
+```
+
+Generate the build files with CMake and build
+```
+cmake -S . -B build
+cmake --build build
+```
+
+You can then find the binary in the `bin` directory
+
+The project has been tested on Windows and Linux.
