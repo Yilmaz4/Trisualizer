@@ -13,10 +13,8 @@
 
 #ifdef PLATFORM_WINDOWS
     #include <Windows.h>
-    #include <objidl.h>
-    #include <gdiplus.h>
-    #include <shlwapi.h>
     #include <dwmapi.h>
+    #include <GLFW/glfw3native.h>
 #endif
 
 #include <imgui.h>
@@ -27,9 +25,6 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#ifdef PLATFORM_WINDOWS
-    #include <GLFW/glfw3native.h>
-#endif
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
@@ -159,7 +154,7 @@ enum GraphType {
 
 class Graph {
 public:
-    GLuint computeProgram = NULL, SSBO, EBO;
+    GLuint computeProgram = 0, SSBO, EBO;
     size_t idx;
     bool enabled = false;
     bool valid = false;
@@ -1463,10 +1458,6 @@ void main() {
         v -= centerPos;
         return vec3(graph_size * v.x / zoomx, v.z / zoomz * graph_size, graph_size * v.y / zoomy);
     }
-    // v: vector in worldspace
-    vec3 to_cartesian(vec3 v) {
-
-    }
     // v: vector in cartesian space
     vec3 to_screenspace(vec3 v, ivec2 viewportSize, mat4 view, mat4 proj) const {
         v -= centerPos;
@@ -2180,7 +2171,7 @@ public:
                     };
 
                     if (ImGui::BeginTabBar("IntegrationTypes")) {
-                        if (ImGui::BeginTabItem("Double Integral", nullptr, dintegral ? ImGuiTabItemFlags_SetSelected : NULL)) {
+                        if (ImGui::BeginTabItem("Double Integral", nullptr, dintegral ? ImGuiTabItemFlags_SetSelected : 0)) {
                             integral_texture = dintegral_texture;
                             dintegral = false;
                             ImGui::BeginChild(ImGui::GetID("region_type"), ImVec2(100, 0), ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY);
@@ -2859,7 +2850,7 @@ public:
 
             glClearColor(0.0f, 0.0f, 0.0f, 1.f);
             glClearDepth(0.f);
-            glBindFramebuffer(GL_FRAMEBUFFER, NULL);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glBindFramebuffer(GL_FRAMEBUFFER, FBO);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -2945,7 +2936,7 @@ public:
 
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, frameTex);
-            glBindFramebuffer(GL_FRAMEBUFFER, NULL);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glUniform1i(glGetUniformLocation(shaderProgram, "quad"), true);
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
