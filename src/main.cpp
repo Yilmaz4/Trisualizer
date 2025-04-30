@@ -348,7 +348,7 @@ public:
     bool integral = false, second_corner = false, apply_integral = false, show_integral_result = false;
     int integrand_index = 1, region_type = CartesianRectangle, integral_precision = 2000, erroring_eq = -1;
     float x_min, x_max, y_min, y_max, theta_min, theta_max, t_min, t_max;
-    char x_min_eq[32], x_max_eq[32], y_min_eq[32], y_max_eq[32], r_min_eq[32], r_max_eq[32], x_param_eq[32], y_param_eq[32], scalar_field_eq[32], integral_infoLog[512];
+    char x_min_eq[32]{}, x_max_eq[32]{}, y_min_eq[32]{}, y_max_eq[32]{}, r_min_eq[32]{}, r_max_eq[32]{}, x_param_eq[32]{}, y_param_eq[32]{}, scalar_field_eq[32]{}, integral_infoLog[512]{};
     float x_min_eq_min, x_max_eq_max, y_min_eq_min, y_max_eq_max;
     vec3 center_of_region;
     float integral_result, dx, dy, dt;
@@ -414,7 +414,8 @@ public:
         glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
         glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
         glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
-        //glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
+        glfwWindowHintString(GLFW_WAYLAND_APP_ID, "trisualizer");
+        glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
         //glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_FALSE); // makes content blurry, workaround for scaling in wayland
 
         glfwWindowHint(GLFW_SAMPLES, 4);
@@ -423,13 +424,14 @@ public:
         if (window == nullptr) {
             throw std::runtime_error("Failed to create window.");
         }
+        glfwSetWindowTitle(window, "Trisualizer");
 
 #ifdef PLATFORM_LINUX
         const char* wayland_display = std::getenv("WAYLAND_DISPLAY");
         const char* x11_display = std::getenv("DISPLAY");
 
         if (wayland_display) {
-            // Fix for scaling in Hyprland
+            // Fix for scaling in Hyprland specifically
             const char* session = std::getenv("XDG_SESSION_DESKTOP");
             const char* hyprSig = std::getenv("HYPRLAND_INSTANCE_SIGNATURE");
             if ((session && std::string(session) == "Hyprland") || (hyprSig != nullptr)) {
@@ -462,7 +464,6 @@ public:
                 std::cout << xscale << " " << yscale << std::endl;
                 dpi_scale = xscale;
             }
-            std::cout << dpi_scale << std::endl;
         }
 #endif
         glfwSetWindowUserPointer(window, this);
@@ -1600,6 +1601,17 @@ public:
             ImGui_ImplGlfw_NewFrame();
             glfwPollEvents();
             ImGui::NewFrame();
+
+            // workaround to make window floating in Hyprland
+            if (frameCount == 1) {
+                const char* session = std::getenv("XDG_SESSION_DESKTOP");
+                const char* hyprSig = std::getenv("HYPRLAND_INSTANCE_SIGNATURE");
+                if ((session && std::string(session) == "Hyprland") || (hyprSig != nullptr)) {
+                    system("hyprctl dispatch setfloating class:trisualizer");
+                    system("hyprctl dispatch resizewindowpixel exact 1000 600, class:trisualizer");
+                    system("hyprctl dispatch centerwindow class:trisualizer");
+                }
+            }
 
             int wWidth, wHeight;
             glfwGetWindowSize(window, &wWidth, &wHeight);
