@@ -347,9 +347,9 @@ public:
     bool dintegral = false;
     bool integral = false, second_corner = false, apply_integral = false, show_integral_result = false;
     int integrand_index = 1, region_type = CartesianRectangle, integral_precision = 2000, erroring_eq = -1;
-    float x_min, x_max, y_min, y_max, theta_min, theta_max, t_min, t_max;
+    float x_min{}, x_max{}, y_min{}, y_max{}, theta_min{}, theta_max{}, t_min{}, t_max{};
     char x_min_eq[32]{}, x_max_eq[32]{}, y_min_eq[32]{}, y_max_eq[32]{}, r_min_eq[32]{}, r_max_eq[32]{}, x_param_eq[32]{}, y_param_eq[32]{}, scalar_field_eq[32]{}, integral_infoLog[512]{};
-    float x_min_eq_min, x_max_eq_max, y_min_eq_min, y_max_eq_max;
+    float x_min_eq_min{}, x_max_eq_max{}, y_min_eq_min{}, y_max_eq_max{};
     vec3 center_of_region;
     float integral_result, dx, dy, dt;
     IntegralType last_integration_type;
