@@ -8,13 +8,14 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/lib/imgui)
 #set(B_PRODUCTION_MODE ON)
+set(JSON_BuildTests OFF CACHE INTERNAL "")
 
 add_subdirectory(lib/boxer)
 add_subdirectory(lib/embed)
 add_subdirectory(lib/glm)
 add_subdirectory(lib/glfw)
 
-include_directories(SYSTEM lib/lodepng lib/glad/include include lib/imgui lib/imgui/backends)
+include_directories(SYSTEM lib/lodepng lib/glad/include include lib/imgui lib/imgui/backends lib/json)
 
 find_package(OpenGL REQUIRED)
 
