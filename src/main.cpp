@@ -1807,10 +1807,10 @@ public:
                 }
                 set_focus = true;
             }
-            ImGui::SameLine();
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 0.4f, 1.f));
-            ImGui::Text("FPS: %.1f", 1.0 / timeStep);
-            ImGui::PopStyleColor();
+            // ImGui::SameLine();
+            // ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 0.4f, 1.f));
+            // ImGui::Text("FPS: %.1f", 1.0 / timeStep);
+            // ImGui::PopStyleColor();
             for (int i = 0; i < graphs.size(); i++) {
                 if (graphs[i].type != UserDefined) continue;
                 Graph& g = graphs[i];
@@ -1861,7 +1861,7 @@ public:
                     }
                 }
                 ImGui::SameLine();
-                if (ImGui::Button(g.advanced_view ? "˄" : "˅", ImVec2(16, 0))) {
+                if (ImGui::Button(g.advanced_view ? "↑" : "↓", ImVec2(16, 0))) {
                     g.advanced_view ^= 1;
                 }
                 ImGui::SameLine();
@@ -1968,7 +1968,7 @@ public:
                 }
                 ImGui::EndDisabled();
                 ImGui::SameLine();
-                if (ImGui::Button(s.config ? "˄" : "˅", ImVec2(16, 0)))
+                if (ImGui::Button(s.config ? "↑" : "↓", ImVec2(16, 0)))
                     s.config ^= 1;
                 ImGui::SameLine();
                 if (ImGui::Button("x", ImVec2(16, 0))) {
