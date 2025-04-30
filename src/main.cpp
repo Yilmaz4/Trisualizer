@@ -424,7 +424,6 @@ public:
         if (window == nullptr) {
             throw std::runtime_error("Failed to create window.");
         }
-        glfwSetWindowTitle(window, "Trisualizer");
 
 #ifdef PLATFORM_LINUX
         const char* wayland_display = std::getenv("WAYLAND_DISPLAY");
@@ -1775,7 +1774,7 @@ public:
                     ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
 
                     auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.3f, nullptr, &dockspace_id);
-                    auto dock_id_down = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, -0.08f + 0.3767, nullptr, &dock_id_left);
+                    auto dock_id_down = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 0.3f, nullptr, &dock_id_left);
                     auto dock_id_middle = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 0.4f, nullptr, &dock_id_left);
 
                     ImGui::DockBuilderDockWindow("Symbolic View", dock_id_left);
