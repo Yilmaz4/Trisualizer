@@ -38,6 +38,7 @@
 #include <battery/embed.hpp>
 #include <lodepng.h>
 #include <bmp_read.hpp>
+#include <nlohmann/json.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -413,6 +414,7 @@ public:
         glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
         glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
         glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+        //glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
         //glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_FALSE); // makes content blurry, workaround for scaling in wayland
 
         glfwWindowHint(GLFW_SAMPLES, 4);
@@ -427,9 +429,40 @@ public:
         const char* x11_display = std::getenv("DISPLAY");
 
         if (wayland_display) {
-            float xscale, yscale;
-            glfwGetWindowContentScale(window, &xscale, &yscale);
-            dpi_scale = xscale;
+            // Fix for scaling in Hyprland
+            const char* session = std::getenv("XDG_SESSION_DESKTOP");
+            const char* hyprSig = std::getenv("HYPRLAND_INSTANCE_SIGNATURE");
+            if ((session && std::string(session) == "Hyprland") || (hyprSig != nullptr)) {
+                auto exec_command = [](const char* cmd) {
+                    std::array<char, 128> buffer;
+                    std::stringstream result;
+                    FILE* pipe = popen(cmd, "r");
+                    if (!pipe) return std::string();
+                    while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+                        result << buffer.data();
+                    }
+                    pclose(pipe);
+                    return result.str();
+                };
+                std::string json = exec_command("hyprctl monitors -j");
+                if (!json.empty()) {
+                    auto parsedjson = nlohmann::json::parse(json);
+                    std::string monitor = nlohmann::json::parse(exec_command("hyprctl activeworkspace -j"))["monitor"];
+                    for (const auto& m : parsedjson) {
+                        if (m["name"] == monitor) {
+                            dpi_scale = m["scale"].get<float>();
+                            break;
+                        }
+                    }
+                }
+            }
+            else {
+                float xscale, yscale;
+                glfwGetWindowContentScale(window, &xscale, &yscale);
+                std::cout << xscale << " " << yscale << std::endl;
+                dpi_scale = xscale;
+            }
+            std::cout << dpi_scale << std::endl;
         }
 #endif
         glfwSetWindowUserPointer(window, this);
@@ -461,7 +494,7 @@ public:
         io.IniFilename = NULL;
         io.LogFilename = NULL;
         static const ImWchar ranges[] = {
-            0x0020, 0x2264, 0xFFFF
+            0x0020, 0x2264, 0x2264, 0xFFFF
         };
 #ifndef PLATFORM_WINDOWS
         auto font = b::embed<"assets/consola.ttf">();
@@ -527,7 +560,7 @@ public:
 
         glGenBuffers(1, &posBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 6ull * 700 * dpi_scale * 600 * dpi_scale * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * 700 * dpi_scale * 600 * dpi_scale * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, posBuffer);
         glShaderStorageBlockBinding(shaderProgram, glGetProgramResourceIndex(shaderProgram, GL_SHADER_STORAGE_BLOCK, "posbuffer"), 1);
 
@@ -1561,7 +1594,7 @@ public:
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
         glBindFramebuffer(GL_FRAMEBUFFER, dstFBO);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, prevZBuffer, 0);
-
+        
         do {
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
@@ -2524,19 +2557,20 @@ public:
 
             double x, y;
             glfwGetCursorPos(window, &x, &y);
+            x = round(x);
+            y = round(y);
             if (graphs.size() > 0 && x - sidebarWidth > 0. && x - sidebarWidth < (wWidth - sidebarWidth) && y > 0. && y < wHeight &&
                 glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE && zoomSpeed == 1.f && !ImGui::GetIO().WantCaptureMouse && !autoRotate) {
                 // depth check not needed since 977ef16
                 float depth[1];
                 glBindFramebuffer(GL_FRAMEBUFFER, FBO);
                 glBindTexture(GL_TEXTURE_2D, prevZBuffer);
-                glReadPixels(ssaa_factor * x, ssaa_factor * (wHeight - y), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, depth);
+                glReadPixels(ssaa_factor * x * dpi_scale, ssaa_factor * (wHeight - y) * dpi_scale, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, depth);
                 if (depth[0] == 0.f) goto mouse_not_on_graph;
 
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, posBuffer);
-                glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                 float data[6];
-                glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<int>(6 * ((wWidth - sidebarWidth) * y + x - sidebarWidth)) * sizeof(float), 6 * sizeof(float), data);
+                glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 6 * (floor((wWidth - sidebarWidth) * dpi_scale) * floor(y * dpi_scale) + floor((x - sidebarWidth) * dpi_scale)) * sizeof(float), 6 * sizeof(float), data);
                 fragPos = { data[0], data[1], data[2] };
                 graph_index = static_cast<int>(data[3]);
                 gradient = { data[4], data[5] };
@@ -2839,7 +2873,7 @@ public:
 
             auto cameraPos = vec3(sin(radians(theta)) * cos(radians(phi)), cos(radians(theta)), sin(radians(theta)) * sin(radians(phi)));
             view = lookAt(cameraPos, vec3(0.f), { 0.f, 1.f, 0.f });
-            proj = ortho(-1.f, 1.f, -(float)wHeight / (float)(wWidth - sidebarWidth), (float)wHeight / (float)(wWidth - sidebarWidth), -10.f, 10.f);
+            proj = ortho(-1.f, 1.f, -(float)wHeight / (float)(wWidth - sidebarWidth), (float)wHeight / (float)(wWidth - sidebarWidth), -5.f, 5.f);
             glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "vpmat"), 1, GL_FALSE, value_ptr(proj * view));
             glUniform3fv(glGetUniformLocation(shaderProgram, "cameraPos"), 1, value_ptr(cameraPos));
 
