@@ -17,6 +17,3 @@
 [submodule "lib/lodepng"]
 	path = lib/lodepng
 	url = https://github.com/lvandeve/lodepng
-[submodule "lib/json"]
-	path = lib/json
-	url = https://github.com/nlohmann/json
