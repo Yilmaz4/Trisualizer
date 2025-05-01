@@ -417,8 +417,13 @@ public:
         glfwWindowHintString(GLFW_WAYLAND_APP_ID, "trisualizer");
         glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
         //glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_FALSE); // makes content blurry, workaround for scaling in wayland
-
         glfwWindowHint(GLFW_SAMPLES, 4);
+
+        const char* session = std::getenv("XDG_SESSION_DESKTOP");
+        const char* hyprSig = std::getenv("HYPRLAND_INSTANCE_SIGNATURE");
+        if ((session && std::string(session) == "Hyprland") || (hyprSig != nullptr)) {
+            system("hyprctl keyword windowrulev2 float, class:trisualizer");
+        }
 
         window = glfwCreateWindow(1000, 600, "Trisualizer", NULL, NULL);
         if (window == nullptr) {
@@ -431,8 +436,6 @@ public:
 
         if (wayland_display) {
             // Fix for scaling in Hyprland specifically
-            const char* session = std::getenv("XDG_SESSION_DESKTOP");
-            const char* hyprSig = std::getenv("HYPRLAND_INSTANCE_SIGNATURE");
             if ((session && std::string(session) == "Hyprland") || (hyprSig != nullptr)) {
                 auto exec_command = [](const char* cmd) {
                     std::array<char, 128> buffer;
@@ -1600,17 +1603,6 @@ public:
             ImGui_ImplGlfw_NewFrame();
             glfwPollEvents();
             ImGui::NewFrame();
-
-            // workaround to make window floating in Hyprland
-            if (frameCount == 1) {
-                const char* session = std::getenv("XDG_SESSION_DESKTOP");
-                const char* hyprSig = std::getenv("HYPRLAND_INSTANCE_SIGNATURE");
-                if ((session && std::string(session) == "Hyprland") || (hyprSig != nullptr)) {
-                    system("hyprctl dispatch setfloating class:trisualizer");
-                    system("hyprctl dispatch resizewindowpixel exact 1000 600, class:trisualizer");
-                    system("hyprctl dispatch centerwindow class:trisualizer");
-                }
-            }
 
             int wWidth, wHeight;
             glfwGetWindowSize(window, &wWidth, &wHeight);
