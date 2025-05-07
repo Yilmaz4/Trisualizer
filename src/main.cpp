@@ -11,12 +11,6 @@
 #define GLFW_EXPOSE_NATIVE_WGL
 #define GLFW_NATIVE_INCLUDE_NONE
 
-#ifdef PLATFORM_WINDOWS
-    #include <Windows.h>
-    #include <dwmapi.h>
-    #include <GLFW/glfw3native.h>
-#endif
-
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -25,6 +19,12 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+
+#ifdef PLATFORM_WINDOWS
+    #include <Windows.h>
+    #include <dwmapi.h>
+    #include <GLFW/glfw3native.h>
+#endif
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
@@ -73,7 +73,7 @@ TODO:
 */
 
 #ifdef PLATFORM_WINDOWS
-    using namespace Gdiplus;
+    #pragma comment(lib, "Gdiplus.lib")
 #endif
 using namespace glm;
 
@@ -415,7 +415,6 @@ public:
         glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
         glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
         glfwWindowHintString(GLFW_WAYLAND_APP_ID, "trisualizer");
-        glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
         //glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_FALSE); // makes content blurry, workaround for scaling in wayland
         glfwWindowHint(GLFW_SAMPLES, 4);
 

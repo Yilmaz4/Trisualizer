@@ -10,6 +10,8 @@ set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/lib/imgui)
 #set(B_PRODUCTION_MODE ON)
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 
+set(GLFW_BUILD_WIN32 True)
+
 add_subdirectory(lib/boxer)
 add_subdirectory(lib/embed)
 add_subdirectory(lib/glm)
