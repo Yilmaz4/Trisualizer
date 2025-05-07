@@ -415,7 +415,6 @@ public:
         glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
         glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
         glfwWindowHintString(GLFW_WAYLAND_APP_ID, "trisualizer");
-        //glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_FALSE); // makes content blurry, workaround for scaling in wayland
         glfwWindowHint(GLFW_SAMPLES, 4);
 
         const char* session = std::getenv("XDG_SESSION_DESKTOP");
@@ -1852,7 +1851,7 @@ public:
                     }
                 }
                 ImGui::SameLine();
-                if (ImGui::Button(g.advanced_view ? "↑" : "↓", ImVec2(16, 0))) {
+                if (ImGui::Button(g.advanced_view ? U8(u8"↑") : U8(u8"↓"), ImVec2(16, 0))) {
                     g.advanced_view ^= 1;
                 }
                 ImGui::SameLine();
@@ -1959,7 +1958,7 @@ public:
                 }
                 ImGui::EndDisabled();
                 ImGui::SameLine();
-                if (ImGui::Button(s.config ? "↑" : "↓", ImVec2(16, 0)))
+                if (ImGui::Button(s.config ? U8(u8"↑") : U8(u8"↓"), ImVec2(16, 0)))
                     s.config ^= 1;
                 ImGui::SameLine();
                 if (ImGui::Button("x", ImVec2(16, 0))) {
@@ -2853,7 +2852,7 @@ public:
             if (ImGui::BeginPopupModal("About Trisualizer", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
                 ImGui::Text("Version v" VERSION " (Build date: " __DATE__ " " __TIME__ ")\n\nTrisualizer is a two-variable function grapher");
                 ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(150, 150, 150, 255));
-                ImGui::Text("Copyright © 2018-2024 Yilmaz Alpaslan");
+                ImGui::Text(U8(u8"Copyright © 2018-2024 Yilmaz Alpaslan"));
                 ImGui::PopStyleColor();
                 if (ImGui::Button("Open GitHub Page")) {
 #ifdef PLATFORM_WINDOWS
