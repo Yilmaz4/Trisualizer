@@ -1,4 +1,4 @@
-﻿#define VERSION "1.0"
+﻿#define VERSION "0.1"
 
 #ifdef PLATFORM_WINDOWS
     #pragma comment(linker, "/ENTRY:mainCRTStartup")
@@ -51,26 +51,6 @@
 #include <string>
 #include <regex>
 #include <bitset>
-
-/*
-TODO:
-
-- Parametric surfaces
-- Implicit functions using marching cubes alg.
-- Curl and divergence visualization
-- Gradient vector fields
-- Preset views (top, front, sides)
-- Point of interest with label
-- Zoom onto region after integration
-- Center of mass w/ density function
-- Higher-order partial derivatives
-- Local minima, maxima and saddle points
-- Slicing and cross sectional view
-- Shadows under vector arrows
-- Export data to CSV
-- High-res image export (PNG & JPG)
-- Complex functions
-*/
 
 #ifdef PLATFORM_WINDOWS
     #pragma comment(lib, "Gdiplus.lib")
