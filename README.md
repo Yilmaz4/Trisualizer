@@ -34,3 +34,17 @@ cmake --build build
 You can then find the binary in the `bin` directory
 
 The project has been tested on Windows and Linux.
+
+## To-do
+
+- Add support for implicit functions using marching cubes algorithm and parametric surfaces
+- Visualize curl and divergence
+- Visualize gradient vector field
+- Let user select preset views
+- Let user save points on the surface of a specific function (points of interest)
+- Show local minima, maxima and saddle points
+- Let user slice the graph and see the cross section
+- Add soft shadows under vector arrows
+- Let user export high resolution images
+- Fix graph getting slightly smaller when grid resolution is lowered
+- Implement cross-platform file dialogs in functions `save_file` and `open_file`
