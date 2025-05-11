@@ -441,7 +441,6 @@ public:
             else {
                 float xscale, yscale;
                 glfwGetWindowContentScale(window, &xscale, &yscale);
-                std::cout << xscale << " " << yscale << std::endl;
                 dpi_scale = xscale;
             }
         }
